@@ -9,7 +9,7 @@
 
 先下载脚本:
 ```bash
-wget https://github.com/jerry1119/embyExternalUrl/releases/download/0.0.1/addExternalUrl.tar.gz && mkdir -p ~/embyExternalUrl && tar -xvf ./addExternalUrl.tar.gz -C ~/embyExternalUrl && cd ~/embyExternalUrl
+wget https://github.com/bpking1/embyExternalUrl/releases/download/0.0.1/addExternalUrl.tar.gz && mkdir -p ~/embyExternalUrl && tar -xvf ./addExternalUrl.tar.gz -C ~/embyExternalUrl && cd ~/embyExternalUrl
 ```
 
 然后看情况修改externalUrl.js文件里面的serverAddr
@@ -32,7 +32,7 @@ docker logs -f  emby-nginx 2>&1 | grep error
 ```
 #### emby调用外部播放器油猴脚本,只支持网页
 
-[油猴地址](https://greasyfork.org/en/scripts/406811-embylaunchpotplayer)
+[油猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
 
 
