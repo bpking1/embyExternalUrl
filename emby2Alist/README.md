@@ -1,6 +1,7 @@
 ---
 title: emby挂载阿里盘转直链
 date: 2021/09/06 22:00:00
+author: @bpking
 ---
 
 ### 文章更新记录 
@@ -40,11 +41,11 @@ date: 2021/09/06 22:00:00
 ### 1.先将配置文件下载到本地
 
 ```bash
-wget http://120.25.222.149:5244/d/e5main/other/emby/embyAlist.tar && mkdir -p ~/embyAlist && tar -xvf ./embyAlist.tar -C ~/embyAlist && cd ~/embyAlist
+wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Alist.tar.gz && mkdir -p ~/emby2Alist && tar -xzvf ./emby2Alist.tar.gz -C ~/emby2Alist && cd ~/emby2Alist
 ```
 
 此时文件结构如下:
-~/embyAlist
+~/emby2Alist
 ├── docker-compose.yml
 └── nginx
     ├── conf.d
@@ -60,7 +61,7 @@ wget http://120.25.222.149:5244/d/e5main/other/emby/embyAlist.tar && mkdir -p ~/
 获取方法参考原项目地址: https://github.com/messense/aliyundrive-webdav
 
 ### 4. 
-启动服务: 在 ~/embyAlist 目录下执行
+启动服务: 在 ~/emby2Alist 目录下执行
 ```bash
 docker-compose up -d
 ```

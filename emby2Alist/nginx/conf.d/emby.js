@@ -1,3 +1,4 @@
+//author: @bpking  https://github.com/bpking1/embyExternalUrl
 //查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 async function redirect2Pan(r) {
     //根据实际情况修改下面4个设置

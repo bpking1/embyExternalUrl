@@ -9,7 +9,7 @@
 
 先下载脚本:
 ```bash
-wget https://github.com/bpking1/embyExternalUrl/releases/download/0.0.1/addExternalUrl.tar.gz && mkdir -p ~/embyExternalUrl && tar -xvf ./addExternalUrl.tar.gz -C ~/embyExternalUrl && cd ~/embyExternalUrl
+wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/addExternalUrl.tar.gz && mkdir -p ~/embyExternalUrl && tar -xzvf ./addExternalUrl.tar.gz -C ~/embyExternalUrl && cd ~/embyExternalUrl
 ```
 
 然后看情况修改externalUrl.js文件里面的serverAddr
@@ -28,7 +28,7 @@ docker-compose up -d
 
 日志查看:
 ```
-docker logs -f  emby-nginx 2>&1 | grep error
+docker logs -f  embyUrl-nginx 2>&1 | grep error
 ```
 #### emby调用外部播放器油猴脚本,只支持网页
 

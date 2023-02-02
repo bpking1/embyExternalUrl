@@ -4,7 +4,7 @@ services:
 
     service.nginx:
       image: nginx:alpine
-      container_name: emby-nginx
+      container_name: embyUrl-nginx
       ports:
         - 8097:80
       volumes:

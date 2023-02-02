@@ -9,6 +9,7 @@
 // @description:zh-cn emby调用外部播放器
 // @license      MIT
 // @author       @bpking
+// @github       https://github.com/bpking1/embyExternalUrl
 // @include      */web/index.html
 // ==/UserScript==
 

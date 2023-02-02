@@ -1,3 +1,4 @@
+//author: @bpking  https://github.com/bpking1/embyExternalUrl
 let serverAddr = 'https://bpking.top';        //外网emby地址
 const tags = ['BluRay', 'REMUX', 'WEB-DL'];                 //添加视频tag
 const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF'];   //添加制作组
