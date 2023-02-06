@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.5
+// @version      1.0.6
 // @description  emby launch extetnal player
 // @description:zh-cn emby调用外部播放器
 // @license      MIT
@@ -26,6 +26,7 @@
                   <button id="embyIINA" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="IINA"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left"></i>  <span class="button-text">IINA</span> </div> </button>
                   <button id="embyNPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="NPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left"></i>  <span class="button-text">NPlayer</span> </div> </button>
                   <button id="embyMX" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MXPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left"></i>  <span class="button-text">MX</span> </div> </button>
+                  <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left"></i>  <span class="button-text">Infuse</span> </div> </button>
                   <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left"></i>  <span class="button-text">复制链接</span> </div> </button>
                       </div>`
                 mainDetailButtons.insertAdjacentHTML('afterend', buttonhtml)
@@ -35,6 +36,7 @@
                 document.querySelector("div[is='emby-scroller']:not(.hide) #embyMX").onclick = embyMX;
                 document.querySelector("div[is='emby-scroller']:not(.hide) #embyCopyUrl").onclick = embyCopyUrl;
                 document.querySelector("div[is='emby-scroller']:not(.hide) #embyVlc").onclick = embyVlc;
+                document.querySelector("div[is='emby-scroller']:not(.hide) #embyInfuse").onclick = embyInfuse;
             }
         }
     }, 1000);
@@ -81,8 +83,9 @@
         let subTitlePath = '';
         //返回选中的外挂字幕
         if (selectSubtitles && selectSubtitles.value > 0) {
-            if (mediaSource.MediaStreams[selectSubtitles.value].IsExternal) {
-                let subtitleCodec = mediaSource.MediaStreams[selectSubtitles.value].Codec;
+            let SubIndex = mediaSource.MediaStreams.findIndex(m => m.Index == selectSubtitles.value && m.IsExternal);
+            if (SubIndex > -1) {
+                let subtitleCodec = mediaSource.MediaStreams[SubIndex].Codec;
                 subTitlePath = `/${mediaSource.Id}/Subtitles/${selectSubtitles.value}/Stream.${subtitleCodec}`;
             }
         }
@@ -198,9 +201,17 @@
 
     async function embyNPlayer() {
         let mediaInfo = await getEmbyMediaInfo();
-        let nUrl = `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
+        let nUrl = getOS() == 'macOS' ? `nplayer-mac://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1` : `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
         console.log(nUrl);
         window.open(nUrl, "_blank");
+    }
+
+    //infuse
+    async function embyInfuse() {
+        let mediaInfo = await getEmbyMediaInfo();
+        let infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+        console.log(`infuseUrl= ${infuseUrl}`);
+        window.open(infuseUrl, "_blank");
     }
 
     async function embyCopyUrl() {

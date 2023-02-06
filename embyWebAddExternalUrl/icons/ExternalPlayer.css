@@ -1,0 +1,53 @@
+@media not all and (pointer: fine) {
+    .ExternalPlayer {
+        display: none
+    }
+}
+
+.topDetailsContainer:not(.topDetailsContainer-withbackdrop) .ExternalPlayButton {
+    display: none
+}
+
+.ExternalPlayButtonStyle.emby-button {
+    border-radius: 5em
+}
+
+.ExternalPlayer-button-text {
+    font-size: .8em
+}
+
+.icon-PotPlayer {
+    background: url(../ExternalPlayer/icon-PotPlayer.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.4em
+}
+
+.icon-MXPlayer {
+    background: url(../ExternalPlayer/icon-MXPlayer.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.4em
+}
+
+.icon-NPlayer {
+    background: url(../ExternalPlayer/icon-NPlayer.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.3em
+}
+
+.icon-IINA {
+    background: url(../ExternalPlayer/icon-IINA.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.4em
+}
+
+.icon-VLC {
+    background: url(../ExternalPlayer/icon-VLC.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.3em
+}
+
+.icon-infuse {
+    background: url(../ExternalPlayer/icon-infuse.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.4em
+}
