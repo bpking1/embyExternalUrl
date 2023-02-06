@@ -1,7 +1,10 @@
 # embyExternalUrl
 
-#### emby调用外部播放器服务端脚本,客户端可用
-通过nginx的njs模块运行js脚本,添加外部播放器的链接
+### emby调用外部播放器服务端脚本:
+
+通过nginx的njs模块运行js脚本,在emby视频的外部链接处添加调用外部播放器链接，所有emby官方客户端可用
+
+![](https://raw.githubusercontent.com/bpking1/pics/main/img/Screenshot%202023-02-06%20191721.png)
 
 使用方法:
 
@@ -30,7 +33,7 @@ docker-compose up -d
 ```
 docker logs -f  embyUrl-nginx 2>&1 | grep error
 ```
-#### emby调用外部播放器油猴脚本,只支持网页
+### emby调用外部播放器油猴脚本,只支持网页:
 
 [油猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
