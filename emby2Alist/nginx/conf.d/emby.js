@@ -53,7 +53,7 @@ async function redirect2Pan(r) {
         const folders = foldersRes.split(',').sort();
         for (let i = 0; i < folders.length; i++) {
             r.warn(`try to fetch alist path from /${folders[i]}${filePath}`);
-            let driverRes = await fetchAlistPathApi(alistFsGetApiPath, `/${folders[i]}${filePath}`, alistPwd);
+            let driverRes = await fetchAlistPathApi(alistFsGetApiPath, `/${folders[i]}${filePath}`, alistToken);
             if (!driverRes.startsWith('error')) {
                 driverRes =  driverRes.includes('http://172.17.0.1') ? driverRes.replace('http://172.17.0.1',alistPublicAddr) : driverRes;
                 r.warn(`redirect to: ${driverRes}`);
