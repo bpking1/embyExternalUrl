@@ -7,6 +7,7 @@
 // @version      1.0.6
 // @description  emby launch extetnal player
 // @description:zh-cn emby调用外部播放器
+// @description:en  emby to external player
 // @license      MIT
 // @author       @bpking
 // @github       https://github.com/bpking1/embyExternalUrl

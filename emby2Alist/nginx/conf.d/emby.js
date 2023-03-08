@@ -4,9 +4,10 @@ async function redirect2Pan(r) {
     //根据实际情况修改下面4个设置
     const embyHost = 'http://172.17.0.1:8096'; //这里默认emby/jellyfin的地址是宿主机,要注意iptables给容器放行端口
     const embyMountPath = '/mnt';  // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下:  /mnt/onedrive  /mnt/gd ,那么这里 就填写 /mnt
-    const alistPwd = '123456';      //alist password 这里的密码指的是文件夹密码，而不是用户密码
+    const alistToken = 'alsit-123456';      //alist token, 在alist后台查看
     const alistAddr= 'http://172.17.0.1:5244'; //访问宿主机上5244端口的alist地址, 要注意iptables给容器放行端口
-    const embyApiKey = 'f839390f50a648fd92108bc11ca6730a';  //emby/jellyfin api key,
+    const embyApiKey = 'f839390f50a648fd92108bc11ca6730a';  //emby/jellyfin api key, 在emby/jellyfin后台设置
+    const alistPublicAddr = 'http://youralist.com:5244'; // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 
     //fetch mount emby/jellyfin file path
     const regex = /[A-Za-z0-9]+/g;
@@ -28,8 +29,9 @@ async function redirect2Pan(r) {
     //fetch alist direct link
     const alistFilePath = embyRes.replace(embyMountPath, '');
     const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-    const alistRes = await fetchAlistPathApi(alistFsGetApiPath, alistFilePath, alistPwd);
+    let alistRes = await fetchAlistPathApi(alistFsGetApiPath, alistFilePath, alistToken);
     if (!alistRes.startsWith('error')) {
+        alistRes =  alistRes.includes('http://172.17.0.1') ? alistRes.replace('http://172.17.0.1',alistPublicAddr) : alistRes;
         r.warn(`redirect to: ${alistRes}`);
         r.return(302, alistRes);
         return;
@@ -42,7 +44,7 @@ async function redirect2Pan(r) {
     if (alistRes.startsWith('error500')) {
         const filePath = alistFilePath.substring(alistFilePath.indexOf('/', 1));
         const alistFsListApiPath = `${alistAddr}/api/fs/list`;
-        const foldersRes = await fetchAlistPathApi(alistFsListApiPath, '/', alistPwd);
+        const foldersRes = await fetchAlistPathApi(alistFsListApiPath, '/', alistToken);
         if (foldersRes.startsWith('error')) {
             r.error(foldersRes);
             r.return(500, foldersRes);
@@ -51,8 +53,9 @@ async function redirect2Pan(r) {
         const folders = foldersRes.split(',').sort();
         for (let i = 0; i < folders.length; i++) {
             r.warn(`try to fetch alist path from /${folders[i]}${filePath}`);
-            const driverRes = await fetchAlistPathApi(alistFsGetApiPath, `/${folders[i]}${filePath}`, alistPwd);
+            let driverRes = await fetchAlistPathApi(alistFsGetApiPath, `/${folders[i]}${filePath}`, alistPwd);
             if (!driverRes.startsWith('error')) {
+                driverRes =  driverRes.includes('http://172.17.0.1') ? driverRes.replace('http://172.17.0.1',alistPublicAddr) : driverRes;
                 r.warn(`redirect to: ${driverRes}`);
                 r.return(302, driverRes);
                 return;
@@ -67,16 +70,17 @@ async function redirect2Pan(r) {
     return;
 }
 
-async function fetchAlistPathApi(alistApiPath, alistFilePath, alistPwd) {
+async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     const alistRequestBody = {
         "path": alistFilePath,
-        "password": alistPwd
+        "password": ''
     }
     try {
         const response = await ngx.fetch(alistApiPath, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json;charset=utf-8'
+                'Content-Type': 'application/json;charset=utf-8',
+                'Authorization': alistToken
             },
             max_response_body_size: 65535,
             body: JSON.stringify(alistRequestBody)
