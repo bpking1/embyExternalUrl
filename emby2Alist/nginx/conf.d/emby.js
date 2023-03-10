@@ -12,13 +12,14 @@ async function redirect2Pan(r) {
     //fetch mount emby/jellyfin file path
     const regex = /[A-Za-z0-9]+/g;
     const itemId = r.uri.replace('emby', '').replace(/-/g, '').match(regex)[1];
-    const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
+    // const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
+    const Etag = r.args.Tag
     let api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.args.api_key;
     api_key = api_key ? api_key : embyApiKey;
 
-    const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+    const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?ETag=${Etag}&api_key=${api_key}`;
     r.warn(`itemInfoUri: ${itemInfoUri}`);
-    const embyRes = await fetchEmbyFilePath(itemInfoUri);
+    const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag);
     if (embyRes.startsWith('error')) {
         r.error(embyRes);
         r.return(500, embyRes);
@@ -109,7 +110,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     }
 }
 
-async function fetchEmbyFilePath(itemInfoUri) {
+async function fetchEmbyFilePath(itemInfoUri, Etag) {
     try {
         const res = await ngx.fetch(itemInfoUri, {
             method: 'POST',
@@ -124,7 +125,16 @@ async function fetchEmbyFilePath(itemInfoUri) {
             if (result === null || result === undefined) {
                 return `error: emby_api itemInfoUri response is null`;
             }
-            return result.MediaSources[0].Path;
+            // 轮询result.MediaSources列表中的etag
+            if (Etag) {
+                for (let i = 0; i < result.MediaSources.length; i++) {
+                    if (result.MediaSources[i].ETag == Etag) {
+                        return result.MediaSources[i].Path;
+                    }
+                }
+            }
+
+            // return result.MediaSources[0].Path;
         }
         else {
             return (`error: emby_api ${res.status} ${res.statusText}`);
