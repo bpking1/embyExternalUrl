@@ -12,21 +12,8 @@ async function redirect2Pan(r) {
     //fetch mount emby/jellyfin file path
     const regex = /[A-Za-z0-9]+/g;
     const itemId = r.uri.replace('emby', '').replace(/-/g, '').match(regex)[1];
-    // const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
+    const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
     const Etag = r.args.Tag
-    //  如果Etag获取不到，则使用mediaSourceId
-    if (!Etag) {
-        r.warn(`Etag is null, use mediaSourceId`);
-        mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
-        if (!mediaSourceId) {
-            r.error(`mediaSourceId is null`);
-            r.return(500, 'mediaSourceId is null');
-            return;
-        }
-    }
-        
-
-
     let api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.args.api_key;
     api_key = api_key ? api_key : embyApiKey;
 
