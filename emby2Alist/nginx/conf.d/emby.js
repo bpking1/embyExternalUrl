@@ -125,24 +125,10 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
             if (result === null || result === undefined) {
                 return `error: emby_api itemInfoUri response is null`;
             }
-            // 轮询result.MediaSources列表中的etag,如果etag为空则轮询mediasourceid
             if (Etag) {
-                for (let i = 0; i < result.MediaSources.length; i++) {
-                    if (result.MediaSources[i].ETag == Etag) {
-                        return result.MediaSources[i].Path;
-                    }
-                }
+                return result.MediaSources.find(m => m.ETag == Etag)?.Path ?? result.MediaSources[0].Path;
             }
-            else { 
-                for (let i = 0; i < result.MediaSources.length; i++) {
-                    if (result.MediaSources[i].Id == MediaSourceId) {
-                        return result.MediaSources[i].Path;
-                    }
-                }
-            }
-                
-
-            // return result.MediaSources[0].Path;
+            return result.MediaSources[0].Path;
         }
         else {
             return (`error: emby_api ${res.status} ${res.statusText}`);
