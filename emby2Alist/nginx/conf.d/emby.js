@@ -110,7 +110,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     }
 }
 
-async function fetchEmbyFilePath(itemInfoUri, Etag, MediaSourceId) {
+async function fetchEmbyFilePath(itemInfoUri, Etag) {
     try {
         const res = await ngx.fetch(itemInfoUri, {
             method: 'POST',
