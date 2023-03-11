@@ -13,12 +13,13 @@ async function redirect2Pan(r) {
     const regex = /[A-Za-z0-9]+/g;
     const itemId = r.uri.replace('emby', '').replace(/-/g, '').match(regex)[1];
     const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
+    const Etag = r.args.Tag
     let api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.args.api_key;
     api_key = api_key ? api_key : embyApiKey;
 
     const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
     r.warn(`itemInfoUri: ${itemInfoUri}`);
-    const embyRes = await fetchEmbyFilePath(itemInfoUri);
+    const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag);
     if (embyRes.startsWith('error')) {
         r.error(embyRes);
         r.return(500, embyRes);
@@ -109,7 +110,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     }
 }
 
-async function fetchEmbyFilePath(itemInfoUri) {
+async function fetchEmbyFilePath(itemInfoUri, Etag) {
     try {
         const res = await ngx.fetch(itemInfoUri, {
             method: 'POST',
@@ -123,6 +124,9 @@ async function fetchEmbyFilePath(itemInfoUri) {
             const result = await res.json();
             if (result === null || result === undefined) {
                 return `error: emby_api itemInfoUri response is null`;
+            }
+            if (Etag) {
+                return result.MediaSources.find(m => m.ETag == Etag)?.Path ?? result.MediaSources[0].Path;
             }
             return result.MediaSources[0].Path;
         }
