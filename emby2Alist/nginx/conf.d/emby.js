@@ -14,12 +14,25 @@ async function redirect2Pan(r) {
     const itemId = r.uri.replace('emby', '').replace(/-/g, '').match(regex)[1];
     // const mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
     const Etag = r.args.Tag
+    //  如果Etag获取不到，则使用mediaSourceId
+    if (!Etag) {
+        r.warn(`Etag is null, use mediaSourceId`);
+        mediaSourceId = r.args.MediaSourceId ? r.args.MediaSourceId : r.args.mediaSourceId;
+        if (!mediaSourceId) {
+            r.error(`mediaSourceId is null`);
+            r.return(500, 'mediaSourceId is null');
+            return;
+        }
+    }
+        
+
+
     let api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.args.api_key;
     api_key = api_key ? api_key : embyApiKey;
 
-    const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?ETag=${Etag}&api_key=${api_key}`;
+    const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
     r.warn(`itemInfoUri: ${itemInfoUri}`);
-    const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag);
+    const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag, mediaSourceId);
     if (embyRes.startsWith('error')) {
         r.error(embyRes);
         r.return(500, embyRes);
@@ -110,7 +123,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     }
 }
 
-async function fetchEmbyFilePath(itemInfoUri, Etag) {
+async function fetchEmbyFilePath(itemInfoUri, Etag, MediaSourceId) {
     try {
         const res = await ngx.fetch(itemInfoUri, {
             method: 'POST',
@@ -125,7 +138,7 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
             if (result === null || result === undefined) {
                 return `error: emby_api itemInfoUri response is null`;
             }
-            // 轮询result.MediaSources列表中的etag
+            // 轮询result.MediaSources列表中的etag,如果etag为空则轮询mediasourceid
             if (Etag) {
                 for (let i = 0; i < result.MediaSources.length; i++) {
                     if (result.MediaSources[i].ETag == Etag) {
@@ -133,6 +146,14 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
                     }
                 }
             }
+            else { 
+                for (let i = 0; i < result.MediaSources.length; i++) {
+                    if (result.MediaSources[i].Id == MediaSourceId) {
+                        return result.MediaSources[i].Path;
+                    }
+                }
+            }
+                
 
             // return result.MediaSources[0].Path;
         }
