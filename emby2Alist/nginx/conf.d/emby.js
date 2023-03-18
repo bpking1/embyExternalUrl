@@ -1,7 +1,7 @@
 //author: @bpking  https://github.com/bpking1/embyExternalUrl
 //查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 async function redirect2Pan(r) {
-    //根据实际情况修改下面4个设置
+    //根据实际情况修改下面的设置
     const embyHost = 'http://172.17.0.1:8096'; //这里默认emby/jellyfin的地址是宿主机,要注意iptables给容器放行端口
     const embyMountPath = '/mnt';  // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下:  /mnt/onedrive  /mnt/gd ,那么这里 就填写 /mnt
     const alistToken = 'alsit-123456';      //alist token, 在alist后台查看
@@ -126,7 +126,10 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
                 return `error: emby_api itemInfoUri response is null`;
             }
             if (Etag) {
-                return result.MediaSources.find(m => m.ETag == Etag)?.Path ?? result.MediaSources[0].Path;
+                const mediaSource = result.MediaSources.find(m => m.ETag == Etag);
+                if (mediaSource && mediaSource.Path) {
+                    return mediaSource.Path;
+                }
             }
             return result.MediaSources[0].Path;
         }
