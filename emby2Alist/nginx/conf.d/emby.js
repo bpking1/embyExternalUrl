@@ -17,7 +17,12 @@ async function redirect2Pan(r) {
     let api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.args.api_key;
     api_key = api_key ? api_key : embyApiKey;
 
-    const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+    let itemInfoUri = '';
+    if (mediaSourceId) {
+        itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+    }else{
+        itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+    }
     r.warn(`itemInfoUri: ${itemInfoUri}`);
     const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag);
     if (embyRes.startsWith('error')) {
