@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.8
+// @version      1.0.9
 // @description  emby launch extetnal player
 // @description:zh-cn emby调用外部播放器
 // @description:en  emby to external player
@@ -243,13 +243,16 @@
         let mediaInfo = await getEmbyMediaInfo();
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
         let streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-");
-        let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-");
-        let MPVUrl = `mpv://play/${streamUrl64}/?subtitle=${subUrl64}`;
+        let MPVUrl = `mpv://play/${streamUrl64}`;
+        if (mediaInfo.subUrl.length > 0) {
+            let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-");
+            MPVUrl = `mpv://play/${streamUrl64}/?subtitle=${subUrl64}`;
+        }
 
         if (getOS() == "ios" || getOS() == "android") {
             MPVUrl = `mpv://${encodeURI(mediaInfo.streamUrl)}`;
         }
-        
+
         console.log(MPVUrl);
         window.open(MPVUrl, "_blank");
     }
