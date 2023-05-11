@@ -242,11 +242,11 @@
     async function embyMPV() {
         let mediaInfo = await getEmbyMediaInfo();
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-        let streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-");
+        let streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
         let MPVUrl = `mpv://play/${streamUrl64}`;
         if (mediaInfo.subUrl.length > 0) {
-            let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-");
-            MPVUrl = `mpv://play/${streamUrl64}/?subtitle=${subUrl64}`;
+            let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+            MPVUrl = `mpv://play/${streamUrl64}/?subfile=${subUrl64}`;
         }
 
         if (getOS() == "ios" || getOS() == "android") {
