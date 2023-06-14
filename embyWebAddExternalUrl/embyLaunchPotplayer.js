@@ -58,15 +58,15 @@
 
     function showFlag() {
         let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        // exclude actor page
-        let mainDetailButton1 = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons .btnPlay:not(.hide)");
-        let mainDetailButton2 = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons .btnResume:not(.hide)");
-        // exclude collection page
-        let mainDetailButton3 = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons .btnShuffle:not(.hide)");
-        // exclude live tv page
-        let mainDetailButton4 = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons .btnManualRecording:not(.hide)");
-
-        return mainDetailButtons && (mainDetailButton1 || mainDetailButton2) && (!mainDetailButton3) && (!mainDetailButton4);
+        if (!mainDetailButtons) {
+            return false;
+        }
+        let videoElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectVideoContainer");
+        if (videoElement && videoElement.classList.contains("hide")) {
+            return false;
+        }
+        let audioElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectAudioContainer");
+        return !(audioElement && audioElement.classList.contains("hide"));
     }
 
     async function getItemInfo() {
