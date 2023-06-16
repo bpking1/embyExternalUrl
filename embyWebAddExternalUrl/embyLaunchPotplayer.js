@@ -16,47 +16,58 @@
 
 (function () {
     'use strict';
-    setInterval(function () {
-        let potplayer = document.querySelectorAll("div[is='emby-scroller']:not(.hide) #embyPot")[0];
-        if (!potplayer) {
-            let mainDetailButtons = document.querySelectorAll("div[is='emby-scroller']:not(.hide) .mainDetailButtons")[0];
-            if (mainDetailButtons) {
-                let buttonhtml = `<div class ="detailButtons  flex align-items-flex-start flex-wrap-wrap">
-                  <button id="embyPot" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="Potplayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-PotPlayer">　</i>  <span class="button-text">Pot</span> </div> </button>
-                  <button id="embyVlc" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="VLC"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-VLC">　</i>  <span class="button-text">VLC</span>  </div> </button>
-                  <button id="embyIINA" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="IINA"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-IINA">　</i>  <span class="button-text">IINA</span> </div> </button>
-                  <button id="embyNPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="NPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-NPlayer">　</i>  <span class="button-text">NPlayer</span> </div> </button>
-                  <button id="embyMX" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MXPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-MXPlayer">　</i>  <span class="button-text">MX</span> </div> </button>
-                  <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-infuse">　</i>  <span class="button-text">Infuse</span> </div> </button>
-                  <button id="embyStellarPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="恒星播放器"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-StellarPlayer">　</i>  <span class="button-text">恒星</span> </div> </button>
-                  <button id="embyMPV" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-MPV">　</i>  <span class="button-text">MPV</span> </div> </button>
-                  <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-Copy">　</i>  <span class="button-text">复制链接</span> </div> </button>
-                      </div>`
-                mainDetailButtons.insertAdjacentHTML('afterend', buttonhtml)
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyPot").onclick = embyPot;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyIINA").onclick = embyIINA;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyNPlayer").onclick = embyNPlayer;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyMX").onclick = embyMX;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyCopyUrl").onclick = embyCopyUrl;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyVlc").onclick = embyVlc;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyInfuse").onclick = embyInfuse;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyStellarPlayer").onclick = embyStellarPlayer;
-                document.querySelector("div[is='emby-scroller']:not(.hide) #embyMPV").onclick = embyMPV;
-
-                //add icons
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-PotPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-PotPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-IINA").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-IINA.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-MXPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MXPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-infuse").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-infuse.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-VLC").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-VLC.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-NPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-NPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-StellarPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-StellarPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-MPV").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MPV.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-                document.querySelector("div[is='emby-scroller']:not(.hide) .icon-Copy").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-Copy.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-            }
+    function init() {
+        let playBtns = document.getElementById("ExternalPlayersBtns");
+        if (playBtns) {
+            playBtns.remove();
         }
-    }, 1000);
+        let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
+        let buttonhtml = `<div id="ExternalPlayersBtns" class ="detailButtons flex align-items-flex-start flex-wrap-wrap">
+            <button id="embyPot" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="Potplayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-PotPlayer">　</i>  <span class="button-text">Pot</span> </div> </button>
+            <button id="embyVlc" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="VLC"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-VLC">　</i>  <span class="button-text">VLC</span>  </div> </button>
+            <button id="embyIINA" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="IINA"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-IINA">　</i>  <span class="button-text">IINA</span> </div> </button>
+            <button id="embyNPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="NPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-NPlayer">　</i>  <span class="button-text">NPlayer</span> </div> </button>
+            <button id="embyMX" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MXPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-MXPlayer">　</i>  <span class="button-text">MX</span> </div> </button>
+            <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-infuse">　</i>  <span class="button-text">Infuse</span> </div> </button>
+            <button id="embyStellarPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="恒星播放器"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-StellarPlayer">　</i>  <span class="button-text">恒星</span> </div> </button>
+            <button id="embyMPV" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-MPV">　</i>  <span class="button-text">MPV</span> </div> </button>
+            <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left icon-Copy">　</i>  <span class="button-text">复制链接</span> </div> </button>
+            </div>`
+        mainDetailButtons.insertAdjacentHTML('afterend', buttonhtml)
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyPot").onclick = embyPot;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyIINA").onclick = embyIINA;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyNPlayer").onclick = embyNPlayer;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyMX").onclick = embyMX;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyCopyUrl").onclick = embyCopyUrl;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyVlc").onclick = embyVlc;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyInfuse").onclick = embyInfuse;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyStellarPlayer").onclick = embyStellarPlayer;
+        document.querySelector("div[is='emby-scroller']:not(.hide) #embyMPV").onclick = embyMPV;
 
+        //add icons
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-PotPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-PotPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-IINA").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-IINA.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-MXPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MXPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-infuse").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-infuse.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-VLC").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-VLC.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-NPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-NPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-StellarPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-StellarPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-MPV").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MPV.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("div[is='emby-scroller']:not(.hide) .icon-Copy").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-Copy.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+    }
+
+    function showFlag() {
+        let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
+        if (!mainDetailButtons) {
+            return false;
+        }
+        let videoElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectVideoContainer");
+        if (videoElement && videoElement.classList.contains("hide")) {
+            return false;
+        }
+        let audioElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectAudioContainer");
+        return !(audioElement && audioElement.classList.contains("hide"));
+    }
 
     async function getItemInfo() {
         let userId = ApiClient._serverInfo.UserId;
@@ -295,5 +306,21 @@
         }
     }
 
-})();
+    // monitor dom changements
+    document.addEventListener("viewbeforeshow", function (e) {
+        if (e.detail.contextPath.startsWith("/item?id=") ) {
+            const mutation = new MutationObserver(function() {
+                if (showFlag()) {
+                    init();
+                    mutation.disconnect();
+                }
+            })
+            mutation.observe(document.body, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            })
+        }
+    });
 
+})();
