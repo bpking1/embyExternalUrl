@@ -185,7 +185,7 @@
         let intent = mediaInfo.intent;
         let poturl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /title="${intent.title}" /seek=${getSeek(intent.position)}`;
         console.log(poturl);
-        window.open(poturl, "_blank");
+        window.open(poturl, "_self");
     }
 
     //https://wiki.videolan.org/Android_Player_Intents/
@@ -203,7 +203,7 @@
             vlcUrl = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
         }
         console.log(vlcUrl);
-        window.open(vlcUrl, "_blank");
+        window.open(vlcUrl, "_self");
     }
 
     //https://github.com/iina/iina/issues/1991
@@ -211,7 +211,7 @@
         let mediaInfo = await getEmbyMediaInfo();
         let iinaUrl = `iina://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1`;
         console.log(`iinaUrl= ${iinaUrl}`);
-        window.open(iinaUrl, "_blank");
+        window.open(iinaUrl, "_self");
     }
 
     //https://sites.google.com/site/mxvpen/api
@@ -223,14 +223,14 @@
         //mxPlayer Pro
         //let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
         console.log(mxUrl);
-        window.open(mxUrl, "_blank");
+        window.open(mxUrl, "_self");
     }
 
     async function embyNPlayer() {
         let mediaInfo = await getEmbyMediaInfo();
         let nUrl = getOS() == 'macOS' ? `nplayer-mac://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1` : `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
         console.log(nUrl);
-        window.open(nUrl, "_blank");
+        window.open(nUrl, "_self");
     }
 
     //infuse
@@ -238,7 +238,7 @@
         let mediaInfo = await getEmbyMediaInfo();
         let infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
         console.log(`infuseUrl= ${infuseUrl}`);
-        window.open(infuseUrl, "_blank");
+        window.open(infuseUrl, "_self");
     }
 
     //StellarPlayer
@@ -246,7 +246,7 @@
         let mediaInfo = await getEmbyMediaInfo();
         let stellarPlayerUrl = `stellar://play/${encodeURI(mediaInfo.streamUrl)}`;
         console.log(`stellarPlayerUrl= ${stellarPlayerUrl}`);
-        window.open(stellarPlayerUrl, "_blank");
+        window.open(stellarPlayerUrl, "_self");
     }
 
     //MPV
@@ -265,7 +265,7 @@
         }
 
         console.log(MPVUrl);
-        window.open(MPVUrl, "_blank");
+        window.open(MPVUrl, "_self");
     }
 
     async function embyCopyUrl() {
