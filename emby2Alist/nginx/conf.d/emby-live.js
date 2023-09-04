@@ -1,12 +1,10 @@
 // @author: Ambitious
 // @date: 2023-09-04
-import {
-  embyApiKey,
-  embyHost,
-} from "./constant.js";
+import config from "./constant.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
+  const { embyHost, embyApiKey } = config;
   // 1 get the ItemId
   const regex = /[A-Za-z0-9]+/g;
   const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
@@ -30,4 +28,4 @@ async function directLive(r) {
   r.return(302, embyRes);
 }
 
-export default { directLive }
+export default { directLive };

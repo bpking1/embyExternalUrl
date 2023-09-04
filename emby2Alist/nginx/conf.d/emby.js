@@ -1,15 +1,16 @@
 //author: @bpking  https://github.com/bpking1/embyExternalUrl
 //查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
-import {
-  embyApiKey,
-  embyHost,
-  embyMountPath,
-  alistToken,
-  alistAddr,
-  alistPublicAddr,
-} from "./constant.js";
+import config from "./constant.js";
 
 async function redirect2Pan(r) {
+  const {
+    embyHost,
+    embyMountPath,
+    alistToken,
+    alistAddr,
+    embyApiKey,
+    alistPublicAddr,
+  } = config;
   //fetch mount emby/jellyfin file path
   const regex = /[A-Za-z0-9]+/g;
   const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
