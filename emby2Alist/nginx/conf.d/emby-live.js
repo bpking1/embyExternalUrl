@@ -16,7 +16,7 @@ async function directLive(r) {
     ? r.args["X-Emby-Token"]
     : r.args.api_key;
   api_key = api_key ? api_key : embyApiKey;
-  const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+  const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}&AutoOpenLiveStream=true`;
   r.warn(`itemInfoUri: ${itemInfoUri}`);
   const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, Etag);
   if (embyRes.startsWith("error")) {
