@@ -3,14 +3,12 @@
 import config from "./constant.js";
 
 async function redirect2Pan(r) {
-  const {
-    embyHost,
-    embyMountPath,
-    alistToken,
-    alistAddr,
-    embyApiKey,
-    alistPublicAddr,
-  } = config;
+  const embyHost = config.embyHost;
+  const embyMountPath = config.embyMountPath;
+  const alistToken = config.alistToken;
+  const alistAddr = config.alistAddr;
+  const embyApiKey = config.embyApiKey;
+  const alistPublicAddr = config.alistPublicAddr;
   //fetch mount emby/jellyfin file path
   const regex = /[A-Za-z0-9]+/g;
   const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];

@@ -4,7 +4,8 @@ import config from "./constant.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
-  const { embyHost, embyApiKey } = config;
+  const embyHost = config.embyHost;
+  const embyApiKey = config.embyApiKey;
   // 1 get the ItemId
   const regex = /[A-Za-z0-9]+/g;
   const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
