@@ -21,12 +21,34 @@ async function directLive(r) {
   const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, Etag);
   if (embyRes.startsWith("error")) {
     r.error(embyRes);
-    r.return(500, embyRes);
+    redirect2Origin(r, embyHost);
     return;
   }
   r.warn(`mount emby file path: ${embyRes}`);
   // 4 execute redirect
+  if (!checkM3U8(embyRes)) {
+    redirect2Origin(r, embyHost);
+    return;
+  }
   r.return(302, embyRes);
+}
+
+function checkM3U8(url) {
+  if (!url || url === "") {
+    return false;
+  }
+  return url.includes("m3u");
+}
+
+function redirect2Origin(r, embyHost) {
+  let url = embyHost + r.uri;
+  let isFirst = true;
+  for (const key in r.args) {
+    url += isFirst ? "?" : "&";
+    url += `${key}=${r.args[key]}`;
+    isFirst = false;
+  }
+  r.return(302, url);
 }
 
 export default { directLive };
