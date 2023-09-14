@@ -25,7 +25,7 @@ async function directLive(r) {
     return;
   }
   if (!checkLive(embyRes)) {
-    const host = r.headersIn['Host'];
+    let host = r.headersIn['Host'];
     if (!host.startsWith("http")) {
       host = "http://" + host;
     }
