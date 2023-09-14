@@ -87,9 +87,8 @@ async function redirect2Pan(r) {
         return;
       }
     }
-    r.error(alistRes);
-    r.return(404, alistRes);
-    return;
+    // use original link
+    return r.return(302, itemInfoUri.replace("PlaybackInfo", "stream.mp4"));
   }
   r.error(alistRes);
   r.return(500, alistRes);
