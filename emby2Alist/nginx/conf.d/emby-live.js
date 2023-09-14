@@ -26,6 +26,9 @@ async function directLive(r) {
   }
   if (!checkLive(embyRes)) {
     const host = r.headersIn['Host'];
+    if (!host.startsWith("http")) {
+      host = "http://" + host;
+    }
     const uri = r.uri.replace("master.m3u8", "stream.mp4");
     const url = generateUrl(r, host, uri);
     r.warn(`stream url: ${url}`);
@@ -73,7 +76,7 @@ function redirect2Origin(r, embyHost) {
 }
 
 function generateUrl(r, host, uri) {
-  let url = "http://" + host + uri;
+  let url = host + uri;
   let isFirst = true;
   for (const key in r.args) {
     url += isFirst ? "?" : "&";
