@@ -88,7 +88,7 @@ async function redirect2Pan(r) {
       }
     }
     // use original link
-    return r.return(302, itemInfoUri.replace("PlaybackInfo", "stream.mp4"));
+    return r.return(302, itemInfoUri.replace("Items", "Videos").replace("PlaybackInfo", "stream.mp4"));
   }
   r.error(alistRes);
   r.return(500, alistRes);
