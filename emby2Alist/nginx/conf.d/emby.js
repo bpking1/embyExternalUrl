@@ -1,34 +1,17 @@
 //author: @bpking  https://github.com/bpking1/embyExternalUrl
 //查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 import config from "./constant.js";
+import util from "./util.js";
 
 async function redirect2Pan(r) {
-  const embyHost = config.embyHost;
   const embyMountPath = config.embyMountPath;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const embyApiKey = config.embyApiKey;
   const alistPublicAddr = config.alistPublicAddr;
   //fetch mount emby/jellyfin file path
-  const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
-  const mediaSourceId = r.args.MediaSourceId
-    ? r.args.MediaSourceId
-    : r.args.mediaSourceId;
-  const Etag = r.args.Tag;
-  let api_key = r.args["X-Emby-Token"]
-    ? r.args["X-Emby-Token"]
-    : r.args.api_key;
-  api_key = api_key ? api_key : embyApiKey;
-
-  let itemInfoUri = "";
-  if (mediaSourceId) {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
-  } else {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
-  }
-  r.warn(`itemInfoUri: ${itemInfoUri}`);
-  const embyRes = await fetchEmbyFilePath(itemInfoUri, Etag);
+  const itemInfo = util.getItemInfo(r);
+  r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag);
   if (embyRes.startsWith("error")) {
     r.error(embyRes);
     r.return(500, embyRes);
@@ -87,13 +70,32 @@ async function redirect2Pan(r) {
         return;
       }
     }
-    r.error(alistRes);
-    r.return(404, alistRes);
-    return;
+    // use original link
+    return r.return(302, util.getEmbyOriginRequestUrl(r));
   }
   r.error(alistRes);
   r.return(500, alistRes);
   return;
+}
+
+// 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
+async function transferPlaybackInfo(r) {
+  // 1 获取 itemId
+  const itemInfo = util.getItemInfo(r);
+  // 2 手动请求 PlaybackInfo
+  const response = await ngx.fetch(itemInfo.itemInfoUri, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  // 3 返回
+  if (response.ok) {
+    const body = await response.json();
+    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+    return r.return(200, JSON.stringify(body));
+  }
+  return r.return(302, util.getEmbyOriginRequestUrl(r));
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
@@ -164,4 +166,4 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
   }
 }
 
-export default { redirect2Pan, fetchEmbyFilePath };
+export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo };

@@ -1,53 +1,49 @@
 // @author: Ambitious
 // @date: 2023-09-04
 import config from "./constant.js";
+import util from "./util.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
   const embyHost = config.embyHost;
-  const embyApiKey = config.embyApiKey;
+  const itemInfo = util.getItemInfo(r);
   // 1 get the ItemId
-  const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
+  const itemId = itemInfo.itemId;
   // 2 get Item's PlayBackInfo
   // 3 get the live-tv direct m3u8 url
-  const Etag = r.args.Tag;
-  let api_key = r.args["X-Emby-Token"]
-    ? r.args["X-Emby-Token"]
-    : r.args.api_key;
-  api_key = api_key ? api_key : embyApiKey;
-  const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}&AutoOpenLiveStream=true`;
+  const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${itemInfo.api_key}&AutoOpenLiveStream=true`;
   r.warn(`itemInfoUri: ${itemInfoUri}`);
-  const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, Etag);
+  const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, itemInfo.Etag);
   if (embyRes.startsWith("error")) {
     r.error(embyRes);
-    redirect2Origin(r, embyHost);
+    redirect2Origin(r);
     return;
+  }
+  if (!checkLive(embyRes)) {
+    return Emby.redirect2Pan(r);
   }
   r.warn(`mount emby file path: ${embyRes}`);
-  // 4 execute redirect
-  if (!checkM3U8(embyRes)) {
-    redirect2Origin(r, embyHost);
-    return;
-  }
+  // 5 execute redirect
   r.return(302, embyRes);
 }
 
-function checkM3U8(url) {
+// 检查获取的链接是否是直播源，而非本地的资源路径
+function checkLive(url) {
   if (!url || url === "") {
     return false;
   }
-  return url.includes("m3u");
+  const regex = /^([^:/?#]+):/;
+  const match = url.match(regex);
+  if (!match) {
+    return false;
+  }
+  const protocol = match[1].toLowerCase();
+  const valids = ["http", "https", "hls", "rtsp", "rtmp"];
+  return valids.findIndex((v) => v === protocol) !== -1;
 }
 
-function redirect2Origin(r, embyHost) {
-  let url = embyHost + r.uri;
-  let isFirst = true;
-  for (const key in r.args) {
-    url += isFirst ? "?" : "&";
-    url += `${key}=${r.args[key]}`;
-    isFirst = false;
-  }
+function redirect2Origin(r) {
+  const url = util.getEmbyOriginRequestUrl(r);
   r.return(302, url);
 }
 
