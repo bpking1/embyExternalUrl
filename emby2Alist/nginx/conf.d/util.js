@@ -43,4 +43,9 @@ function getItemInfo(r) {
   return { itemId, mediaSourceId, Etag, api_key, itemInfoUri };
 }
 
-export default { getItemInfo, getCurrentRequestUrl, getEmbyOriginRequestUrl };
+export default {
+  getItemInfo,
+  generateUrl,
+  getCurrentRequestUrl,
+  getEmbyOriginRequestUrl,
+};

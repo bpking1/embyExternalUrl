@@ -80,10 +80,14 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  // 1 获取 itemId
-  const itemInfo = util.getItemInfo(r);
+  let url = util.getEmbyOriginRequestUrl(r);
+  if (!r.args["X-Emby-Token"] && !r.args["api_key"]) {
+    const itemInfo = util.getItemInfo(r);
+    url += url.includes("?") ? `&api_key=${itemInfo.api_key}` : `?api_key=${itemInfo.api_key}`;
+  }
+  r.warn(`PlaybackInfo new url: ${url}`);
   // 2 手动请求 PlaybackInfo
-  const response = await ngx.fetch(itemInfo.itemInfoUri, {
+  const response = await ngx.fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -92,6 +96,17 @@ async function transferPlaybackInfo(r) {
   // 3 返回
   if (response.ok) {
     const body = await response.json();
+    if (body.MediaSources && body.MediaSources.length > 0) {
+      if (body.MediaSources[0].IsRemote) {
+        // 不拦截直播源
+        return r.return(302, util.getEmbyOriginRequestUrl(r));
+      }
+      body.MediaSources[0].SupportsTranscoding = false;
+      body.MediaSources[0].DirectStreamUrl = util
+        .generateUrl(r, "", r.uri)
+        .replace("/emby/Items", "/videos")
+        .replace("PlaybackInfo", "stream.mp4");
+    }
     r.headersOut["Content-Type"] = "application/json;charset=utf-8";
     return r.return(200, JSON.stringify(body));
   }
