@@ -12,7 +12,9 @@ function generateUrl(r, host, uri) {
 }
 
 function getEmbyOriginRequestUrl(r) {
-  const embyHost = config.embyHost;
+  const embyHost = config.publicDomain == ""
+  ? config.embyHost
+  : config.publicDomain + ":" + config.embyPort;
   return generateUrl(r, embyHost, r.uri);
 }
 

@@ -8,6 +8,9 @@ async function redirect2Pan(r) {
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistPublicAddr = config.alistPublicAddr;
+  const alistIp = config.alistIp;
+  const publicDomain = config.publicDomain;
+  const changeAlistToEmby = config.changeAlistToEmby;
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
@@ -28,10 +31,13 @@ async function redirect2Pan(r) {
     alistToken
   );
   if (!alistRes.startsWith("error")) {
-    alistRes = alistRes.includes("http://172.17.0.1")
-      ? alistRes.replace("http://172.17.0.1", alistPublicAddr)
+    alistRes = alistRes.includes(alistIp)
+      ? alistRes.replace(alistIp, alistPublicAddr)
       : alistRes;
-    r.warn(`redirect to: ${alistRes}`);
+    if (changeAlistToEmby && (alistRes.startsWith(alistIp) || alistRes.startsWith(publicDomain))) {
+      // use original link
+      alistRes = util.getEmbyOriginRequestUrl(r);
+    }
     r.return(302, alistRes);
     return;
   }
@@ -62,8 +68,8 @@ async function redirect2Pan(r) {
         alistToken
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes("http://172.17.0.1")
-          ? driverRes.replace("http://172.17.0.1", alistPublicAddr)
+        driverRes = driverRes.includes(alistIp)
+          ? driverRes.replace(alistIp, alistPublicAddr)
           : driverRes;
         r.warn(`redirect to: ${driverRes}`);
         r.return(302, driverRes);
