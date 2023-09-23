@@ -11,7 +11,7 @@ async function redirect2Pan(r) {
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag);
+  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag, itemInfo.itemId);
   if (embyRes.startsWith("error")) {
     r.error(embyRes);
     r.return(500, embyRes);
@@ -136,10 +136,15 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   }
 }
 
-async function fetchEmbyFilePath(itemInfoUri, Etag) {
+async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
+  // 1: 原始, 2: JobItems返回值
+  let resultType = 1;
+  if (itemInfoUri.includes("JobItems")) {
+    resultType = 2;
+  }
   try {
     const res = await ngx.fetch(itemInfoUri, {
-      method: "POST",
+      method: resultType == 2 ? "GET" : "POST",
       headers: {
         "Content-Type": "application/json;charset=utf-8",
         "Content-Length": 0,
@@ -151,10 +156,15 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
       if (result === null || result === undefined) {
         return `error: emby_api itemInfoUri response is null`;
       }
-      if (Etag) {
-        const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
-        if (mediaSource && mediaSource.Path) {
-          return mediaSource.Path;
+      if (resultType == 2) {
+        const jobItem = result.Items.find(o => o.Id == itemId);
+        return jobItem ? jobItem.MediaSource.Path : `error: emby_api /Sync/JobItems response is null`;
+      } else {
+        if (Etag) {
+          const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
+          if (mediaSource && mediaSource.Path) {
+            return mediaSource.Path;
+          }
         }
       }
       return result.MediaSources[0].Path;
