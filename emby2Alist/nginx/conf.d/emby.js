@@ -70,8 +70,8 @@ async function redirect2Pan(r) {
         return;
       }
     }
-    // use original link
-    return r.return(302, util.getEmbyOriginRequestUrl(r));
+    r.warn(`fail to fetch alist resource: not found`);
+    return r.return(404);
   }
   r.error(alistRes);
   r.return(500, alistRes);
@@ -102,10 +102,22 @@ async function transferPlaybackInfo(r) {
     r.warn(`modify direct play info`);
     source.SupportsDirectPlay = true;
     source.SupportsDirectStream = true;
-    source.DirectStreamUrl = util
-      .generateUrl(r, "", r.uri)
-      .replace("/emby/Items", "/videos")
-      .replace("PlaybackInfo", "stream.mp4");
+    source.DirectStreamUrl = util.addDefaultApiKey(
+      r,
+      util
+        .generateUrl(r, "", r.uri)
+        .replace("/emby/Items", "/videos")
+        .replace("PlaybackInfo", "stream.mp4")
+    );
+    // check if is local resource
+    const panRes = await r.subrequest(source.DirectStreamUrl, {
+      method: "GET"
+    });
+    if (panRes.status === 404) {
+      // local resource, change url to origin
+      r.warn(`local resource playbackinfo, proxy url to origin`);
+      source.DirectStreamUrl = util.appendUrlArg(util.proxyUri(source.DirectStreamUrl), "Static", "true");
+    }
     r.warn(`remove transcode config`);
     source.SupportsTranscoding = false;
     if (source.TranscodingUrl) {
