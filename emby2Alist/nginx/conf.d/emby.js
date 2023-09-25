@@ -2,7 +2,6 @@
 //查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 import config from "./constant.js";
 import util from "./util.js";
-import util from "./util.js";
 
 async function redirect2Pan(r) {
   const embyMountPath = config.embyMountPath;
