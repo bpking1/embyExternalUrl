@@ -80,36 +80,52 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  let url = util.getEmbyOriginRequestUrl(r);
-  if (!r.args["X-Emby-Token"] && !r.args["api_key"]) {
-    const itemInfo = util.getItemInfo(r);
-    url += url.includes("?") ? `&api_key=${itemInfo.api_key}` : `?api_key=${itemInfo.api_key}`;
-  }
-  r.warn(`PlaybackInfo new url: ${url}`);
-  // 2 手动请求 PlaybackInfo
-  const response = await ngx.fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+  // replay the request
+  r.warn(`playbackinfo request headers: ${JSON.stringify(r.headersIn)}`);
+  r.warn(`playbackinfo request body: ${r.requestText}`);
+  const response = await r.subrequest(util.proxyUri(r.uri), {
+    method: r.method,
+    args: util.generateUrl(r, "", "").substring(1),
   });
-  // 3 返回
-  if (response.ok) {
-    const body = await response.json();
-    if (body.MediaSources && body.MediaSources.length > 0) {
-      if (body.MediaSources[0].IsRemote) {
-        // 不拦截直播源
-        return r.return(302, util.getEmbyOriginRequestUrl(r));
-      }
-      body.MediaSources[0].SupportsTranscoding = false;
-      body.MediaSources[0].DirectStreamUrl = util
-        .generateUrl(r, "", r.uri)
-        .replace("/emby/Items", "/videos")
-        .replace("PlaybackInfo", "stream.mp4");
+  const body = JSON.parse(response.responseText);
+  if (
+    response.status === 200 &&
+    body.MediaSources &&
+    body.MediaSources.length > 0
+  ) {
+    r.warn(`origin playbackinfo: ${response.responseText}`);
+    const source = body.MediaSources[0];
+    if (source.IsRemote) {
+      // live streams are not blocked
+      return r.return(200, response.responseText);
     }
+    r.warn(`modify direct play info`);
+    source.SupportsDirectPlay = true;
+    source.SupportsDirectStream = true;
+    source.DirectStreamUrl = util
+      .generateUrl(r, "", r.uri)
+      .replace("/emby/Items", "/videos")
+      .replace("PlaybackInfo", "stream.mp4");
+    r.warn(`remove transcode config`);
+    source.SupportsTranscoding = false;
+    if (source.TranscodingUrl) {
+      delete source.TranscodingUrl;
+      delete source.TranscodingSubProtocol;
+      delete source.TranscodingContainer;
+    }
+    for (const key in response.headersOut) {
+      if (key === "Content-Length") {
+        // auto generate content length
+        continue;
+      }
+      r.headersOut[key] = response.headersOut[key];
+    }
+    const bodyJson = JSON.stringify(body);
     r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-    return r.return(200, JSON.stringify(body));
+    r.warn(`transfer playbackinfo: ${bodyJson}`);
+    return r.return(200, bodyJson);
   }
+  r.warn("playbackinfo subrequest failed");
   return r.return(302, util.getEmbyOriginRequestUrl(r));
 }
 

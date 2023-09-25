@@ -1,5 +1,9 @@
 import config from "./constant.js";
 
+function proxyUri(uri) {
+  return `/proxy${uri}`;
+}
+
 function generateUrl(r, host, uri) {
   let url = host + uri;
   let isFirst = true;
@@ -44,6 +48,7 @@ function getItemInfo(r) {
 }
 
 export default {
+  proxyUri,
   getItemInfo,
   generateUrl,
   getCurrentRequestUrl,
