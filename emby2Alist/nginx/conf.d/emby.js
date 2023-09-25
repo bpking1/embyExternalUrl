@@ -94,36 +94,40 @@ async function transferPlaybackInfo(r) {
     body.MediaSources.length > 0
   ) {
     r.warn(`origin playbackinfo: ${response.responseText}`);
-    const source = body.MediaSources[0];
-    if (source.IsRemote) {
-      // live streams are not blocked
-      return r.return(200, response.responseText);
-    }
-    r.warn(`modify direct play info`);
-    source.SupportsDirectPlay = true;
-    source.SupportsDirectStream = true;
-    source.DirectStreamUrl = util.addDefaultApiKey(
-      r,
-      util
-        .generateUrl(r, "", r.uri)
-        .replace("/emby/Items", "/videos")
-        .replace("PlaybackInfo", "stream.mp4")
-    );
-    // check if is local resource
-    const panRes = await r.subrequest(source.DirectStreamUrl, {
-      method: "GET"
-    });
-    if (panRes.status === 404) {
-      // local resource, change url to origin
-      r.warn(`local resource playbackinfo, proxy url to origin`);
-      source.DirectStreamUrl = util.appendUrlArg(util.proxyUri(source.DirectStreamUrl), "Static", "true");
-    }
-    r.warn(`remove transcode config`);
-    source.SupportsTranscoding = false;
-    if (source.TranscodingUrl) {
-      delete source.TranscodingUrl;
-      delete source.TranscodingSubProtocol;
-      delete source.TranscodingContainer;
+    for (let i = 0; i < body.MediaSources.length; i++) {
+      const source = body.MediaSources[i];
+      if (source.IsRemote) {
+        // live streams are not blocked
+        return r.return(200, response.responseText);
+      }
+      r.warn(`modify direct play info`);
+      source.SupportsDirectPlay = true;
+      source.SupportsDirectStream = true;
+      source.DirectStreamUrl = util.addDefaultApiKey(
+        r,
+        util
+          .generateUrl(r, "", r.uri)
+          .replace("/emby/Items", "/videos")
+          .replace("PlaybackInfo", "stream.mp4")
+      );
+      source.DirectStreamUrl = util.appendUrlArg(source.DirectStreamUrl, "MediaSourceId", source.Id);
+      source.DirectStreamUrl = util.appendUrlArg(source.DirectStreamUrl, "Static", "true");
+      // check if it is local resource
+      const panRes = await r.subrequest(source.DirectStreamUrl, {
+        method: "GET"
+      });
+      if (panRes.status === 404) {
+        // local resource, change url to origin
+        r.warn(`local resource playbackinfo, proxy url to origin`);
+        source.DirectStreamUrl = util.proxyUri(source.DirectStreamUrl);
+      }
+      r.warn(`remove transcode config`);
+      source.SupportsTranscoding = false;
+      if (source.TranscodingUrl) {
+        delete source.TranscodingUrl;
+        delete source.TranscodingSubProtocol;
+        delete source.TranscodingContainer;
+      }
     }
     for (const key in response.headersOut) {
       if (key === "Content-Length") {
