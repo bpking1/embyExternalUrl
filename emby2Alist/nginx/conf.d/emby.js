@@ -95,6 +95,7 @@ async function transferPlaybackInfo(r) {
   const response = await r.subrequest(proxyUri, {
     method: r.method,
     args: query,
+    headers: cloneHeaders
   });
   const body = JSON.parse(response.responseText);
   if (
