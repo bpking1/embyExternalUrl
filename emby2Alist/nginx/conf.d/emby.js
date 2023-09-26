@@ -83,10 +83,20 @@ async function transferPlaybackInfo(r) {
   // replay the request
   r.warn(`playbackinfo request headers: ${JSON.stringify(r.headersIn)}`);
   r.warn(`playbackinfo request body: ${r.requestText}`);
-  const response = await r.subrequest(util.proxyUri(r.uri), {
-    method: r.method,
-    args: util.generateUrl(r, "", "").substring(1),
-  });
+  const proxyUri = util.proxyUri(r.uri);
+  r.warn(`playbackinfo proxy uri: ${proxyUri}`);
+  const query = util.generateUrl(r, "", "").substring(1);
+  r.warn(`playbackinfo proxy query string: ${query}`);
+  let response = null;
+  try {
+    response = await r.subrequest(proxyUri, {
+      method: r.method,
+      args: query,
+    });
+  } catch (err) {
+    r.error(`playbackinfo subrequest proxy error: ${err}`);
+    return r.return(302, util.getEmbyOriginRequestUrl(r));
+  }
   const body = JSON.parse(response.responseText);
   if (
     response.status === 200 &&
