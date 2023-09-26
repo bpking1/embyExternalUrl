@@ -81,22 +81,21 @@ async function redirect2Pan(r) {
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
   // replay the request
-  r.warn(`playbackinfo request headers: ${JSON.stringify(r.headersIn)}`);
+  const cloneHeaders = {};
+  for (const key in r.headersIn) {
+    r.warn(`playbackinfo request header ${key}: ${r.headersIn[key]}`);
+    cloneHeaders[key] = r.headersIn[key].replace(/"/g, '\\"');
+    r.warn(`playbackinfo reuqest clone header ${key}: ${cloneHeaders[key]}`);
+  }
   r.warn(`playbackinfo request body: ${r.requestText}`);
   const proxyUri = util.proxyUri(r.uri);
   r.warn(`playbackinfo proxy uri: ${proxyUri}`);
   const query = util.generateUrl(r, "", "").substring(1);
   r.warn(`playbackinfo proxy query string: ${query}`);
-  let response = null;
-  try {
-    response = await r.subrequest(proxyUri, {
-      method: r.method,
-      args: query,
-    });
-  } catch (err) {
-    r.error(`playbackinfo subrequest proxy error: ${err}`);
-    return r.return(302, util.getEmbyOriginRequestUrl(r));
-  }
+  const response = await r.subrequest(proxyUri, {
+    method: r.method,
+    args: query,
+  });
   const body = JSON.parse(response.responseText);
   if (
     response.status === 200 &&
@@ -120,11 +119,19 @@ async function transferPlaybackInfo(r) {
           .replace("/emby/Items", "/videos")
           .replace("PlaybackInfo", "stream.mp4")
       );
-      source.DirectStreamUrl = util.appendUrlArg(source.DirectStreamUrl, "MediaSourceId", source.Id);
-      source.DirectStreamUrl = util.appendUrlArg(source.DirectStreamUrl, "Static", "true");
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "MediaSourceId",
+        source.Id
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "Static",
+        "true"
+      );
       // check if it is local resource
       const panRes = await r.subrequest(source.DirectStreamUrl, {
-        method: "GET"
+        method: "GET",
       });
       if (panRes.status === 404) {
         // local resource, change url to origin
