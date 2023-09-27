@@ -13,6 +13,9 @@ const alistAddr = "http://172.17.0.1:5244";
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "http://youralist.com:5244";
+// !!!风险功能，是否允许转发strm文件内部url直链到客户端，不建议开启，建议strm文件内部只填路径
+// 可能存在明文密码，默认禁止并交给原始emby中转处理，仅供调试，泄露密码后果自行承担
+const allowRemoteStrmRedirect = false;
 
 export default {
   embyHost,
@@ -20,5 +23,6 @@ export default {
   alistToken,
   alistAddr,
   embyApiKey,
-  alistPublicAddr
+  alistPublicAddr,
+  allowRemoteStrmRedirect
 }

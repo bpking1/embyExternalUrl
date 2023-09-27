@@ -14,17 +14,17 @@ async function directLive(r) {
   const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${itemInfo.api_key}&AutoOpenLiveStream=true`;
   r.warn(`itemInfoUri: ${itemInfoUri}`);
   const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, itemInfo.Etag);
-  if (embyRes.startsWith("error")) {
-    r.error(embyRes);
+  if (embyRes.message.startsWith("error")) {
+    r.error(embyRes.message);
     redirect2Origin(r);
     return;
   }
-  if (!checkLive(embyRes)) {
+  if (!checkLive(embyRes.path)) {
     return Emby.redirect2Pan(r);
   }
-  r.warn(`mount emby file path: ${embyRes}`);
+  r.warn(`mount emby file path: ${embyRes.path}`);
   // 5 execute redirect
-  r.return(302, embyRes);
+  r.return(302, embyRes.path);
 }
 
 // 检查获取的链接是否是直播源，而非本地的资源路径

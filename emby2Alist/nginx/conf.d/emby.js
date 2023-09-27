@@ -12,15 +12,28 @@ async function redirect2Pan(r) {
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
   const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag, itemInfo.itemId);
-  if (embyRes.startsWith("error")) {
-    r.error(embyRes);
-    r.return(500, embyRes);
+  if (embyRes.message.startsWith("error")) {
+    r.error(embyRes.message);
+    r.return(500, embyRes.message);
     return;
   }
-  r.warn(`mount emby file path: ${embyRes}`);
+  r.warn(`mount emby file path: ${embyRes.path}`);
+
+  // remote strm file direct
+  if ("File" != embyRes.protocol && embyRes.path) {
+    r.warn(`mount emby file protocol: ${embyRes.protocol}`);
+    if (config.allowRemoteStrmRedirect) {
+      r.warn(`!!!warnning remote strm file redirect to: ${embyRes.path}`);
+      r.return(302, embyRes.path);
+      return;
+    } else {
+      // use original link
+      return r.return(302, util.getEmbyOriginRequestUrl(r));
+    }
+  }
 
   //fetch alist direct link
-  const alistFilePath = embyRes.replace(embyMountPath, "");
+  const alistFilePath = embyRes.path.replace(embyMountPath, "");
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
   let alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
@@ -137,6 +150,11 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
 }
 
 async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
+  let rvt = {
+    "message": "success",
+    "protocol": "File", // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+    "path": null
+  };
   // 1: 原始, 2: JobItems返回值
   let resultType = 1;
   if (itemInfoUri.includes("JobItems")) {
@@ -154,25 +172,39 @@ async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
     if (res.ok) {
       const result = await res.json();
       if (result === null || result === undefined) {
-        return `error: emby_api itemInfoUri response is null`;
+        rvt.message = `error: emby_api itemInfoUri response is null`;
+        return rvt;
       }
       if (resultType == 2) {
         const jobItem = result.Items.find(o => o.Id == itemId);
-        return jobItem ? jobItem.MediaSource.Path : `error: emby_api /Sync/JobItems response is null`;
+        if (jobItem) {
+          rvt.protocol = jobItem.MediaSource.Protocol;
+          rvt.path = jobItem.MediaSource.Path;
+        } else {
+          rvt.message = `error: emby_api /Sync/JobItems response is null`;
+          return rvt;
+        }
       } else {
         if (Etag) {
           const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
           if (mediaSource && mediaSource.Path) {
-            return mediaSource.Path;
+            rvt.protocol = mediaSource.Protocol;
+            rvt.path = mediaSource.Path;
           }
+        } else {
+          rvt.protocol = result.MediaSources[0].Protocol;
+          rvt.path = result.MediaSources[0].Path;
         }
       }
-      return result.MediaSources[0].Path;
+      rvt.path = decodeURI(rvt.path);
+      return rvt;
     } else {
-      return `error: emby_api ${res.status} ${res.statusText}`;
+      rvt.message = `error: emby_api ${res.status} ${res.statusText}`;
+      return rvt;
     }
   } catch (error) {
-    return `error: emby_api fetch mediaItemInfo failed,  ${error}`;
+    rvt.message = `error: emby_api fetch mediaItemInfo failed, ${error}`;
+    return rvt;
   }
 }
 
