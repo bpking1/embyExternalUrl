@@ -14,7 +14,7 @@ async function redirect2Pan(r) {
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag);
+  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag, itemInfo.itemId);
   if (embyRes.startsWith("error")) {
     r.error(embyRes);
     r.return(500, embyRes);
@@ -76,8 +76,8 @@ async function redirect2Pan(r) {
         return;
       }
     }
-    // use original link
-    return r.return(302, util.getEmbyOriginRequestUrl(r));
+    r.warn(`fail to fetch alist resource: not found`);
+    return r.return(404);
   }
   r.error(alistRes);
   r.return(500, alistRes);
@@ -86,21 +86,85 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  // 1 获取 itemId
-  const itemInfo = util.getItemInfo(r);
-  // 2 手动请求 PlaybackInfo
-  const response = await ngx.fetch(itemInfo.itemInfoUri, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  // 3 返回
-  if (response.ok) {
-    const body = await response.json();
-    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-    return r.return(200, JSON.stringify(body));
+  // replay the request
+  const cloneHeaders = {};
+  for (const key in r.headersIn) {
+    r.warn(`playbackinfo request header ${key}: ${r.headersIn[key]}`);
+    cloneHeaders[key] = r.headersIn[key].replace(/"/g, '\\"');
+    r.warn(`playbackinfo reuqest clone header ${key}: ${cloneHeaders[key]}`);
   }
+  const proxyUri = util.proxyUri(r.uri);
+  r.warn(`playbackinfo proxy uri: ${proxyUri}`);
+  const query = util.generateUrl(r, "", "").substring(1);
+  r.warn(`playbackinfo proxy query string: ${query}`);
+  const response = await r.subrequest(proxyUri, {
+    method: r.method,
+    args: query,
+    headers: cloneHeaders
+  });
+  const body = JSON.parse(response.responseText);
+  if (
+    response.status === 200 &&
+    body.MediaSources &&
+    body.MediaSources.length > 0
+  ) {
+    r.warn(`origin playbackinfo: ${response.responseText}`);
+    for (let i = 0; i < body.MediaSources.length; i++) {
+      const source = body.MediaSources[i];
+      if (source.IsRemote) {
+        // live streams are not blocked
+        return r.return(200, response.responseText);
+      }
+      r.warn(`modify direct play info`);
+      source.SupportsDirectPlay = true;
+      source.SupportsDirectStream = true;
+      source.DirectStreamUrl = util.addDefaultApiKey(
+        r,
+        util
+          .generateUrl(r, "", r.uri)
+          .replace("/emby/Items", "/videos")
+          .replace("PlaybackInfo", "stream.mp4")
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "MediaSourceId",
+        source.Id
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "Static",
+        "true"
+      );
+      // check if it is local resource
+      const panRes = await r.subrequest(source.DirectStreamUrl, {
+        method: "GET",
+      });
+      if (panRes.status === 404) {
+        // local resource, change url to origin
+        r.warn(`local resource playbackinfo, proxy url to origin`);
+        source.DirectStreamUrl = util.proxyUri(source.DirectStreamUrl);
+      }
+      r.warn(`remove transcode config`);
+      source.SupportsTranscoding = false;
+      if (source.TranscodingUrl) {
+        delete source.TranscodingUrl;
+        delete source.TranscodingSubProtocol;
+        delete source.TranscodingContainer;
+      }
+    }
+    for (const key in response.headersOut) {
+      if (key === "Content-Length") {
+        // auto generate content length
+        continue;
+      }
+      r.headersOut[key] = response.headersOut[key];
+    }
+    const bodyJson = JSON.stringify(body);
+    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+    r.warn(`transfer playbackinfo: ${bodyJson}`);
+    return r.return(200, bodyJson);
+  }
+  r.warn("playbackinfo subrequest failed");
   return r.return(302, util.getEmbyOriginRequestUrl(r));
 }
 
@@ -142,10 +206,15 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   }
 }
 
-async function fetchEmbyFilePath(itemInfoUri, Etag) {
+async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
+  // 1: 原始, 2: JobItems返回值
+  let resultType = 1;
+  if (itemInfoUri.includes("JobItems")) {
+    resultType = 2;
+  }
   try {
     const res = await ngx.fetch(itemInfoUri, {
-      method: "POST",
+      method: resultType == 2 ? "GET" : "POST",
       headers: {
         "Content-Type": "application/json;charset=utf-8",
         "Content-Length": 0,
@@ -157,10 +226,15 @@ async function fetchEmbyFilePath(itemInfoUri, Etag) {
       if (result === null || result === undefined) {
         return `error: emby_api itemInfoUri response is null`;
       }
-      if (Etag) {
-        const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
-        if (mediaSource && mediaSource.Path) {
-          return mediaSource.Path;
+      if (resultType == 2) {
+        const jobItem = result.Items.find(o => o.Id == itemId);
+        return jobItem ? jobItem.MediaSource.Path : `error: emby_api /Sync/JobItems response is null`;
+      } else {
+        if (Etag) {
+          const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
+          if (mediaSource && mediaSource.Path) {
+            return mediaSource.Path;
+          }
         }
       }
       return result.MediaSources[0].Path;

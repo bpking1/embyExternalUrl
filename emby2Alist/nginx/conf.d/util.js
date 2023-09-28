@@ -1,5 +1,22 @@
 import config from "./constant.js";
 
+function proxyUri(uri) {
+  return `/proxy${uri}`;
+}
+
+function appendUrlArg(u, k, v) {
+  return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
+}
+
+function addDefaultApiKey(r, u) {
+  let url = u;
+  const itemInfo = getItemInfo(r);
+  if (!url.includes("api_key") && !url.includes("X-Emby-Token")) {
+    url = appendUrlArg(url, "api_key", itemInfo.api_key);
+  }
+  return url;
+}
+
 function generateUrl(r, host, uri) {
   let url = host + uri;
   let isFirst = true;
@@ -13,21 +30,21 @@ function generateUrl(r, host, uri) {
 
 function getEmbyOriginRequestUrl(r) {
   const embyHost = config.publicDomain == ""
-  ? config.embyHost
-  : config.publicDomain + ":" + config.embyPort;
+    ? config.embyHost
+    : config.publicDomain + ":" + config.embyPort;
   return generateUrl(r, embyHost, r.uri);
 }
 
 function getCurrentRequestUrl(r) {
   const host = r.headersIn["Host"];
-  return generateUrl(r, "http://" + host, r.uri);
+  return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
 function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
   const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
+  const itemId = r.uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
   const mediaSourceId = r.args.MediaSourceId
     ? r.args.MediaSourceId
     : r.args.mediaSourceId;
@@ -36,13 +53,26 @@ function getItemInfo(r) {
     ? r.args["X-Emby-Token"]
     : r.args.api_key;
   api_key = api_key ? api_key : embyApiKey;
+  // 判断是否app下载
   let itemInfoUri = "";
-  if (mediaSourceId) {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+  if (r.uri.includes("JobItems")) {
+		itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+    if (mediaSourceId) {
+			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+    } else {
+			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+    }
   }
   return { itemId, mediaSourceId, Etag, api_key, itemInfoUri };
 }
 
-export default { getItemInfo, getCurrentRequestUrl, getEmbyOriginRequestUrl };
+export default {
+  appendUrlArg,
+  addDefaultApiKey,
+  proxyUri,
+  getItemInfo,
+  generateUrl,
+  getCurrentRequestUrl,
+  getEmbyOriginRequestUrl,
+};
