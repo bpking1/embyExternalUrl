@@ -42,7 +42,7 @@ function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
   const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace(/-/g, "").match(regex)[1];
+  const itemId = r.uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
   const mediaSourceId = r.args.MediaSourceId
     ? r.args.MediaSourceId
     : r.args.mediaSourceId;
@@ -51,11 +51,16 @@ function getItemInfo(r) {
     ? r.args["X-Emby-Token"]
     : r.args.api_key;
   api_key = api_key ? api_key : embyApiKey;
+  // 判断是否app下载
   let itemInfoUri = "";
-  if (mediaSourceId) {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+  if (r.uri.includes("JobItems")) {
+		itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
-    itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+    if (mediaSourceId) {
+			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+    } else {
+			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+    }
   }
   return { itemId, mediaSourceId, Etag, api_key, itemInfoUri };
 }
