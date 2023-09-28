@@ -1,5 +1,22 @@
 import config from "./constant.js";
 
+function proxyUri(uri) {
+  return `/proxy${uri}`;
+}
+
+function appendUrlArg(u, k, v) {
+  return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
+}
+
+function addDefaultApiKey(r, u) {
+  let url = u;
+  const itemInfo = getItemInfo(r);
+  if (!url.includes("api_key") && !url.includes("X-Emby-Token")) {
+    url = appendUrlArg(url, "api_key", itemInfo.api_key);
+  }
+  return url;
+}
+
 function generateUrl(r, host, uri) {
   let url = host + uri;
   let isFirst = true;
@@ -13,12 +30,12 @@ function generateUrl(r, host, uri) {
 
 function getEmbyOriginRequestUrl(r) {
   const embyHost = config.embyHost;
-  return generateUrl(r, embyHost, r.uri);
+  return addDefaultApiKey(r, generateUrl(r, embyHost, r.uri));
 }
 
 function getCurrentRequestUrl(r) {
   const host = r.headersIn["Host"];
-  return generateUrl(r, "http://" + host, r.uri);
+  return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
 function getItemInfo(r) {
@@ -43,4 +60,12 @@ function getItemInfo(r) {
   return { itemId, mediaSourceId, Etag, api_key, itemInfoUri };
 }
 
-export default { getItemInfo, getCurrentRequestUrl, getEmbyOriginRequestUrl };
+export default {
+  appendUrlArg,
+  addDefaultApiKey,
+  proxyUri,
+  getItemInfo,
+  generateUrl,
+  getCurrentRequestUrl,
+  getEmbyOriginRequestUrl,
+};

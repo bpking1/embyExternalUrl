@@ -13,33 +13,27 @@ async function directLive(r) {
   // 3 get the live-tv direct m3u8 url
   const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${itemInfo.api_key}&AutoOpenLiveStream=true`;
   r.warn(`itemInfoUri: ${itemInfoUri}`);
-  const embyRes = await Emby.fetchEmbyFilePath(itemInfoUri, itemInfo.Etag);
-  if (embyRes.startsWith("error")) {
-    r.error(embyRes);
-    redirect2Origin(r);
-    return;
+  const response = await ngx.fetch(itemInfoUri, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  if (!response.ok) {
+    r.error(response.statusText);
+    return redirect2Origin(r);
   }
-  if (!checkLive(embyRes)) {
+  const body = await response.json();
+  if (!body.MediaSources || body.MediaSources.length === 0) {
+    r.error('no media source found');
+    return redirect2Origin(r);
+  }
+  if (!body.MediaSources[0].IsRemote) {
+    // not a remote link
     return Emby.redirect2Pan(r);
   }
-  r.warn(`mount emby file path: ${embyRes}`);
   // 5 execute redirect
-  r.return(302, embyRes);
-}
-
-// 检查获取的链接是否是直播源，而非本地的资源路径
-function checkLive(url) {
-  if (!url || url === "") {
-    return false;
-  }
-  const regex = /^([^:/?#]+):/;
-  const match = url.match(regex);
-  if (!match) {
-    return false;
-  }
-  const protocol = match[1].toLowerCase();
-  const valids = ["http", "https", "hls", "rtsp", "rtmp"];
-  return valids.findIndex((v) => v === protocol) !== -1;
+  r.return(302, body.MediaSources[0].Path);
 }
 
 function redirect2Origin(r) {

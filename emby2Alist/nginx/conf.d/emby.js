@@ -70,8 +70,8 @@ async function redirect2Pan(r) {
         return;
       }
     }
-    // use original link
-    return r.return(302, util.getEmbyOriginRequestUrl(r));
+    r.warn(`fail to fetch alist resource: not found`);
+    return r.return(404);
   }
   r.error(alistRes);
   r.return(500, alistRes);
@@ -80,21 +80,85 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  // 1 获取 itemId
-  const itemInfo = util.getItemInfo(r);
-  // 2 手动请求 PlaybackInfo
-  const response = await ngx.fetch(itemInfo.itemInfoUri, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  // 3 返回
-  if (response.ok) {
-    const body = await response.json();
-    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-    return r.return(200, JSON.stringify(body));
+  // replay the request
+  const cloneHeaders = {};
+  for (const key in r.headersIn) {
+    r.warn(`playbackinfo request header ${key}: ${r.headersIn[key]}`);
+    cloneHeaders[key] = r.headersIn[key].replace(/"/g, '\\"');
+    r.warn(`playbackinfo reuqest clone header ${key}: ${cloneHeaders[key]}`);
   }
+  const proxyUri = util.proxyUri(r.uri);
+  r.warn(`playbackinfo proxy uri: ${proxyUri}`);
+  const query = util.generateUrl(r, "", "").substring(1);
+  r.warn(`playbackinfo proxy query string: ${query}`);
+  const response = await r.subrequest(proxyUri, {
+    method: r.method,
+    args: query,
+    headers: cloneHeaders
+  });
+  const body = JSON.parse(response.responseText);
+  if (
+    response.status === 200 &&
+    body.MediaSources &&
+    body.MediaSources.length > 0
+  ) {
+    r.warn(`origin playbackinfo: ${response.responseText}`);
+    for (let i = 0; i < body.MediaSources.length; i++) {
+      const source = body.MediaSources[i];
+      if (source.IsRemote) {
+        // live streams are not blocked
+        return r.return(200, response.responseText);
+      }
+      r.warn(`modify direct play info`);
+      source.SupportsDirectPlay = true;
+      source.SupportsDirectStream = true;
+      source.DirectStreamUrl = util.addDefaultApiKey(
+        r,
+        util
+          .generateUrl(r, "", r.uri)
+          .replace("/emby/Items", "/videos")
+          .replace("PlaybackInfo", "stream.mp4")
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "MediaSourceId",
+        source.Id
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "Static",
+        "true"
+      );
+      // check if it is local resource
+      const panRes = await r.subrequest(source.DirectStreamUrl, {
+        method: "GET",
+      });
+      if (panRes.status === 404) {
+        // local resource, change url to origin
+        r.warn(`local resource playbackinfo, proxy url to origin`);
+        source.DirectStreamUrl = util.proxyUri(source.DirectStreamUrl);
+      }
+      r.warn(`remove transcode config`);
+      source.SupportsTranscoding = false;
+      if (source.TranscodingUrl) {
+        delete source.TranscodingUrl;
+        delete source.TranscodingSubProtocol;
+        delete source.TranscodingContainer;
+      }
+    }
+    for (const key in response.headersOut) {
+      if (key === "Content-Length") {
+        // auto generate content length
+        continue;
+      }
+      r.headersOut[key] = response.headersOut[key];
+    }
+    const bodyJson = JSON.stringify(body);
+    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+    r.warn(`transfer playbackinfo: ${bodyJson}`);
+    return r.return(200, bodyJson);
+  }
+  r.warn("playbackinfo subrequest failed");
   return r.return(302, util.getEmbyOriginRequestUrl(r));
 }
 
