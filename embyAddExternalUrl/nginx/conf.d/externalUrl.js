@@ -7,6 +7,7 @@ const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF
 let api_key = '';
 let domain = '';
 let oriData = '';
+let os = '';
 const redirectKey = 'redirect2external';
 
 const addExternalUrl = async (r, data, flags) => {
@@ -30,7 +31,8 @@ const addExternalUrl = async (r, data, flags) => {
         r.error(`data.length: ${JSON.stringify(data).length}`);
     }
 
-
+	os = getOS(r);
+    r.warn(`OS Type: ${os}`);
     if (data.MediaSources && data.MediaSources.length > 0) {
         try {
             data = addUrl(r, data);
@@ -44,6 +46,8 @@ const addExternalUrl = async (r, data, flags) => {
 }
 
 const addUrl = (r, data) => {
+	const itemId = data.Id;
+	const serverId = data.ServerId;
     data.MediaSources.map(mediaSource => {
         const streamUrl = `${domain}/stream.${mediaSource.Container}?api_key=${api_key}&Static=true&MediaSourceId=${mediaSource.Id}`;
         //get subtitle
@@ -85,7 +89,8 @@ const addUrl = (r, data) => {
             subUrl,
             position,
             displayTitle,
-            mediaSourceName: (tagName + groupName).length > 1 ? `${tagName}-${groupName}` : mediaSource.Name
+            mediaSourceName: (tagName + groupName).length > 1 ? `${tagName}-${groupName}` : mediaSource.Name,
+            os: os
         }
         data.ExternalUrls.push(getPotUrl(mediaInfo));
         data.ExternalUrls.push(getVlcUrl(mediaInfo));
@@ -93,6 +98,10 @@ const addUrl = (r, data) => {
         data.ExternalUrls.push(getMXUrl(mediaInfo));
         data.ExternalUrls.push(getNPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getInfuseUrl(mediaInfo));
+        data.ExternalUrls.push(getDandanplayUrl(mediaInfo));
+        if ('android' == os || 'ios' == os) {
+			data.ExternalUrls.push(getWebUrl(itemId, serverId));
+		}
     });
     return data;
 }
@@ -166,6 +175,29 @@ const getNPlayerUrl = (mediaInfo) => {
     }
 }
 
+const getDandanplayUrl = (mediaInfo) => {
+	// Subtitles Not Supported: https://github.com/kaedei/dandanplay-libraryindex/blob/master/api/ClientProtocol.md
+    let url = null;
+    if ('android' == mediaInfo.os) {
+    	url = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.xyoye.dandanplay;type=video/*;end`;
+    } else {
+    	const suffix = 'ddplay:';
+    	url = suffix + encodeURIComponent(`${mediaInfo.streamUrl}|filePath=${mediaInfo.title}`);
+    }
+    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    return {
+        Name: `弹弹play-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${url64}`
+    }
+}
+
+const getWebUrl = (itemId, serverId) => {
+	return {
+        Name: '在网页中打开',
+        Url: `${serverAddr}/web/index.html#!/item?id=${itemId}&serverId=${serverId}`
+    }
+}
+
 const getSeek = (position) => {
     let ticks = position * 10000;
     let parts = []
@@ -180,7 +212,6 @@ const getSeek = (position) => {
         parts.push(seconds),
         parts.join(":")
 }
-
 
 const getSubUrl = (r, mediaSource) => {
     let subTitleUrl = '';
@@ -200,6 +231,24 @@ const getSubUrl = (r, mediaSource) => {
         }
     }
     return subTitleUrl;
+}
+
+// copy from embyWebAddExternalUrl\embyLaunchPotplayer.js
+function getOS(r) {
+    let u = r.headersIn['User-Agent']
+    if (!!u.match(/compatible/i) || u.match(/Windows/i)) {
+        return 'windows'
+    } else if (!!u.match(/Macintosh/i) || u.match(/MacIntel/i)) {
+        return 'macOS'
+    } else if (!!u.match(/iphone/i) || u.match(/Ipad/i)) {
+        return 'ios'
+    } else if (u.match(/android/i)) {
+        return 'android'
+    } else if (u.match(/Ubuntu/i)) {
+        return 'Ubuntu'
+    } else {
+        return 'other'
+    }
 }
 
 function HeaderFilter(r) {
