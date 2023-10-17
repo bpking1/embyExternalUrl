@@ -237,7 +237,7 @@ async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
         "Content-Type": "application/json;charset=utf-8",
         "Content-Length": 0,
       },
-      max_response_body_size: 65535,
+      max_response_body_size: 8388608, // 1MB
     });
     if (res.ok) {
       const result = await res.json();
