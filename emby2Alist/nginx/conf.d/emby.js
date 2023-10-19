@@ -14,7 +14,7 @@ async function redirect2Pan(r) {
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.Etag, itemInfo.itemId);
+  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.itemId, itemInfo.Etag, itemInfo.mediaSourceId);
   if (embyRes.message.startsWith("error")) {
     r.error(embyRes.message);
     r.return(500, embyRes.message);
@@ -219,25 +219,20 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   }
 }
 
-async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
+async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
     "message": "success",
     "protocol": "File", // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-    "path": null
+    "path": ""
   };
-  // 1: 原始, 2: JobItems返回值
-  let resultType = 1;
-  if (itemInfoUri.includes("JobItems")) {
-    resultType = 2;
-  }
   try {
     const res = await ngx.fetch(itemInfoUri, {
-      method: resultType == 2 ? "GET" : "POST",
+      method: "GET",
       headers: {
         "Content-Type": "application/json;charset=utf-8",
         "Content-Length": 0,
       },
-      max_response_body_size: 65535,
+      max_response_body_size: 8388608, // 1MB
     });
     if (res.ok) {
       const result = await res.json();
@@ -245,7 +240,7 @@ async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
         rvt.message = `error: emby_api itemInfoUri response is null`;
         return rvt;
       }
-      if (resultType == 2) {
+      if (itemInfoUri.includes("JobItems")) {
         const jobItem = result.Items.find(o => o.Id == itemId);
         if (jobItem) {
           rvt.protocol = jobItem.MediaSource.Protocol;
@@ -255,18 +250,32 @@ async function fetchEmbyFilePath(itemInfoUri, Etag, itemId) {
           return rvt;
         }
       } else {
-        if (Etag) {
-          const mediaSource = result.MediaSources.find((m) => m.ETag == Etag);
-          if (mediaSource && mediaSource.Path) {
-            rvt.protocol = mediaSource.Protocol;
-            rvt.path = mediaSource.Path;
+        const item = result.Items[0];
+        if (!item) {
+          rvt.message = `error: emby_api /Items response is null`;
+          return rvt;
+        }
+        if (item.MediaSources) {
+          let mediaSource = item.MediaSources[0];
+          // ETag only on Jellyfin
+          if (Etag) {
+            mediaSource = item.MediaSources.find((m) => m.ETag == Etag);
+          }
+          // item.MediaSources on Emby has one, on Jellyfin has many!
+          if (mediaSourceId) {
+            mediaSource = item.MediaSources.find((m) => m.Id == mediaSourceId);
+          }
+          rvt.protocol = mediaSource.Protocol;
+          rvt.path = mediaSource.Path;
+          // strm file internal text maybe have URIEncode
+          if (item.Path.toLowerCase().endsWith(".strm")) {
+            rvt.path = decodeURI(rvt.path);
           }
         } else {
-          rvt.protocol = result.MediaSources[0].Protocol;
-          rvt.path = result.MediaSources[0].Path;
+          // "MediaType": "Photo"... not have "MediaSources" field
+          rvt.path = item.Path;
         }
       }
-      rvt.path = decodeURI(rvt.path);
       return rvt;
     } else {
       rvt.message = `error: emby_api ${res.status} ${res.statusText}`;

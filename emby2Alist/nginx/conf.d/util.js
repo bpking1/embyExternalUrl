@@ -53,18 +53,17 @@ function getItemInfo(r) {
     ? r.args["X-Emby-Token"]
     : r.args.api_key;
   api_key = api_key ? api_key : embyApiKey;
-  // 判断是否app下载
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
 		itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
-			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?MediaSourceId=${mediaSourceId}&api_key=${api_key}`;
+      itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     } else {
-			itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${api_key}`;
+      itemInfoUri = `${embyHost}/Items?Ids=${itemId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     }
   }
-  return { itemId, mediaSourceId, Etag, api_key, itemInfoUri };
+  return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
 }
 
 export default {
