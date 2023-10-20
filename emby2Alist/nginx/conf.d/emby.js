@@ -100,22 +100,15 @@ async function redirect2Pan(r) {
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
   // replay the request
-  const cloneHeaders = {};
-  for (const key in r.headersIn) {
-    r.warn(`playbackinfo request header ${key}: ${r.headersIn[key]}`);
-    cloneHeaders[key] = r.headersIn[key].replace(/"/g, '\\"');
-    r.warn(`playbackinfo reuqest clone header ${key}: ${cloneHeaders[key]}`);
-  }
   const proxyUri = util.proxyUri(r.uri);
   r.warn(`playbackinfo proxy uri: ${proxyUri}`);
   const query = util.generateUrl(r, "", "").substring(1);
   r.warn(`playbackinfo proxy query string: ${query}`);
   const response = await r.subrequest(proxyUri, {
     method: r.method,
-    args: query,
-    headers: cloneHeaders
+    args: query
   });
-  const body = JSON.parse(response.responseText);
+   const body = JSON.parse(response.responseText);
   if (
     response.status === 200 &&
     body.MediaSources &&
@@ -131,12 +124,13 @@ async function transferPlaybackInfo(r) {
       r.warn(`modify direct play info`);
       source.SupportsDirectPlay = true;
       source.SupportsDirectStream = true;
+      source.OriginDirectStreamUrl = source.DirectStreamUrl; // for debug
       source.DirectStreamUrl = util.addDefaultApiKey(
         r,
         util
-          .generateUrl(r, "", r.uri)
+          .generateUrl(r, "", r.uri, true)
           .replace("/emby/Items", "/videos")
-          .replace("PlaybackInfo", "stream.mp4")
+          .replace("PlaybackInfo", `stream.${source.Container}`)
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
@@ -148,15 +142,6 @@ async function transferPlaybackInfo(r) {
         "Static",
         "true"
       );
-      // check if it is local resource
-      const panRes = await r.subrequest(source.DirectStreamUrl, {
-        method: "GET",
-      });
-      if (panRes.status === 404) {
-        // local resource, change url to origin
-        r.warn(`local resource playbackinfo, proxy url to origin`);
-        source.DirectStreamUrl = util.proxyUri(source.DirectStreamUrl);
-      }
       r.warn(`remove transcode config`);
       source.SupportsTranscoding = false;
       if (source.TranscodingUrl) {
