@@ -5,6 +5,9 @@ function proxyUri(uri) {
 }
 
 function appendUrlArg(u, k, v) {
+  if (u.includes(k)) {
+    return u;
+  }
   return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
 }
 
@@ -17,10 +20,14 @@ function addDefaultApiKey(r, u) {
   return url;
 }
 
-function generateUrl(r, host, uri) {
+function generateUrl(r, host, uri, ignoreSpChar) {
   let url = host + uri;
   let isFirst = true;
   for (const key in r.args) {
+    // a few players not support special character
+    if (ignoreSpChar && (key === "X-Emby-Client" || key === "X-Emby-Device-Name")) {
+      continue;
+    }
     url += isFirst ? "?" : "&";
     url += `${key}=${r.args[key]}`;
     isFirst = false;
@@ -55,7 +62,7 @@ function getItemInfo(r) {
   api_key = api_key ? api_key : embyApiKey;
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
-		itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
+	itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
       itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
