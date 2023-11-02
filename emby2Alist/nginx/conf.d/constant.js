@@ -12,7 +12,7 @@ const alistIp = "http://172.17.0.1";
 const alistPort = 5244;
 // 访问宿主机上5244端口的alist地址, 要注意iptables给容器放行端口
 const alistAddr = alistIp + ":" + alistPort;
-// emby/jellyfin api key, 在emby/jellyfin后台设置
+// emby/jellyfin api key, 在emby/jellyfin后台设置, plex不会用到此值
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 // 公网域名, 按需填写, eg: http://youralist.com
 const publicDomain = "";

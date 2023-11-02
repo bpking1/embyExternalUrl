@@ -47,6 +47,14 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
+function getFileNameByHead(contentDisposition) {
+  if (contentDisposition && contentDisposition.length > 0) {
+    const regex = /filename[^;\n]*=(UTF-\d['"]*)?((['"]).*?[.]$\2|[^;\n]*)?/gi;
+    return contentDisposition.match(regex)[1].replace("filename*=UTF-8''", "");
+  }
+  return null;
+}
+
 function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
@@ -73,11 +81,50 @@ function getItemInfo(r) {
   return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
 }
 
+async function getPlexItemInfo(r) {
+  const embyHost = config.embyHost;
+  const path = r.args.path;
+  const mediaIndex = r.args.mediaIndex;
+  const partIndex = r.args.partIndex;
+  const api_key = r.args["X-Plex-Token"];
+  let itemInfoUri = "";
+  if (path) {
+	  // see: location ~* /video/:/transcode/universal/start
+  	itemInfoUri = `${embyHost}${path}?X-Plex-Token=${api_key}`;
+  } else {
+  	// see: location ~* /library/parts/(\d+)/(\d+)/file
+  	const plexRes = await fetchPlexFileFullName(`${embyHost}${r.uri}?download=1&X-Plex-Token=${api_key}`);
+  	if (!plexRes.startsWith("error")) {
+  	  const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
+  	  itemInfoUri = `${embyHost}/search?query=${encodeURI(plexFileName)}&X-Plex-Token=${api_key}`;
+  	}
+  }
+  return { itemInfoUri, mediaIndex, partIndex, api_key };
+}
+
+async function fetchPlexFileFullName(downloadApiPath) {
+  try {
+    const response = await ngx.fetch(downloadApiPath, {
+      method: "HEAD",
+      max_response_body_size: 858993459200 // 100Gb,not important,because HEAD method not have body
+    });
+    if (response.ok) {
+      return getFileNameByHead(decodeURI(response.headers["Content-Disposition"]));
+    } else {
+      return `error: plex_download_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: plex_download_api fetchPlexFileNameFiled ${error}`;
+  }
+}
+
 export default {
   appendUrlArg,
   addDefaultApiKey,
   proxyUri,
+  getFileNameByHead,
   getItemInfo,
+  getPlexItemInfo,
   generateUrl,
   getCurrentRequestUrl,
   getEmbyOriginRequestUrl,
