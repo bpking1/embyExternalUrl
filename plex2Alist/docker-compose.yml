@@ -1,0 +1,38 @@
+version: '3.5'
+
+services:
+
+    service.nginx:
+      image: nginx:alpine
+      container_name: plex-nginx
+      ports:
+        - 8095:80
+      volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+        - ./nginx/conf.d:/etc/nginx/conf.d
+      restart: always
+      depends_on:
+        - service.ali
+
+    service.ali:
+      image: xhofe/alist:latest
+      container_name: alist
+      ports:
+        - 5244:5244
+      volumes:
+        - ./alist:/opt/alist/data
+      restart: always
+
+    service.ali-webdav:
+      image: messense/aliyundrive-webdav
+      container_name: ali-webdav
+      ports:
+        - 8080:8080
+      volumes:
+        - ./aliyundrive-webdav/:/etc/aliyundrive-webdav/
+      environment:
+        - REFRESH_TOKEN=1111111111111aaaaaaaaaa
+        - WEBDAV_AUTH_USER=admin
+        - WEBDAV_AUTH_PASSWORD=admin
+      restart: always
+

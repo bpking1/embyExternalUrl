@@ -11,34 +11,23 @@ async function redirect2Pan(r) {
   const alistIp = config.alistIp;
   const publicDomain = config.publicDomain;
   const changeAlistToEmby = config.changeAlistToEmby;
-  const isPlex = JSON.stringify(r.args).includes("X-Plex");
-  //fetch mount emby/jellyfin/plex file path
-  let itemInfo = null;
-  if (isPlex) {
-    itemInfo = await util.getPlexItemInfo(r);
-  } else {
-    itemInfo = await util.getItemInfo(r);
-  }
+  //fetch mount emby/jellyfin file path
+  const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  let mediaServerRes = null;
-  if (isPlex) {
-  	mediaServerRes = await fetchPlexFilePath(itemInfo.itemInfoUri, itemInfo.mediaIndex, itemInfo.partIndex);
-  } else {
-  	mediaServerRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.itemId, itemInfo.Etag, itemInfo.mediaSourceId);
-  }
-  if (mediaServerRes.message.startsWith("error")) {
-    r.error(mediaServerRes.message);
-    r.return(500, mediaServerRes.message);
+  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.itemId, itemInfo.Etag, itemInfo.mediaSourceId);
+  if (embyRes.message.startsWith("error")) {
+    r.error(embyRes.message);
+    r.return(500, embyRes.message);
     return;
   }
-  r.warn(`mount media_server file path: ${mediaServerRes.path}`);
+  r.warn(`mount emby file path: ${embyRes.path}`);
 
-  // remote strm file direct, plex not supported
-  if (!isPlex && "File" != mediaServerRes.protocol && mediaServerRes.path) {
-    r.warn(`mount emby file protocol: ${mediaServerRes.protocol}`);
+  // remote strm file direct
+  if ("File" != embyRes.protocol && embyRes.path) {
+    r.warn(`mount emby file protocol: ${embyRes.protocol}`);
     if (config.allowRemoteStrmRedirect) {
-      r.warn(`!!!warnning remote strm file redirect to: ${mediaServerRes.path}`);
-      r.return(302, mediaServerRes.path);
+      r.warn(`!!!warnning remote strm file redirect to: ${embyRes.path}`);
+      r.return(302, embyRes.path);
       return;
     } else {
       // use original link
@@ -47,7 +36,7 @@ async function redirect2Pan(r) {
   }
 
   //fetch alist direct link
-  const alistFilePath = mediaServerRes.path.replace(embyMountPath, "");
+  const alistFilePath = embyRes.path.replace(embyMountPath, "");
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
   let alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
@@ -283,37 +272,4 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   }
 }
 
-async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
-  let rvt = {
-    "message": "success",
-    "path": ""
-  };
-  try {
-    const res = await ngx.fetch(itemInfoUri, {
-      method: "GET",
-      headers: {
-      	"Accept": "application/json", // only plex need this
-        "Content-Type": "application/json;charset=utf-8",
-        "Content-Length": 0,
-      },
-      max_response_body_size: 65535
-    });
-    if (res.ok) {
-      const result = await res.json();
-      if (result === null || result === undefined) {
-        rvt.message = `error: plex_api itemInfoUri response is null`;
-        return rvt;
-      }
-  	  rvt.path = result.MediaContainer.Metadata[0].Media[mediaIndex].Part[partIndex].file;
-  	  return rvt;
-    } else {
-      rvt.message = `error: plex_api ${res.status} ${res.statusText}`;
-      return rvt;
-    }
-  } catch (error) {
-    rvt.message = `error: plex_api fetch mediaItemInfo failed, ${error}`;
-    return rvt;
-  }
-}
-
-export default { redirect2Pan, fetchEmbyFilePath, fetchPlexFilePath, transferPlaybackInfo };
+export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo };
