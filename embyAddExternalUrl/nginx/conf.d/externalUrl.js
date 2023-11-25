@@ -7,12 +7,15 @@ const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF
 let api_key = '';
 let domain = '';
 let oriData = '';
-let os = '';
+let embyClientType = '';
 const redirectKey = 'redirect2external';
+const embyTokenKey = 'X-Emby-Token';
+const embyClientKey = 'X-Emby-Client';
 
 const addExternalUrl = async (r, data, flags) => {
-    api_key = r.args['X-Emby-Token'] ? r.args['X-Emby-Token'] : r.headersIn['X-Emby-Token'];
+    api_key = r.args[embyTokenKey] ? r.args[embyTokenKey] : r.headersIn[embyTokenKey];
     api_key = api_key ? api_key : r.args.api_key;
+    embyClientType = r.args[embyClientKey];
 
     //外链地址默认http,如果是https,则需要将这里的 http 改为 https,如果是反代服务器两种都有,可以将这一行注释掉,统一使用第一行填写的地址
     serverAddr = r.headersIn.Host ? `http://${r.headersIn.Host}` : serverAddr;
@@ -31,8 +34,7 @@ const addExternalUrl = async (r, data, flags) => {
         r.error(`data.length: ${JSON.stringify(data).length}`);
     }
 
-	os = getOS(r);
-    r.warn(`OS Type: ${os}`);
+    r.warn(`embyClientType: ${embyClientType}`);
     if (data.MediaSources && data.MediaSources.length > 0) {
         try {
             data = addUrl(r, data);
@@ -89,8 +91,7 @@ const addUrl = (r, data) => {
             subUrl,
             position,
             displayTitle,
-            mediaSourceName: (tagName + groupName).length > 1 ? `${tagName}-${groupName}` : mediaSource.Name,
-            os: os
+            mediaSourceName: (tagName + groupName).length > 1 ? `${tagName}-${groupName}` : mediaSource.Name
         }
         data.ExternalUrls.push(getPotUrl(mediaInfo));
         data.ExternalUrls.push(getVlcUrl(mediaInfo));
@@ -99,8 +100,8 @@ const addUrl = (r, data) => {
         data.ExternalUrls.push(getNPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getInfuseUrl(mediaInfo));
         data.ExternalUrls.push(getDandanplayUrl(mediaInfo));
-        if ('android' == os || 'ios' == os) {
-			data.ExternalUrls.push(getWebUrl(itemId, serverId));
+        if (!embyClientType.includes('Web')) {
+			data.ExternalUrls.push(getWebUrl(mediaInfo, itemId, serverId));
 		}
     });
     return data;
@@ -178,7 +179,7 @@ const getNPlayerUrl = (mediaInfo) => {
 const getDandanplayUrl = (mediaInfo) => {
 	// Subtitles Not Supported: https://github.com/kaedei/dandanplay-libraryindex/blob/master/api/ClientProtocol.md
     let url = null;
-    if ('android' == mediaInfo.os) {
+    if (embyClientType.includes('Android')) {
     	url = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.xyoye.dandanplay;type=video/*;end`;
     } else {
     	const suffix = 'ddplay:';
@@ -191,9 +192,9 @@ const getDandanplayUrl = (mediaInfo) => {
     }
 }
 
-const getWebUrl = (itemId, serverId) => {
+const getWebUrl = (mediaInfo, itemId, serverId) => {
 	return {
-        Name: '在网页中打开',
+        Name: `网页打开-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/web/index.html#!/item?id=${itemId}&serverId=${serverId}`
     }
 }
@@ -233,24 +234,6 @@ const getSubUrl = (r, mediaSource) => {
     return subTitleUrl;
 }
 
-// copy from embyWebAddExternalUrl\embyLaunchPotplayer.js
-function getOS(r) {
-    let u = r.headersIn['User-Agent']
-    if (!!u.match(/compatible/i) || u.match(/Windows/i)) {
-        return 'windows'
-    } else if (!!u.match(/Macintosh/i) || u.match(/MacIntel/i)) {
-        return 'macOS'
-    } else if (!!u.match(/iphone/i) || u.match(/Ipad/i)) {
-        return 'ios'
-    } else if (u.match(/android/i)) {
-        return 'android'
-    } else if (u.match(/Ubuntu/i)) {
-        return 'Ubuntu'
-    } else {
-        return 'other'
-    }
-}
-
 function HeaderFilter(r) {
     r.headersOut['Content-Length'] = null;
 }
@@ -261,6 +244,5 @@ const redirectUrl = (r) => {
     const link = Buffer.from(baseLink, 'base64').toString('utf8');
     r.return(302, link);
 }
-
 
 export default { addExternalUrl, redirectUrl, HeaderFilter };
