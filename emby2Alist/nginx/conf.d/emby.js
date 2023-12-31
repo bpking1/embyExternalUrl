@@ -98,7 +98,7 @@ async function redirect2Pan(r) {
       );
       if (!driverRes.startsWith("error")) {
         driverRes = driverRes.includes(localAlistResPrefix)
-          ? driverRes.replace(localAlistResPrefix, alistAddr)
+          ? driverRes.replace(localAlistResPrefix, config.alistPublicAddr)
           : driverRes;
         return redirect302(r, driverRes);
       }
