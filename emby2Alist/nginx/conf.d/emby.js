@@ -4,60 +4,77 @@ import config from "./constant.js";
 import util from "./util.js";
 
 async function redirect2Pan(r) {
-  const embyMountPath = config.embyMountPath;
+  const embyMountPathArr = config.embyMountPathArr;
+  const embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const alistPublicAddr = config.alistPublicAddr;
-  const alistIp = config.alistIp;
-  const publicDomain = config.publicDomain;
-  const changeAlistToEmby = config.changeAlistToEmby;
-  //fetch mount emby/jellyfin file path
+  const localAlistResPrefix = config.localAlistResPrefix;
+  // fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.itemId, itemInfo.Etag, itemInfo.mediaSourceId);
+  let start = Date.now();
+  const embyRes = await fetchEmbyFilePath(
+    itemInfo.itemInfoUri, 
+    itemInfo.itemId, 
+    itemInfo.Etag, 
+    itemInfo.mediaSourceId
+  );
+  let end = Date.now();
+  r.log(`embyRes: ${JSON.stringify(embyRes)}`);
   if (embyRes.message.startsWith("error")) {
     r.error(embyRes.message);
-    r.return(500, embyRes.message);
-    return;
+    return r.return(500, embyRes.message);
   }
-  r.warn(`mount emby file path: ${embyRes.path}`);
+  r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
-  // remote strm file direct
-  if ("File" != embyRes.protocol && embyRes.path) {
-    r.warn(`mount emby file protocol: ${embyRes.protocol}`);
-    if (config.allowRemoteStrmRedirect) {
-      r.warn(`!!!warnning remote strm file redirect to: ${embyRes.path}`);
-      r.return(302, embyRes.path);
-      return;
-    } else {
-      // use original link
-      return r.return(302, util.getEmbyOriginRequestUrl(r));
-    }
+  if (util.isDisableRedirect(r, embyRes)) {
+    r.warn(`isDisableRedirect`);
+    // use original link
+    return internalRedirect(r);
   }
 
-  //fetch alist direct link
-  const alistFilePath = embyRes.path.replace(embyMountPath, "");
+  // file path mapping
+  r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
+  embyMountPathArr.map(o => {
+    embyPathMapping.unshift([o, ""]);
+  });
+  let alistFilePath = embyRes.path;
+  embyPathMapping.map(arr => {
+    alistFilePath = alistFilePath.replace(arr[0], arr[1]);
+  });
+  r.warn(`mapped emby file path: ${alistFilePath}`);
+
+  // strm file inner remote link direct,like: http,rtsp
+  if (embyRes.isRemoteStrm) {
+    r.warn(`!!!warnning remote strm file protocol: ${embyRes.protocol}`);
+    return redirect302(r, alistFilePath);
+  }
+
+  // fetch alist direct link
+  start = Date.now();
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
   let alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
     alistToken
   );
+  end = Date.now();
+  r.warn(`${end - start}ms, fetchAlistPathApi`);
   if (!alistRes.startsWith("error")) {
-    alistRes = alistRes.includes(alistIp)
-      ? alistRes.replace(alistIp, alistPublicAddr)
+    // fixLocalAlistResPortMiss
+    alistRes = alistRes.includes(localAlistResPrefix)
+      ? alistRes.replace(localAlistResPrefix, alistAddr)
       : alistRes;
-    if (changeAlistToEmby && (alistRes.startsWith(alistIp) || alistRes.startsWith(publicDomain))) {
+    // 使用AList直链播放挂载的NAS本地视频时,可能存在卡顿与花屏
+    if (alistRes.startsWith(localAlistResPrefix)) {
       // use original link
-      alistRes = util.getEmbyOriginRequestUrl(r);
+      return internalRedirect(r);
     }
-    r.return(302, alistRes);
-    return;
+    return redirect302(r, alistRes);
   }
   if (alistRes.startsWith("error403")) {
     r.error(alistRes);
-    r.return(403, alistRes);
-    return;
+    return r.return(403, alistRes);
   }
   if (alistRes.startsWith("error500")) {
     const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
@@ -69,8 +86,7 @@ async function redirect2Pan(r) {
     );
     if (foldersRes.startsWith("error")) {
       r.error(foldersRes);
-      r.return(500, foldersRes);
-      return;
+      return r.return(500, foldersRes);
     }
     const folders = foldersRes.split(",").sort();
     for (let i = 0; i < folders.length; i++) {
@@ -81,20 +97,17 @@ async function redirect2Pan(r) {
         alistToken
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes(alistIp)
-          ? driverRes.replace(alistIp, alistPublicAddr)
+        driverRes = driverRes.includes(localAlistResPrefix)
+          ? driverRes.replace(localAlistResPrefix, alistAddr)
           : driverRes;
-        r.warn(`redirect to: ${driverRes}`);
-        r.return(302, driverRes);
-        return;
+        return redirect302(r, driverRes);
       }
     }
     r.warn(`fail to fetch alist resource: not found`);
     return r.return(404);
   }
   r.error(alistRes);
-  r.return(500, alistRes);
-  return;
+  return r.return(500, alistRes);
 }
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
@@ -108,19 +121,21 @@ async function transferPlaybackInfo(r) {
     method: r.method,
     args: query
   });
-   const body = JSON.parse(response.responseText);
+  const body = JSON.parse(response.responseText);
   if (
     response.status === 200 &&
     body.MediaSources &&
     body.MediaSources.length > 0
   ) {
+    r.log(`main request headersOut: ${JSON.stringify(r.headersOut)}`);
+    r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
     r.warn(`origin playbackinfo: ${response.responseText}`);
     for (let i = 0; i < body.MediaSources.length; i++) {
       const source = body.MediaSources[i];
-      if (source.IsRemote) {
-        // live streams are not blocked
-        return r.return(200, response.responseText);
-      }
+      // if (source.IsRemote) {
+      //   // live streams are not blocked
+      //   // return r.return(200, response.responseText);
+      // }
       r.warn(`modify direct play info`);
       source.SupportsDirectPlay = true;
       source.SupportsDirectStream = true;
@@ -163,7 +178,7 @@ async function transferPlaybackInfo(r) {
     return r.return(200, bodyJson);
   }
   r.warn("playbackinfo subrequest failed");
-  return r.return(302, util.getEmbyOriginRequestUrl(r));
+  return internalRedirect(r);
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
@@ -208,7 +223,8 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
     "message": "success",
     "protocol": "File", // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-    "path": ""
+    "path": "",
+    "isRemoteStrm": false,
   };
   try {
     const res = await ngx.fetch(itemInfoUri, {
@@ -252,9 +268,10 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           }
           rvt.protocol = mediaSource.Protocol;
           rvt.path = mediaSource.Path;
-          // strm file internal text maybe have URIEncode
-          if (item.Path.toLowerCase().endsWith(".strm")) {
-            rvt.path = decodeURI(rvt.path);
+          rvt.isRemoteStrm = "File" != rvt.protocol && item.Path.toLowerCase().endsWith(".strm");
+          // remote strm file internal text need encodeURI
+          if (rvt.isRemoteStrm) {
+            rvt.path = encodeURI(decodeURI(rvt.path));
           }
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
@@ -272,4 +289,39 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   }
 }
 
-export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo };
+async function fetchEmbyNotificationsAdmin(description) {
+  let body = config.embyNotificationsAdmin;
+  delete body.Enable;
+  body.Description = description;
+  try {
+    await ngx.fetch(`${config.embyHost}/Notifications/Admin?api_key=${config.embyApiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8"
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    rvt.message = `error: emby_api fetchEmbyNotificationsAdmin failed, ${error}`;
+  }
+}
+
+function redirect302(r, uri) {
+  r.warn(`redirect to: ${uri}`);
+  // need caller: return;
+  r.return(302, uri);
+  if (config.embyNotificationsAdmin.Enable) {
+    fetchEmbyNotificationsAdmin(`original link: ${r.uri}\nredirect to: ${uri}`);
+  }
+}
+
+function internalRedirect(r) {
+  r.warn(`use original link`);
+  // need caller: return;
+  r.internalRedirect(util.proxyUri(r.uri));
+  if (config.embyNotificationsAdmin.Enable) {
+    fetchEmbyNotificationsAdmin(`use original link: ${r.uri}`);
+  }
+}
+
+export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, redirect302, internalRedirect };

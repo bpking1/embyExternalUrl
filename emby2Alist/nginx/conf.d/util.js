@@ -35,16 +35,33 @@ function generateUrl(r, host, uri, ignoreSpChar) {
   return url;
 }
 
-function getEmbyOriginRequestUrl(r) {
-  const embyHost = config.publicDomain == ""
-    ? config.embyHost
-    : config.publicDomain + ":" + config.embyPort;
-  return generateUrl(r, embyHost, r.uri);
-}
-
 function getCurrentRequestUrl(r) {
   const host = r.headersIn["Host"];
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
+}
+
+function isDisableRedirect(r, embyRes) {
+  // not embyMountPathArr first
+  config.embyMountPathArr.some(path => {
+    if (embyRes.path.startsWith(path)) {
+      return true;
+    }
+  });
+  config.disableRedirectArr.map(arr => {
+    if (0 == arr[0] && embyRes.path.startsWith(arr[1])) {
+      return true;
+    }
+    if (1 == arr[0] && embyRes.path.endsWith(arr[1])) {
+      return true;
+    }
+    if (2 == arr[0] && embyRes.path.includes(arr[1])) {
+      return true;
+    }
+    if (3 == arr[0] && embyRes.path.matches(arr[1])) {
+      return true;
+    }
+  });
+  return false;
 }
 
 function getItemInfo(r) {
@@ -79,6 +96,6 @@ export default {
   proxyUri,
   getItemInfo,
   generateUrl,
-  getCurrentRequestUrl,
-  getEmbyOriginRequestUrl,
+  isDisableRedirect,
+  getCurrentRequestUrl
 };
