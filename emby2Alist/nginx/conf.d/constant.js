@@ -36,6 +36,7 @@ const disableRedirectArr = [
 // 对接emby通知管理员设置,目前只发送是否直链成功
 const embyNotificationsAdmin = {
   "Enable": false,
+  "IncludeUrl": false, // 链接太长,默认关闭
   "Name": "【emby2Alist】",
 };
 

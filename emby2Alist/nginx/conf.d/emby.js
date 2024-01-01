@@ -292,6 +292,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
 async function fetchEmbyNotificationsAdmin(description) {
   let body = config.embyNotificationsAdmin;
   delete body.Enable;
+  delete body.IncludeUrl;
   body.Description = description;
   try {
     await ngx.fetch(`${config.embyHost}/Notifications/Admin?api_key=${config.embyApiKey}`, {
@@ -311,7 +312,11 @@ function redirect302(r, uri) {
   // need caller: return;
   r.return(302, uri);
   if (config.embyNotificationsAdmin.Enable) {
-    fetchEmbyNotificationsAdmin(`original link: ${r.uri}\nredirect to: ${uri}`);
+    fetchEmbyNotificationsAdmin(
+      config.embyNotificationsAdmin.IncludeUrl ? 
+      `original link: ${r.uri}\nredirect to: ${uri}` :
+      `redirect success`
+    );
   }
 }
 
@@ -320,7 +325,11 @@ function internalRedirect(r) {
   // need caller: return;
   r.internalRedirect(util.proxyUri(r.uri));
   if (config.embyNotificationsAdmin.Enable) {
-    fetchEmbyNotificationsAdmin(`use original link: ${r.uri}`);
+    fetchEmbyNotificationsAdmin(
+      config.embyNotificationsAdmin.IncludeUrl ? 
+      `use original link: ${r.uri}` :
+      `use original link success`
+    );
   }
 }
 
