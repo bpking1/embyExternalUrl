@@ -79,7 +79,7 @@ function getItemInfo(r) {
   api_key = api_key ? api_key : embyApiKey;
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
-	itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
+	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
       itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;

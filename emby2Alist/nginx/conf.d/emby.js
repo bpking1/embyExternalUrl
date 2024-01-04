@@ -4,11 +4,10 @@ import config from "./constant.js";
 import util from "./util.js";
 
 async function redirect2Pan(r) {
-  const embyMountPathArr = config.embyMountPathArr;
   const embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const localAlistResPrefix = config.localAlistResPrefix;
+  const alistAddrPrefix = config.alistAddrPrefix;
   // fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
@@ -35,7 +34,7 @@ async function redirect2Pan(r) {
 
   // file path mapping
   r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
-  embyMountPathArr.map(o => {
+  config.embyMountPathArr.map(o => {
     embyPathMapping.unshift([o, ""]);
   });
   let alistFilePath = embyRes.path;
@@ -61,12 +60,8 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi`);
   if (!alistRes.startsWith("error")) {
-    // fixLocalAlistResPortMiss
-    alistRes = alistRes.includes(localAlistResPrefix)
-      ? alistRes.replace(localAlistResPrefix, alistAddr)
-      : alistRes;
     // 使用AList直链播放挂载的NAS本地视频时,可能存在卡顿与花屏
-    if (alistRes.startsWith(localAlistResPrefix)) {
+    if (alistRes.startsWith(alistAddrPrefix)) {
       // use original link
       return internalRedirect(r);
     }
@@ -97,8 +92,8 @@ async function redirect2Pan(r) {
         alistToken
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes(localAlistResPrefix)
-          ? driverRes.replace(localAlistResPrefix, config.alistPublicAddr)
+        driverRes = driverRes.includes(alistAddrPrefix)
+          ? driverRes.replace(alistAddrPrefix, config.alistPublicAddr)
           : driverRes;
         return redirect302(r, driverRes);
       }

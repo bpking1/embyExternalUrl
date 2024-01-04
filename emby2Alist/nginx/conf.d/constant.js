@@ -8,15 +8,17 @@ const embyMountPathArr = ["/mnt"];
 // emby/jellyfin api key, 在emby/jellyfin后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 // 访问宿主机上5244端口的alist地址, 要注意iptables给容器放行端口
-const alistAddr = "http://172.17.0.1:5244";
+const alistAddrPrefix = "http://172.17.0.1";
+const alistAddrPort = "5244";
+const alistAddr = (alistAddrPort == "" || alistAddrPort == "80" || alistAddrPort == "443") 
+  ? alistAddrPrefix 
+  : alistAddrPrefix + ":" + alistAddrPort;
 // alist token, 在alist后台查看
 const alistToken = "alsit-123456";
 
 // 选填项,用不到保持默认即可
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "http://youralist.com:5244";
-// 若alist挂载了局域网WebDav路径,且通过局域网访问,获取直链时将丢失端口号,出现则填写,将使用alistAddr替换
-const localAlistResPrefix = "http://172.17.0.1";
 // 多个可以给emby记录的strm文件内链接做映射,会在embyMountPathArr之后全部替换一遍,不要有重叠
 // strm文件提醒,填写规则参考emby官方文档,强烈建议strm文件内部只填路径,重定向后的远程链接将被部分浏览器跨域限制,无法修复
 const embyPathMapping = [
@@ -49,11 +51,12 @@ export default {
   embyMountPathArr,
   disableRedirectArr,
   alistToken,
+  alistAddrPrefix,
+  alistAddrPort,
   alistAddr,
   embyApiKey,
   embyPathMapping,
   alistPublicAddr,
-  localAlistResPrefix,
   embyNotificationsAdmin,
   getEmbyHost
 }
