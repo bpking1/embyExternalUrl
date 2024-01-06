@@ -26,8 +26,8 @@ async function redirect2Pan(r) {
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
-  if (util.isDisableRedirect(r, embyRes)) {
-    r.warn(`isDisableRedirect`);
+  if (util.isDisableRedirect(r, embyRes.path)) {
+    r.warn(`embyRes hit isDisableRedirect`);
     // use original link
     return internalRedirect(r);
   }
@@ -60,8 +60,12 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi`);
   if (!alistRes.startsWith("error")) {
-    // 使用AList直链播放挂载的NAS本地视频时,可能存在卡顿与花屏
-    if (alistRes.startsWith(alistAddrPrefix)) {
+    // if (alistRes.startsWith(alistAddrPrefix)) {
+    //   // use original link
+    //   return internalRedirect(r);
+    // }
+    if (util.isDisableRedirect(r, alistRes, true)) {
+      r.warn(`alistRes hit isDisableRedirect`);
       // use original link
       return internalRedirect(r);
     }

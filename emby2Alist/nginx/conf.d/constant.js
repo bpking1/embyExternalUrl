@@ -28,11 +28,12 @@ const embyPathMapping = [
   // ["D:", "F:"],
   // [/blue/g, "red"],
 ];
-// 禁用直链的规则,字幕和图片没有走直链,不用添加。0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g)
+// 禁用直链的规则,字幕和图片没有走直链,不用添加。arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g), arg2: 是否处理alist响应链接
 const disableRedirectArr = [
   // [0, "/mnt/sda1"],
   // [1, ".mp3"],
   // [2, "Google"],
+  // [2, "/NAS/", true],
   // [3, /private/ig],
 ];
 // 对接emby通知管理员设置,目前只发送是否直链成功
