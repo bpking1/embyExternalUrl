@@ -202,7 +202,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
       }
       if (result.message == "success") {
         if (result.data.raw_url) {
-          return result.data.raw_url;
+          return handleAlistRawUrl(result.data.raw_url, alistFilePath);
         }
         return result.data.content.map((item) => item.name).join(",");
       }
@@ -216,6 +216,17 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   } catch (error) {
     return `error: alist_path_api fetchAlistFiled ${error}`;
   }
+}
+
+function handleAlistRawUrl(rawUrl, alistFilePath) {
+  if (rawUrl.includes("115.com")) {
+    return handle115RawUrl(alistFilePath);
+  }
+  return rawUrl;
+}
+
+function handle115RawUrl(alistFilePath) {
+  return `${config.alistAddr}/d${encodeURI(alistFilePath)}`;
 }
 
 async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
