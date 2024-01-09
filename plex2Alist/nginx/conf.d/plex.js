@@ -4,47 +4,78 @@ import config from "./constant.js";
 import util from "./util.js";
 
 async function redirect2Pan(r) {
-  const plexMountPath = config.plexMountPath;
+  const plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const alistPublicAddr = config.alistPublicAddr;
-  const alistIp = config.alistIp;
-  const publicDomain = config.publicDomain;
-  const changeAlistToMediaServer = config.changeAlistToMediaServer;
-  //fetch mount plex file path
-  let itemInfo = await util.getPlexItemInfo(r);
-  r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  let mediaServerRes = await fetchPlexFilePath(itemInfo.itemInfoUri, itemInfo.mediaIndex, itemInfo.partIndex);
-  if (mediaServerRes.message.startsWith("error")) {
-    r.error(mediaServerRes.message);
-    r.return(500, mediaServerRes.message);
-    return;
+  const alistAddrPrefix = config.alistAddrPrefix;
+  // fetch mount plex file path
+  let start = Date.now();
+  const itemInfo = await util.getPlexItemInfo(r);
+  let end = Date.now();
+  let mediaServerRes;
+  if (itemInfo.filePath) {
+    mediaServerRes = {path: itemInfo.filePath};
+    r.warn(`${end - start}ms, itemInfoUri: ${itemInfo.itemInfoUri}`);
+  } else {
+    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+    mediaServerRes = await fetchPlexFilePath(
+      itemInfo.itemInfoUri, 
+      itemInfo.mediaIndex, 
+      itemInfo.partIndex
+    );
+    end = Date.now();
+    r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
+    if (mediaServerRes.message.startsWith("error")) {
+      r.error(mediaServerRes.message);
+      return r.return(500, mediaServerRes.message);
+    }
   }
-  r.warn(`mount media_server file path: ${mediaServerRes.path}`);
+  r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
 
-  //fetch alist direct link
-  const alistFilePath = mediaServerRes.path.replace(plexMountPath, "");
+  if (util.isDisableRedirect(r, mediaServerRes.path)) {
+    r.warn(`mediaServerRes hit isDisableRedirect`);
+    // use original link
+    return internalRedirect(r);
+  }
+
+  // file path mapping
+  r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
+  config.plexMountPathArr.map(o => {
+    plexPathMapping.unshift([o, ""]);
+  });
+  let alistFilePath = mediaServerRes.path;
+  plexPathMapping.map(arr => {
+    alistFilePath = alistFilePath.replace(arr[0], arr[1]);
+  });
+  r.warn(`mapped plex file path: ${alistFilePath}`);
+
+  // strm file inner remote link direct,like: http,rtsp
+  // if (mediaServerRes.isRemoteStrm) {
+  //   r.warn(`!!!warnning remote strm file protocol: ${mediaServerRes.protocol}`);
+  //   return redirect302(r, alistFilePath);
+  // }
+
+  // fetch alist direct link
+  start = Date.now();
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
   let alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
     alistToken
   );
+  end = Date.now();
+  r.warn(`${end - start}ms, fetchAlistPathApi`);
   if (!alistRes.startsWith("error")) {
-    alistRes = alistRes.includes(alistIp)
-      ? alistRes.replace(alistIp, alistPublicAddr)
-      : alistRes;
-    if (changeAlistToMediaServer && (alistRes.startsWith(alistIp) || alistRes.startsWith(publicDomain))) {
+    if (util.isDisableRedirect(r, alistRes, true)) {
+      r.warn(`alistRes hit isDisableRedirect`);
       // use original link
-      alistRes = util.getPlexOriginRequestUrl(r);
+      return internalRedirect(r);
     }
-    r.return(302, alistRes);
-    return;
+    return redirect302(r, alistRes);
   }
   if (alistRes.startsWith("error403")) {
     r.error(alistRes);
-    r.return(403, alistRes);
-    return;
+    return r.return(403, alistRes);
   }
   if (alistRes.startsWith("error500")) {
     const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
@@ -56,8 +87,7 @@ async function redirect2Pan(r) {
     );
     if (foldersRes.startsWith("error")) {
       r.error(foldersRes);
-      r.return(500, foldersRes);
-      return;
+      return r.return(500, foldersRes);
     }
     const folders = foldersRes.split(",").sort();
     for (let i = 0; i < folders.length; i++) {
@@ -68,20 +98,17 @@ async function redirect2Pan(r) {
         alistToken
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes(alistIp)
-          ? driverRes.replace(alistIp, alistPublicAddr)
+        driverRes = driverRes.includes(alistAddrPrefix)
+          ? driverRes.replace(alistAddrPrefix, config.alistPublicAddr)
           : driverRes;
-        r.warn(`redirect to: ${driverRes}`);
-        r.return(302, driverRes);
-        return;
+        return redirect302(r, driverRes);
       }
     }
     r.warn(`fail to fetch alist resource: not found`);
     return r.return(404);
   }
   r.error(alistRes);
-  r.return(500, alistRes);
-  return;
+  return r.return(500, alistRes);
 }
 
 // copy from emby2Alist/nginx/conf.d/emby.js
@@ -107,7 +134,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
       }
       if (result.message == "success") {
         if (result.data.raw_url) {
-          return result.data.raw_url;
+          return handleAlistRawUrl(result.data.raw_url, alistFilePath);
         }
         return result.data.content.map((item) => item.name).join(",");
       }
@@ -121,6 +148,17 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   } catch (error) {
     return `error: alist_path_api fetchAlistFiled ${error}`;
   }
+}
+
+function handleAlistRawUrl(rawUrl, alistFilePath) {
+  if (rawUrl.includes("115.com")) {
+    return handle115RawUrl(alistFilePath);
+  }
+  return rawUrl;
+}
+
+function handle115RawUrl(alistFilePath) {
+  return `${config.alistAddr}/d${encodeURI(alistFilePath)}`;
 }
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
@@ -140,11 +178,14 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
     });
     if (res.ok) {
       const result = await res.json();
-      if (result === null || result === undefined) {
+      if (!result) {
         rvt.message = `error: plex_api itemInfoUri response is null`;
         return rvt;
       }
-      // TODO: need fix, multi version video search keyword is too precise
+      if (!result.MediaContainer.Metadata) {
+        rvt.message = `error: plex_api No search results found`;
+        return rvt;
+      }
       // location ~* /library/parts/(\d+)/(\d+)/file, not hava mediaIndex and partIndex
       mediaIndex = mediaIndex ? mediaIndex : 0;
       partIndex = partIndex ? partIndex : 0;
@@ -160,4 +201,31 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   }
 }
 
-export default { redirect2Pan, fetchPlexFilePath };
+async function calcOffsetFactor(r) {
+  // replay the request
+  const proxyUri = util.proxyUri(r.uri);
+  const res = await r.subrequest(proxyUri);
+  const body = JSON.parse(res.responseText);
+  r.log(`calcOffsetFactor: ${JSON.stringify(body)}`);
+  const metadataId = body.MediaContainer.Metadata[0].ratingKey;
+  const partId = body.MediaContainer.Metadata[0].Media[0].Part[0].id;
+  config.metadataIdOffsetFactor = config.metadataIdOffsetFactor + (metadataId - partId);
+  for (const key in res.headersOut) {
+    r.headersOut[key] = res.headersOut[key];
+  }
+  r.return(res.status, JSON.stringify(body));
+}
+
+function redirect302(r, uri) {
+  r.warn(`redirect to: ${uri}`);
+  // need caller: return;
+  r.return(302, uri);
+}
+
+function internalRedirect(r) {
+  r.warn(`use original link`);
+  // need caller: return;
+  r.internalRedirect(util.proxyUri(r.uri));
+}
+
+export default { redirect2Pan, fetchPlexFilePath, calcOffsetFactor };
