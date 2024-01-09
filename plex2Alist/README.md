@@ -5,8 +5,8 @@ date: 2023/11/04 22:00:00
 
 ### 文章更新记录 
 2023/11/04
-1.参考博客(https://blog.738888.xyz/posts/plex_to_alist_directlink)中的plex直链功能并参考之前的njs实现，实验性(bug)性质支持了直链播放，因为只找到社区维护的简易API(https://plex-docs.vercel.app)，所以实现方式比较别扭，目前存在多版本视频不能直链下载的bug。
-2.Plex要直链播放只需要设置远程访问-手动设置公开端口为nginx监听端口，避免客户端优先直连32400，如果路由器做了32400端口转发，不影响外部访问。
+1.参考博客(https://blog.738888.xyz/posts/plex_to_alist_directlink)中的plex直链功能并参考之前的njs实现，实验性(bug)性质支持了直链播放，因为只找到社区维护的简易API(https://plex-docs.vercel.app)，所以实现方式比较别扭，~~目前存在多版本视频不能直链下载的bug。~~
+2.Plex要直链播放只需要设置远程访问-手动设置公开端口为nginx监听端口，避免客户端优先直连32400，~~如果路由器做了32400端口转发，不影响外部访问。~~
 ![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/9abc036a-72db-4434-9be7-1f31c2686bb2)
 
 ## 已知问题:
