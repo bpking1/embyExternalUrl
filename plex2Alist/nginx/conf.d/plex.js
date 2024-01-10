@@ -129,12 +129,12 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
     });
     if (response.ok) {
       const result = await response.json();
-      if (result === null || result === undefined) {
+      if (!result) {
         return `error: alist_path_api response is null`;
       }
       if (result.message == "success") {
         if (result.data.raw_url) {
-          return handleAlistRawUrl(result.data.raw_url, alistFilePath);
+          return handleAlistRawUrl(result, alistFilePath);
         }
         return result.data.content.map((item) => item.name).join(",");
       }
@@ -150,15 +150,16 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
   }
 }
 
-function handleAlistRawUrl(rawUrl, alistFilePath) {
+function handleAlistRawUrl(alistRes, alistFilePath) {
+  let rawUrl = alistRes.data.raw_url;
   if (rawUrl.includes("115.com")) {
-    return handle115RawUrl(alistFilePath);
+    return handle115RawUrl(alistFilePath, alistRes.data.sign);
   }
   return rawUrl;
 }
 
-function handle115RawUrl(alistFilePath) {
-  return `${config.alistAddr}/d${encodeURI(alistFilePath)}`;
+function handle115RawUrl(alistFilePath, alistSign) {
+  return `${config.alistAddr}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
 }
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
