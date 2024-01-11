@@ -14,8 +14,10 @@ const alistPort = 5244;
 const alistAddr = alistIp + ":" + alistPort;
 // emby/jellyfin api key, 在emby/jellyfin后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
-// 公网域名, 按需填写, eg: http://youralist.com
-const publicDomain = "";
+// Alist公网域名, 按需填写, eg: http://youralist.com
+const publicDomain = "https://alist.example.com";
+// Emby公网域名，特殊端口则添加端口
+const embyPublicDomain = "https://emby.example.com";
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = publicDomain + ":" + alistPort;
 // 使用AList直链播放挂载的NAS本地视频时,可能存在卡顿与花屏，若出现，请启用，使用emby/jellyfin原始链接
@@ -23,6 +25,8 @@ const changeAlistToEmby = false;
 // !!!风险功能，是否允许转发strm文件内部url直链到客户端，不建议开启，建议strm文件内部只填路径
 // 可能存在明文密码，默认禁止并交给原始emby/jellyfin中转处理，仅供调试，泄露密码后果自行承担
 const allowRemoteStrmRedirect = false;
+// 忽略路径列表，如果Emby文件路径在此列表中，则不创建直链，直接使用emby/jellyfin原始链接
+const ignorePath = ['/mnt/localMedia/'];
 
 export default {
   embyIp,
@@ -37,5 +41,7 @@ export default {
   publicDomain,
   alistPublicAddr,
   changeAlistToEmby,
-  allowRemoteStrmRedirect
+  allowRemoteStrmRedirect,
+  embyPublicDomain,
+  ignorePath,
 }

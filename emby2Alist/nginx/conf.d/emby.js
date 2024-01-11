@@ -11,10 +11,12 @@ async function redirect2Pan(r) {
   const alistIp = config.alistIp;
   const publicDomain = config.publicDomain;
   const changeAlistToEmby = config.changeAlistToEmby;
+
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
   const embyRes = await fetchEmbyFilePath(itemInfo.itemInfoUri, itemInfo.itemId, itemInfo.Etag, itemInfo.mediaSourceId);
+
   if (embyRes.message.startsWith("error")) {
     r.error(embyRes.message);
     r.return(500, embyRes.message);
@@ -23,42 +25,71 @@ async function redirect2Pan(r) {
   r.warn(`mount emby file path: ${embyRes.path}`);
 
   // remote strm file direct
-  if ("File" != embyRes.protocol && embyRes.path) {
-    r.warn(`mount emby file protocol: ${embyRes.protocol}`);
-    if (config.allowRemoteStrmRedirect) {
-      r.warn(`!!!warnning remote strm file redirect to: ${embyRes.path}`);
+  r.warn(`check emby file protocol: ${embyRes.protocol}`);
+  // 首先检查是否允许重定向远程 strm 文件
+  if (config.allowRemoteStrmRedirect) {
+    // 只有当协议不是"File"并且存在路径时，执行重定向
+    if ("File" != embyRes.protocol && embyRes.path) {
+      r.warn(`!!!warning remote strm file redirect to: ${embyRes.path}`);
       r.return(302, embyRes.path);
       return;
-    } else {
-      // use original link
-      return r.return(302, util.getEmbyOriginRequestUrl(r));
     }
+  } else {
+    // 如果不允许重定向，则检查协议和路径
+    if ("File" != embyRes.protocol && embyRes.path) {
+      r.warn(`mount emby file protocol: ${embyRes.protocol}`);
+      // 使用原始链接
+      r.warn(`!!!warning remote strm file use original link: ${util.getEmbyOriginRequestUrl(r)}`);
+      r.return(302, util.getEmbyOriginRequestUrl(r));
+      return;
+    }
+  }
+ 
+  // 检查文件路径是否应该被忽略
+  // 或者是否包含特殊字符，该字符会被rclone转义，导致无法通过Emby路径匹配到alist中的文件
+  const shouldRedirect = config.ignorePath.some(path => embyRes.path.startsWith(path)) ||
+  embyRes.path.includes("：") || embyRes.path.includes("？") || embyRes.path.includes("！ ");
+  // 如果需要重定向，则返回原始Emby链接
+  if (shouldRedirect) {
+    const embyOriginRequestUrl = util.getEmbyOriginRequestUrl(r);
+    const warningMessage = `!!!warning: Redirecting to original Emby link due to ignored path or invalid characters in path, redirect to: ${embyOriginRequestUrl}`;
+    r.warn(warningMessage);
+    r.return(302, embyOriginRequestUrl);
+    return;
   }
 
   //fetch alist direct link
   const alistFilePath = embyRes.path.replace(embyMountPath, "");
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
+  r.warn(`alist path: ${alistFilePath}`);
   let alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
     alistToken
   );
+  // alistRes为文件直链
   if (!alistRes.startsWith("error")) {
     alistRes = alistRes.includes(alistIp)
       ? alistRes.replace(alistIp, alistPublicAddr)
       : alistRes;
     if (changeAlistToEmby && (alistRes.startsWith(alistIp) || alistRes.startsWith(publicDomain))) {
-      // use original link
+      // if "changeAlistToEmbyu" is True, change alist url to original emby stream link
       alistRes = util.getEmbyOriginRequestUrl(r);
     }
+    
+    r.warn(`redirect to: ${alistRes}`);
     r.return(302, alistRes);
     return;
   }
+
+  // error403: alist auth failed
   if (alistRes.startsWith("error403")) {
     r.error(alistRes);
     r.return(403, alistRes);
     return;
   }
+
+  // error500: 遍历alist目录查找资源
   if (alistRes.startsWith("error500")) {
     const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;

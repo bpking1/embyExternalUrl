@@ -36,9 +36,7 @@ function generateUrl(r, host, uri, ignoreSpChar) {
 }
 
 function getEmbyOriginRequestUrl(r) {
-  const embyHost = config.publicDomain == ""
-    ? config.embyHost
-    : config.publicDomain + ":" + config.embyPort;
+  const embyHost = config.embyPublicDomain;
   return generateUrl(r, embyHost, r.uri);
 }
 
