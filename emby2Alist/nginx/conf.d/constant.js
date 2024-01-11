@@ -27,6 +27,9 @@ const changeAlistToEmby = false;
 const allowRemoteStrmRedirect = false;
 // 忽略路径列表，如果Emby文件路径在此列表中，则不创建直链，直接使用emby/jellyfin原始链接
 const ignorePath = ['/mnt/localMedia/'];
+// 由于Rclone+Onedrive一起使用会修改OneDrive中的特殊字符，导致无法获取到Alist直链
+// 如果遇到此问题，请将下面的fixRclonePath设置为true
+const fixRclonePath = false;
 
 export default {
   embyIp,
@@ -44,4 +47,5 @@ export default {
   allowRemoteStrmRedirect,
   embyPublicDomain,
   ignorePath,
+  fixRclonePath,
 }

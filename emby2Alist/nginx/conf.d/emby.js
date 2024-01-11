@@ -11,6 +11,7 @@ async function redirect2Pan(r) {
   const alistIp = config.alistIp;
   const publicDomain = config.publicDomain;
   const changeAlistToEmby = config.changeAlistToEmby;
+  const fixRclonePath = config.fixRclonePath;
 
   //fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
@@ -47,8 +48,8 @@ async function redirect2Pan(r) {
  
   // 检查文件路径是否应该被忽略
   // 或者是否包含特殊字符，该字符会被rclone转义，导致无法通过Emby路径匹配到alist中的文件
-  const shouldRedirect = config.ignorePath.some(path => embyRes.path.startsWith(path)) ||
-  embyRes.path.includes("：") || embyRes.path.includes("？") || embyRes.path.includes("！ ");
+  const shouldRedirect = config.ignorePath.some(path => embyRes.path.startsWith(path)) || 
+  (fixRclonePath && (embyRes.path.includes("：") || embyRes.path.includes("？") || embyRes.path.includes("！ ")));
   // 如果需要重定向，则返回原始Emby链接
   if (shouldRedirect) {
     const embyOriginRequestUrl = util.getEmbyOriginRequestUrl(r);
