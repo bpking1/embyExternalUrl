@@ -6,6 +6,7 @@ const plexHost = "http://172.17.0.1:32400";
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始plex处理,不用重复填写至disableRedirectArr
 const plexMountPathArr = ["/mnt"];
 // 访问宿主机上5244端口的alist地址, 要注意iptables给容器放行端口
+// 部分网盘需要客户端自己请求alist,则此处必须使用域名且外网畅通,非特殊处理的网盘用内网ip也行
 const alistAddrPrefix = "http://172.17.0.1";
 const alistAddrPort = "5244";
 const alistAddr = (alistAddrPort == "" || alistAddrPort == "80" || alistAddrPort == "443") 
@@ -25,7 +26,9 @@ const plexPathMapping = [
   // ["D:", "F:"],
   // [/blue/g, "red"],
 ];
-// 禁用直链的规则,字幕和图片没有走直链,不用添加。arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g), arg2: 是否处理alist响应链接
+// 禁用直链的规则,字幕和图片没有走直链,不用添加
+// arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g)
+// arg2: 是否处理alist响应链接
 const disableRedirectArr = [
   // [0, "/mnt/sda1"],
   // [1, ".mp3"],
