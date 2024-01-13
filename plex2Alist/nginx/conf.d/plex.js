@@ -7,7 +7,6 @@ async function redirect2Pan(r) {
   const plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const alistAddrPrefix = config.alistAddrPrefix;
   // fetch mount plex file path
   let start = Date.now();
   const itemInfo = await util.getPlexItemInfo(r);
@@ -40,7 +39,7 @@ async function redirect2Pan(r) {
 
   // file path mapping
   r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
-  config.plexMountPathArr.map(o => {
+  config.plexMountPath.map(o => {
     plexPathMapping.unshift([o, ""]);
   });
   let alistFilePath = mediaServerRes.path;
@@ -98,8 +97,8 @@ async function redirect2Pan(r) {
         alistToken
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes(alistAddrPrefix)
-          ? driverRes.replace(alistAddrPrefix, config.alistPublicAddr)
+        driverRes = driverRes.includes("http://172.17.0.1")
+          ? driverRes.replace("http://172.17.0.1", config.alistPublicAddr)
           : driverRes;
         return redirect302(r, driverRes);
       }
@@ -152,14 +151,17 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
 
 function handleAlistRawUrl(alistRes, alistFilePath) {
   let rawUrl = alistRes.data.raw_url;
-  if (rawUrl.includes("115.com")) {
-    return handle115RawUrl(alistFilePath, alistRes.data.sign);
+  const alistSign = alistRes.data.sign;
+  const cilentSelfAlistRule = config.cilentSelfAlistRule;
+  if (cilentSelfAlistRule.length > 0) {
+    cilentSelfAlistRule.some(rule => {
+      if (util.strMatches(rule[0], rawUrl, rule[1])) {
+        rawUrl = `${rule[2]}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
+        return true;
+      }
+    });
   }
   return rawUrl;
-}
-
-function handle115RawUrl(alistFilePath, alistSign) {
-  return `${config.alistAddr}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
 }
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {

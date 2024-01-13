@@ -43,28 +43,31 @@ function getCurrentRequestUrl(r) {
 function isDisableRedirect(r, str, isAlistRes) {
   let arr2D;
   if (!!isAlistRes) {
-    arr2D = config.disableRedirectArr.filter(arr => !!arr[2]);
+    arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
-    // not embyMountPathArr first
-    if (config.embyMountPathArr.some(path => !str.startsWith(path))) {
+    // not embyMountPath first
+    if (config.embyMountPath.some(path => !str.startsWith(path))) {
       return true;
     }
-    arr2D = config.disableRedirectArr.filter(arr => !arr[2]);
+    arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
   }
-  return arr2D.some(arr => {
-    if (0 == arr[0] && str.startsWith(arr[1])) {
-      return true;
-    }
-    if (1 == arr[0] && str.endsWith(arr[1])) {
-      return true;
-    }
-    if (2 == arr[0] && str.includes(arr[1])) {
-      return true;
-    }
-    if (3 == arr[0] && str.matches(arr[1])) {
-      return true;
-    }
-  });
+  return arr2D.some(rule => strMatches(rule[0], str, rule[1]));
+}
+
+function strMatches(type, searchValue, matcher) {
+  if (0 == type && searchValue.startsWith(matcher)) {
+    return true;
+  }
+  if (1 == type && searchValue.endsWith(matcher)) {
+    return true;
+  }
+  if (2 == type && searchValue.includes(matcher)) {
+    return true;
+  }
+  if (3 == type && !!searchValue.match(matcher)) {
+    return true;
+  }
+  return false;
 }
 
 function getItemInfo(r) {
@@ -100,5 +103,6 @@ export default {
   getItemInfo,
   generateUrl,
   isDisableRedirect,
+  strMatches,
   getCurrentRequestUrl
 };
