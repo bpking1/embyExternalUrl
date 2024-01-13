@@ -33,7 +33,7 @@ async function directLive(r) {
     return Emby.redirect2Pan(r);
   }
   // 5 execute redirect
-  Emby.redirect302(r, body.MediaSources[0].Path);
+  Emby.redirect(r, body.MediaSources[0].Path);
 }
 
 export default { directLive };

@@ -45,7 +45,7 @@ async function redirect2Pan(r) {
   // strm file inner remote link direct,like: http,rtsp
   if (embyRes.isRemoteStrm) {
     r.warn(`!!!warnning remote strm file protocol: ${embyRes.protocol}`);
-    return redirect302(r, alistFilePath);
+    return redirect(r, alistFilePath);
   }
 
   // fetch alist direct link
@@ -64,7 +64,7 @@ async function redirect2Pan(r) {
       // use original link
       return internalRedirect(r);
     }
-    return redirect302(r, alistRes);
+    return redirect(r, alistRes);
   }
   if (alistRes.startsWith("error403")) {
     r.error(alistRes);
@@ -94,7 +94,7 @@ async function redirect2Pan(r) {
         driverRes = driverRes.includes("http://172.17.0.1")
           ? driverRes.replace("http://172.17.0.1", config.alistPublicAddr)
           : driverRes;
-        return redirect302(r, driverRes);
+        return redirect(r, driverRes);
       }
     }
     r.warn(`fail to fetch alist resource: not found`);
@@ -316,7 +316,7 @@ async function fetchEmbyNotificationsAdmin(description) {
   }
 }
 
-function redirect302(r, uri) {
+function redirect(r, uri) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
@@ -342,4 +342,4 @@ function internalRedirect(r) {
   }
 }
 
-export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, redirect302, internalRedirect };
+export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, redirect, internalRedirect };
