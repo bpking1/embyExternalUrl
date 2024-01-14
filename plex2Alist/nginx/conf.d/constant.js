@@ -22,7 +22,7 @@ const cilentSelfAlistRule = [
 ];
 // 多个可以给emby记录的strm文件内链接做映射,会在embyMountPath之后全部替换一遍,不要有重叠
 // strm文件提醒,填写规则参考emby官方文档,强烈建议strm文件内部只填路径,重定向后的远程链接将被部分浏览器跨域限制
-const embyPathMapping = [
+const plexPathMapping = [
   // ["/mnt/aliyun-01", "/mnt/aliyun-02"],
   // ["http:", "https:"], 
   // [":5244", "/alist"], 
