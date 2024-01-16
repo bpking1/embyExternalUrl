@@ -1,5 +1,6 @@
 import config from "./constant.js";
 
+const plexTokenKey = "X-Plex-Token";
 // copy from emby2Alist/nginx/conf.d/util.js
 function proxyUri(uri) {
   return `/proxy${uri}`;
@@ -45,7 +46,6 @@ function getFileNameByHead(contentDisposition) {
 }
 
 async function getPlexItemInfo(r) {
-  const plexTokenKey = "X-Plex-Token";
   const plexHost = config.plexHost;
   const path = r.args.path;
   const mediaIndex = r.args.mediaIndex;
@@ -82,7 +82,7 @@ async function fetchPlexMetadata(r) {
     metadataIdArr.push(i);
   }
   r.warn(`fetchPlexMetadata metadataIdArr: ${JSON.stringify(metadataIdArr)}`);
-  const plexTokenKey = config.plexTokenKey;
+  const plexTokenKey = plexTokenKey;
   const plexHost = config.plexHost;
   const api_key = r.args[plexTokenKey];
   let itemInfoUri = `${plexHost}/library/metadata/${metadataIdArr.join(",")}?${plexTokenKey}=${api_key}`;

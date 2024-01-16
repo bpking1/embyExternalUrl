@@ -39,7 +39,6 @@ const disableRedirectRule = [
   // [2, "/NAS/", true],
   // [3, /private/ig],
 ];
-const plexTokenKey = "X-Plex-Token";
 // 功能正常可以忽略此参数,优先使用此参数决定能否精确搜索到plex挂载路径
 // 请大致估算多版本视频的套数,用于计算metadata和part(media)的自增id偏差数
 // 如未搜索到,将通过视频文件名搜索plex挂载路径(bug多且对多版本视频搜索不准确)
@@ -58,7 +57,6 @@ export default {
   alistPublicAddr,
   cilentSelfAlistRule,
   plexPathMapping,
-  plexTokenKey,
   getPlexHost,
   metadataIdOffsetFactor
 }
