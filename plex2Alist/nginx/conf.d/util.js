@@ -12,7 +12,7 @@ function isDisableRedirect(r, str, isAlistRes) {
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
     // not embyMountPath first
-    if (config.embyMountPath.some(path => !str.startsWith(path))) {
+    if (config.plexMountPath.some(path => !str.startsWith(path))) {
       return true;
     }
     arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
@@ -82,7 +82,6 @@ async function fetchPlexMetadata(r) {
     metadataIdArr.push(i);
   }
   r.warn(`fetchPlexMetadata metadataIdArr: ${JSON.stringify(metadataIdArr)}`);
-  const plexTokenKey = plexTokenKey;
   const plexHost = config.plexHost;
   const api_key = r.args[plexTokenKey];
   let itemInfoUri = `${plexHost}/library/metadata/${metadataIdArr.join(",")}?${plexTokenKey}=${api_key}`;
