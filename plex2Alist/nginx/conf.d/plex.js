@@ -48,12 +48,6 @@ async function redirect2Pan(r) {
   });
   r.warn(`mapped plex file path: ${alistFilePath}`);
 
-  // strm file inner remote link direct,like: http,rtsp
-  // if (mediaServerRes.isRemoteStrm) {
-  //   r.warn(`!!!warnning remote strm file protocol: ${mediaServerRes.protocol}`);
-  //   return redirect(r, alistFilePath);
-  // }
-
   // fetch alist direct link
   start = Date.now();
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
@@ -204,15 +198,23 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   }
 }
 
-async function calcOffsetFactor(r) {
+async function cachePartInfo(r) {
   // replay the request
   const proxyUri = util.proxyUri(r.uri);
   const res = await r.subrequest(proxyUri);
   const body = JSON.parse(res.responseText);
-  r.log(`calcOffsetFactor: ${JSON.stringify(body)}`);
-  const metadataId = body.MediaContainer.Metadata[0].ratingKey;
-  const partId = body.MediaContainer.Metadata[0].Media[0].Part[0].id;
-  config.metadataIdOffsetFactor = config.metadataIdOffsetFactor + (metadataId - partId);
+  body.MediaContainer.Metadata.forEach(metadata => {
+    metadata.Media.forEach(media => {
+      media.Part.forEach(part => {
+        const preValue = ngx.shared.PartInfo.get(part.key);
+        if (!preValue || (!!preValue && preValue != part.file)) {
+          const filePath = part.file;
+          ngx.shared.PartInfo.add(part.key, filePath);
+          r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
+        }
+      });
+    });
+  });
   for (const key in res.headersOut) {
     r.headersOut[key] = res.headersOut[key];
   }
@@ -231,4 +233,4 @@ function internalRedirect(r) {
   r.internalRedirect(util.proxyUri(r.uri));
 }
 
-export default { redirect2Pan, fetchPlexFilePath, calcOffsetFactor };
+export default { redirect2Pan, fetchPlexFilePath, cachePartInfo };

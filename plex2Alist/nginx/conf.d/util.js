@@ -58,69 +58,19 @@ async function getPlexItemInfo(r) {
   	itemInfoUri = `${plexHost}${path}?${plexTokenKey}=${api_key}`;
   } else {
   	// see: location ~* /library/parts/(\d+)/(\d+)/file
-    const fetchPlexMetadataRes = await fetchPlexMetadata(r);
-    r.log(`fetchPlexMetadataRes: ${fetchPlexMetadataRes}`);
-    if (fetchPlexMetadataRes.startsWith("error")) {
+    filePath = ngx.shared.PartInfo.get(r.uri);
+    r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
+    if (!filePath) {
       const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${plexTokenKey}=${api_key}`);
       if (!plexRes.startsWith("error")) {
         const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
         itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${plexTokenKey}=${api_key}`;
+      } else {
+        r.warn(plexRes);
       }
-    } else {
-      filePath = fetchPlexMetadataRes;
     }
   }
   return { filePath, itemInfoUri, mediaIndex, partIndex, api_key };
-}
-
-async function fetchPlexMetadata(r) {
-  const regex = /[A-Za-z0-9]+/g;
-  const partId = parseInt(r.uri.replace("/library/parts", "").match(regex)[0]);
-  r.warn(`fetchPlexMetadata partId: ${partId}`);
-  const metadataIdArr = [];
-  for (let i = partId; i < partId + config.metadataIdOffsetFactor; i++) {
-    metadataIdArr.push(i);
-  }
-  r.warn(`fetchPlexMetadata metadataIdArr: ${JSON.stringify(metadataIdArr)}`);
-  const plexHost = config.plexHost;
-  const api_key = r.args[plexTokenKey];
-  let itemInfoUri = `${plexHost}/library/metadata/${metadataIdArr.join(",")}?${plexTokenKey}=${api_key}`;
-  r.warn(`fetchPlexMetadata itemInfoUri: ${itemInfoUri}`);
-  try {
-    const res = await ngx.fetch(itemInfoUri, {
-      method: "GET",
-      headers: {
-      	"Accept": "application/json", // only plex need this
-        "Content-Type": "application/json;charset=utf-8",
-        "Content-Length": 0,
-      },
-      max_response_body_size: 65535
-    });
-    if (res.ok) {
-      const result = await res.json();
-      r.log(`fetchPlexMetadata result: ${JSON.stringify(result)}`);
-      let partArr = [];
-      result.MediaContainer.Metadata.forEach(metadata => {
-        metadata.Media.forEach(media => {
-          media.Part.forEach(part => {
-            partArr.push(part);
-          });
-        });
-      });
-      r.log(`fetchPlexMetadata partArr: ${JSON.stringify(partArr)}`);
-      partArr = partArr.filter(part => part.key.startsWith(r.uri));
-      r.warn(`fetchPlexMetadata partArr filter: ${JSON.stringify(partArr)}`);
-      if (partArr.length < 1) {
-        return `error: fetchPlexMetadata No search results found`;
-      } else {
-        return partArr[0].file;
-      }
-    } else {
-      return `error: plex_download_api ${res.status} ${res.statusText}`;
-    }
-  } catch (error) {
-    return `error: plex_download_api fetchPlexMetadata ${error}`;
-  }
 }
 
 async function fetchPlexFileFullName(downloadApiPath) {

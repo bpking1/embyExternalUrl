@@ -1,5 +1,5 @@
 // export constant allocation
-// 必填项,根据实际情况修改下面的设置
+// 必填项,根据实际情况修改下面的设置!!!此版本需要njs>=0.8.0,直接nginx:latest即可
 // 这里默认plex的地址是宿主机,要注意iptables给容器放行端口
 const plexHost = "http://172.17.0.1:32400";
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
@@ -14,7 +14,7 @@ const alistToken = "alsit-123456";
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "http://youralist.com:5244";
 // 指定客户端自己请求并获取alist直链的规则,特殊情况使用,用不着请保持默认
-// 部分网盘需要客户端自己请求alist,则此处必须使用域名且外网畅通
+// 部分网盘需要客户端自己请求alist,则此处必须使用域名且公网畅通
 // arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g)
 // arg2: 指定转发给客户端的alist地址
 const cilentSelfAlistRule = [
@@ -39,10 +39,6 @@ const disableRedirectRule = [
   // [2, "/NAS/", true],
   // [3, /private/ig],
 ];
-// 功能正常可以忽略此参数,优先使用此参数决定能否精确搜索到plex挂载路径
-// 请大致估算多版本视频的套数,用于计算metadata和part(media)的自增id偏差数
-// 如未搜索到,将通过视频文件名搜索plex挂载路径(bug多且对多版本视频搜索不准确)
-let metadataIdOffsetFactor = 3;
 
 function getPlexHost(r) {
   return plexHost;
@@ -57,6 +53,5 @@ export default {
   alistPublicAddr,
   cilentSelfAlistRule,
   plexPathMapping,
-  getPlexHost,
-  metadataIdOffsetFactor
+  getPlexHost
 }
