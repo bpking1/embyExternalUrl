@@ -69,7 +69,6 @@ export default {
   alistPublicAddr,
   cilentSelfAlistRule,
   embyPathMapping,
-  enableTranscodeBlance,
   embyNotificationsAdmin,
   getEmbyHost,
   getEnableTranscodeBlance
