@@ -15,7 +15,7 @@ const alistToken = "alsit-123456";
 const alistPublicAddr = "http://youralist.com:5244";
 // 指定客户端自己请求并获取alist直链的规则,特殊情况使用,用不着请保持默认
 // 部分网盘需要客户端自己请求alist,则此处必须使用域名且公网畅通
-// arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: matches(/ain/g)
+// arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // arg2: 指定转发给客户端的alist地址
 const cilentSelfAlistRule = [
   [2, "115.com", alistPublicAddr],
