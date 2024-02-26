@@ -58,7 +58,7 @@ async function getPlexItemInfo(r) {
   	itemInfoUri = `${plexHost}${path}?${plexTokenKey}=${api_key}`;
   } else {
   	// see: location ~* /library/parts/(\d+)/(\d+)/file
-    filePath = ngx.shared.PartInfo.get(r.uri);
+    filePath = ngx.shared.partInfoDict.get(r.uri);
     r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
     if (!filePath) {
       const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${plexTokenKey}=${api_key}`);

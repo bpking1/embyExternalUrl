@@ -44,19 +44,44 @@ const disableRedirectRule = [
 // !!!实验功能,转码分流,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
 // 使用条件很苛刻,主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
 // 转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,embyApiKey也是一致的
-const enableTranscodeBlance = false;
+const transcodeBalanceConfig = {
+  enable: false,
+  // method: "least_conn",
+  server: [
+    {
+      host: "http://172.17.0.1:8096",
+      apiKey: "f839390f50a648fd92108bc11ca6730a",
+      weight: 1
+    },
+    {
+      host: "http://172.17.0.2:8096",
+      apiKey: "f839390f50a648fd92108bc11ca6730a",
+      weight: 2
+    }
+  ]
+};
+// 图片缓存策略,包括主页、详情页、图片库的原图,路由器nginx请手动调小conf中proxy_cache_path的max_size
+// 0: 不同尺寸设备共用一份缓存,先访问先缓存,空间占用最小但存在小屏先缓存大屏看的图片模糊问题
+// 1: 不同尺寸设备分开缓存,空间占用适中,命中率低下,但契合emby的图片缩放处理
+// 2: 不同尺寸设备共用一份缓存,空间占用最大,移除emby的缩放参数,直接原图高清显示
+const imageCachePolicy = 0;
+
 // 对接emby通知管理员设置,目前只发送是否直链成功
 const embyNotificationsAdmin = {
-  "Enable": false,
-  "IncludeUrl": false, // 链接太长,默认关闭
-  "Name": "【emby2Alist】",
+  enable: false,
+  includeUrl: false, // 链接太长,默认关闭
+  name: "【emby2Alist】",
 };
 
+// for js_set
 function getEmbyHost(r) {
   return embyHost;
 }
 function getEnableTranscodeBlance(r) {
   return enableTranscodeBlance;
+}
+function getImageCachePolicy(r) {
+  return imageCachePolicy;
 }
 
 export default {
@@ -70,6 +95,8 @@ export default {
   cilentSelfAlistRule,
   embyPathMapping,
   embyNotificationsAdmin,
+  transcodeBalanceConfig,
   getEmbyHost,
-  getEnableTranscodeBlance
+  getEnableTranscodeBlance,
+  getImageCachePolicy
 }

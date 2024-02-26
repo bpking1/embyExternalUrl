@@ -206,10 +206,10 @@ async function cachePartInfo(r) {
   body.MediaContainer.Metadata.forEach(metadata => {
     metadata.Media.forEach(media => {
       media.Part.forEach(part => {
-        const preValue = ngx.shared.PartInfo.get(part.key);
+        const preValue = ngx.shared.partInfoDict.get(part.key);
         if (!preValue || (!!preValue && preValue != part.file)) {
           const filePath = part.file;
-          ngx.shared.PartInfo.add(part.key, filePath);
+          ngx.shared.partInfoDict.add(part.key, filePath);
           r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
         }
       });
