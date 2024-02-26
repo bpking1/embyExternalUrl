@@ -77,8 +77,8 @@ const embyNotificationsAdmin = {
 function getEmbyHost(r) {
   return embyHost;
 }
-function getEnableTranscodeBlance(r) {
-  return enableTranscodeBlance;
+function getEnableTranscodeBalance(r) {
+  return transcodeBalanceConfig.enable;
 }
 function getImageCachePolicy(r) {
   return imageCachePolicy;
@@ -97,6 +97,6 @@ export default {
   embyNotificationsAdmin,
   transcodeBalanceConfig,
   getEmbyHost,
-  getEnableTranscodeBlance,
+  getEnableTranscodeBalance,
   getImageCachePolicy
 }
