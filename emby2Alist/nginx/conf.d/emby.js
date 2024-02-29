@@ -137,9 +137,9 @@ async function transferPlaybackInfo(r) {
       source.DirectStreamUrl = util.addDefaultApiKey(
         r,
         util
-          .generateUrl(r, "", r.uri, true)
+          .generateUrl(r, "", r.uri)
           .replace("/emby/Items", "/videos")
-          .replace("PlaybackInfo", `stream.${source.Container}`)
+          .replace("PlaybackInfo", `${source.Name}.${source.Container}`)
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
@@ -151,6 +151,8 @@ async function transferPlaybackInfo(r) {
         "Static",
         "true"
       );
+      // a few players not support special character
+      source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
       r.warn(`remove transcode config`);
       source.SupportsTranscoding = false;
       if (source.TranscodingUrl) {

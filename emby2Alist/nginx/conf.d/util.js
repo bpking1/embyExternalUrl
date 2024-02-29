@@ -20,14 +20,10 @@ function addDefaultApiKey(r, u) {
   return url;
 }
 
-function generateUrl(r, host, uri, ignoreSpChar) {
+function generateUrl(r, host, uri) {
   let url = host + uri;
   let isFirst = true;
   for (const key in r.args) {
-    // a few players not support special character
-    if (ignoreSpChar && (key === "X-Emby-Client" || key === "X-Emby-Device-Name")) {
-      continue;
-    }
     url += isFirst ? "?" : "&";
     url += `${key}=${r.args[key]}`;
     isFirst = false;
