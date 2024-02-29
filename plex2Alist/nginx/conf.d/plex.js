@@ -204,16 +204,18 @@ async function cachePartInfo(r) {
   const res = await r.subrequest(proxyUri);
   const body = JSON.parse(res.responseText);
   body.MediaContainer.Metadata.forEach(metadata => {
-    metadata.Media.forEach(media => {
-      media.Part.forEach(part => {
-        const preValue = ngx.shared.partInfoDict.get(part.key);
-        if (!preValue || (!!preValue && preValue != part.file)) {
-          const filePath = part.file;
-          ngx.shared.partInfoDict.add(part.key, filePath);
-          r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
-        }
+    if (!!metadata.Media) {
+      metadata.Media.forEach(media => {
+        media.Part.forEach(part => {
+          const preValue = ngx.shared.partInfoDict.get(part.key);
+          if (!preValue || (!!preValue && preValue != part.file)) {
+            const filePath = part.file;
+            ngx.shared.partInfoDict.add(part.key, filePath);
+            r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
+          }
+        });
       });
-    });
+    }
   });
   for (const key in res.headersOut) {
     r.headersOut[key] = res.headersOut[key];
