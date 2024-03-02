@@ -4,6 +4,58 @@ date: 2021/09/06 22:00:00
 ---
 
 ### 文章更新记录 
+2024/03/01
+
+1.串流地址加入媒体文件名方便标识和字幕匹配
+
+2.添加图片缓存策略可选配置项
+
+2024/01/20
+
+1.添加实验功能,转码分流
+
+2023/12/31
+
+1.115的302需要alist最新版v3.30.0,由于115直链并没有响应允许跨域标识,所以只能用客户端播放,测试emby所有官方客户端和第三方客户端支持跨域,~~不支持跨域的播放为Web浏览器...~~
+
+2.115播放形式为响应302到原始alist链接,由alist再302一次到直链
+
+3.Web浏览器被跨域拦截请使用拓展解决
+https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbiafapkbbnbnjcdomjaghbckfkglc
+````
+[
+    {
+        "respHeaders": [
+            {
+                "enabled": true,
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+            }
+        ],
+        "shortTitle": "1",
+        "title": "CORS Support",
+        "urlFilters": [
+            {
+                "enabled": true,
+                "urlRegex": "*.115.com"
+            }
+        ],
+        "version": 2
+    }
+]
+````
+![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/3ea94076-829f-4542-88e2-3221b9a8c8f4)
+
+4.添加部分可选配置项,对接emby/jellyfin通知管理员设置,方便排查直链情况
+
+2023/10/02
+
+1.支持strm文件的直链
+
+2023/09/28
+
+1.实现客户端直链下载
+
 2023/2/2
 
 升级到alist v3了，脚本github地址 [bpking1/embyExternalUrl (github.com)](https://github.com/bpking1/embyExternalUrl)
