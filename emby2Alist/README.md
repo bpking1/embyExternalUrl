@@ -1,5 +1,5 @@
 ---
-title: emby挂载阿里盘转直链
+title: emby挂载alist转直链
 date: 2021/09/06 22:00:00
 ---
 
@@ -11,21 +11,31 @@ date: 2021/09/06 22:00:00
 调用外部播放器的油猴脚本账号无法登陆了，换了个新地址:[embyLaunchPotplayer (greasyfork.org)](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
 2022/5/13
+
 1.兼容jellyfin
+
 2.解决infuse无法播放的问题,感谢@amwamw968
+
 3.用nignx添加了字幕文件的缓存支持
 
 2022/1/12
+
 1.重写了js脚本,支持rclone union,不再需要挂载名和alist盘名一致,不再需要设置emby api_key
+
 2.修复了js脚本不能正确获取同一个视频不同清晰度版本的问题
 
 2021/12/06
 
 1.alist项目作者最近的更新中加入了阿里云盘之外的网盘的支持,且不在需要刷新目录
+
 2.换了另外一个用rust语言写的阿里盘webdav项目,内存占用很小
+
 3.修改了njs脚本中的正则,来修复emby魔改客户端terminusPlayer没有走直链
+
 4.修改nginx配置修复了阿里云盘直链无法在emby web中播放
+
 5.修复了由于反代无法使用jellyfin-mpv-shim直链播放
+
 6.用nignx添加了emby图片的缓存支持
 
 ## 这篇文章的受众:
@@ -115,7 +125,6 @@ web端各大浏览器对音频和视频编码支持情况不一,碰到不支持�
 
 ## 已知问题:
 1. emby web播放时如果需要使用内封的字幕,实际上是需要embyServer在后台用ffmpeg去提取的,ffmpeg要读取整个视频文件才能获取所有的字幕流,相当于几乎整个视频文件都要通过rclone下载,并且消耗cpu资源,对于比较大的视频文件是不现实的,所以web端建议使用外挂字幕
-2. 
-~~google Drive由于api的限制直链只能通过server中转,所以还是建议在cf上搭建goindex来获取直链 ,如何给到emby请参考 这篇[文章](https://blog.738888.xyz/2021/09/09/emby%E6%8C%82%E8%BD%BD%E7%BD%91%E7%9B%98%E8%BD%AC%E7%9B%B4%E9%93%BE%E6%92%AD%E6%94%BE/)结尾,另外一种方法是给alist添加cf worker中转gd的支持,有待研究~~
+2. ~~google Drive由于api的限制直链只能通过server中转,所以还是建议在cf上搭建goindex来获取直链 ,如何给到emby请参考 这篇[文章](https://blog.738888.xyz/2021/09/09/emby%E6%8C%82%E8%BD%BD%E7%BD%91%E7%9B%98%E8%BD%AC%E7%9B%B4%E9%93%BE%E6%92%AD%E6%94%BE/)结尾,另外一种方法是给alist添加cf worker中转gd的支持,有待研究~~
 alist新版已经支持cf worker代理gd下载了,详情参考alist文档
 3. 可能会有其他问题,请留言
