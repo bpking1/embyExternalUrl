@@ -139,7 +139,9 @@ async function transferPlaybackInfo(r) {
         util
           .generateUrl(r, "", r.uri)
           .replace("/emby/Items", "/videos")
-          .replace("PlaybackInfo", `${source.Name}.${source.Container}`)
+          // origin link: /emby/videos/401929/stream.xxx?xxx
+          // compatible modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+          .replace("PlaybackInfo", `stream/${source.Name}.${source.Container}`)
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
