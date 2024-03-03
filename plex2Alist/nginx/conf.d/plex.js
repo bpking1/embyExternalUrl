@@ -2,20 +2,20 @@
 //查看日志: "docker logs -f -n 10 plex-nginx 2>&1  | grep js:"
 import config from "./constant.js";
 import util from "./util.js";
+const xml = require("xml");
 
 async function redirect2Pan(r) {
   const plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  // fetch mount plex file path
+  const filePath = r.args[util.filePathKey];
+
+  let mediaServerRes = {path: filePath};
   let start = Date.now();
-  const itemInfo = await util.getPlexItemInfo(r);
-  let end = Date.now();
-  let mediaServerRes;
-  if (itemInfo.filePath) {
-    mediaServerRes = {path: itemInfo.filePath};
-    r.warn(`${end - start}ms, itemInfoUri: ${itemInfo.itemInfoUri}`);
-  } else {
+  let end;
+  if (!filePath) {
+    // fetch mount plex file path
+    const itemInfo = await util.getPlexItemInfo(r);
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
     mediaServerRes = await fetchPlexFilePath(
       itemInfo.itemInfoUri, 
@@ -28,8 +28,8 @@ async function redirect2Pan(r) {
       r.error(mediaServerRes.message);
       return r.return(500, mediaServerRes.message);
     }
+    r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   }
-  r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
 
   if (util.isDisableRedirect(r, mediaServerRes.path)) {
     r.warn(`mediaServerRes hit isDisableRedirect`);
@@ -198,30 +198,111 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   }
 }
 
-async function cachePartInfo(r) {
-  // replay the request
-  const proxyUri = util.proxyUri(r.uri);
-  const res = await r.subrequest(proxyUri);
-  const body = JSON.parse(res.responseText);
-  body.MediaContainer.Metadata.forEach(metadata => {
-    if (!!metadata.Media) {
-      metadata.Media.forEach(media => {
-        media.Part.forEach(part => {
-          const preValue = ngx.shared.partInfoDict.get(part.key);
-          if (!preValue || (!!preValue && preValue != part.file)) {
-            const filePath = part.file;
-            ngx.shared.partInfoDict.add(part.key, filePath);
-            r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
-          }
+// plex only
+let allData = "";
+async function partKeyAddFilePath(r, data, flags) {
+  const contentType = r.headersOut["Content-Type"];
+  if (contentType.includes("application/json")) {
+    partKeyAddFilePathForJson(r, data, flags);
+  } else if (contentType.includes("text/xml")) {
+    // only like android client use xml, web and third party clients use json
+    partKeyAddFilePathForXml(r, data, flags);
+  } else {
+    r.sendBuffer(data, flags);
+  }
+}
+
+async function partKeyAddFilePathForJson(r, data, flags) {
+  allData += data;
+  if (flags.last) {
+  	let body = JSON.parse(allData);
+  	const MediaContainer = body.MediaContainer;
+    if (MediaContainer.size > 0) {
+      let metadataArr = [];
+      if (!!MediaContainer.Hub) {
+        MediaContainer.Hub.map(hub => {
+          hub.Metadata.map(metadata => {
+            metadataArr.push(metadata);
+          });
         });
+      } else {
+        MediaContainer.Metadata.map(metadata => {
+          metadataArr.push(metadata);
+        });
+      }
+      metadataArr.map(metadata => {
+        // Metadata.key prohibit modify, clients not supported
+        if (!!metadata.Media) {
+          metadata.Media.map(media => {
+            if (!!media.Part) {
+              media.Part.map(part => {
+                // Part.key can modify, clients supported
+                part.key += `?${util.filePathKey}=${part.file}`;
+              });
+            }
+            });
+        }
       });
     }
-  });
-  for (const key in res.headersOut) {
-    r.headersOut[key] = res.headersOut[key];
+  	r.sendBuffer(JSON.stringify(body), flags);
   }
-  r.return(res.status, JSON.stringify(body));
 }
+
+async function partKeyAddFilePathForXml(r, data, flags) {
+  allData += data;
+  if (flags.last) {
+    let body = xml.parse(allData);
+    const mediaContainerXmlDoc = body.MediaContainer;
+    let videoXmlNodeArr = mediaContainerXmlDoc.$tags$Video;
+    let mediaXmlNodeArr;
+    let partXmlNodeArr;
+    // r.log(videoXmlNodeArr.length);
+    if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
+    	videoXmlNodeArr.map(video => {
+    		// Video.key prohibit modify, clients not supported
+    		mediaXmlNodeArr = video.$tags$Media;
+    		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
+    			mediaXmlNodeArr.map(media => {
+    				partXmlNodeArr = media.$tags$Part;
+    				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
+    					partXmlNodeArr.map(part => {
+    						// Part.key can modify, clients supported
+                			part.$attr$key += `?${util.filePathKey}=${part.$attr$file}`;
+    					});
+    				}
+    			});
+    		}
+    	});
+    }
+    // r.log(JSON.stringify(body.MediaContainer.$tags$Video.length));
+    r.sendBuffer(xml.serialize(body), flags);
+  }
+}
+
+// async function cachePartInfo(r) {
+//   // replay the request
+//   const proxyUri = util.proxyUri(r.uri);
+//   const res = await r.subrequest(proxyUri);
+//   const body = JSON.parse(res.responseText);
+//   body.MediaContainer.Metadata.forEach(metadata => {
+//     if (!!metadata.Media) {
+//       metadata.Media.forEach(media => {
+//         media.Part.forEach(part => {
+//           const preValue = ngx.shared.partInfoDict.get(part.key);
+//           if (!preValue || (!!preValue && preValue != part.file)) {
+//             const filePath = part.file;
+//             ngx.shared.partInfoDict.add(part.key, filePath);
+//             r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
+//           }
+//         });
+//       });
+//     }
+//   });
+//   for (const key in res.headersOut) {
+//     r.headersOut[key] = res.headersOut[key];
+//   }
+//   r.return(res.status, JSON.stringify(body));
+// }
 
 function redirect(r, uri) {
   r.warn(`redirect to: ${uri}`);
@@ -235,4 +316,4 @@ function internalRedirect(r) {
   r.internalRedirect(util.proxyUri(r.uri));
 }
 
-export default { redirect2Pan, fetchPlexFilePath, cachePartInfo };
+export default { redirect2Pan, fetchPlexFilePath, partKeyAddFilePath };
