@@ -1,5 +1,5 @@
 // export constant allocation
-// 必填项,根据实际情况修改下面的设置!!!此版本需要njs>=0.8.0,直接nginx:latest即可
+// 必填项,根据实际情况修改下面的设置
 // 这里默认plex的地址是宿主机,要注意iptables给容器放行端口
 const plexHost = "http://172.17.0.1:32400";
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
