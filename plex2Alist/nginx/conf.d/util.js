@@ -1,8 +1,6 @@
 import config from "./constant.js";
 
 const plexTokenKey = "X-Plex-Token";
-const filePathKey = "filePath";
-
 // copy from emby2Alist/nginx/conf.d/util.js
 function proxyUri(uri) {
   return `/proxy${uri}`;
@@ -39,14 +37,13 @@ function strMatches(type, searchValue, matcher) {
 }
 
 // plex only
-
-// function getFileNameByHead(contentDisposition) {
-//   if (contentDisposition && contentDisposition.length > 0) {
-//     const regex = /filename[^;\n]*=(UTF-\d['"]*)?((['"]).*?[.]$\2|[^;\n]*)?/gi;
-//     return contentDisposition.match(regex)[1].replace("filename*=UTF-8''", "");
-//   }
-//   return null;
-// }
+function getFileNameByHead(contentDisposition) {
+  if (contentDisposition && contentDisposition.length > 0) {
+    const regex = /filename[^;\n]*=(UTF-\d['"]*)?((['"]).*?[.]$\2|[^;\n]*)?/gi;
+    return contentDisposition.match(regex)[1].replace("filename*=UTF-8''", "");
+  }
+  return null;
+}
 
 async function getPlexItemInfo(r) {
   const plexHost = config.plexHost;
@@ -54,56 +51,45 @@ async function getPlexItemInfo(r) {
   const mediaIndex = r.args.mediaIndex;
   const partIndex = r.args.partIndex;
   const api_key = r.args[plexTokenKey];
-  const itemInfoUri = `${plexHost}${path}?${plexTokenKey}=${api_key}`;
-  return { itemInfoUri, mediaIndex, partIndex, api_key };
+  let filePath;
+  let itemInfoUri = "";
+  if (path) {
+	  // see: location ~* /video/:/transcode/universal/start
+  	itemInfoUri = `${plexHost}${path}?${plexTokenKey}=${api_key}`;
+  } else {
+  	// see: location ~* /library/parts/(\d+)/(\d+)/file
+    filePath = ngx.shared.partInfoDict.get(r.uri);
+    r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
+    if (!filePath) {
+      const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${plexTokenKey}=${api_key}`);
+      if (!plexRes.startsWith("error")) {
+        const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
+        itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${plexTokenKey}=${api_key}`;
+      } else {
+        r.warn(plexRes);
+      }
+    }
+  }
+  return { filePath, itemInfoUri, mediaIndex, partIndex, api_key };
 }
 
-// async function getPlexItemInfo(r) {
-//   const plexHost = config.plexHost;
-//   const path = r.args.path;
-//   const mediaIndex = r.args.mediaIndex;
-//   const partIndex = r.args.partIndex;
-//   const api_key = r.args[plexTokenKey];
-//   let filePath;
-//   let itemInfoUri = "";
-//   if (path) {
-// 	  // see: location ~* /video/:/transcode/universal/start
-//   	itemInfoUri = `${plexHost}${path}?${plexTokenKey}=${api_key}`;
-//   } else {
-//   	// see: location ~* /library/parts/(\d+)/(\d+)/file
-//     filePath = ngx.shared.partInfoDict.get(r.uri);
-//     r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
-//     if (!filePath) {
-//       const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${plexTokenKey}=${api_key}`);
-//       if (!plexRes.startsWith("error")) {
-//         const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
-//         itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${plexTokenKey}=${api_key}`;
-//       } else {
-//         r.warn(plexRes);
-//       }
-//     }
-//   }
-//   return { filePath, itemInfoUri, mediaIndex, partIndex, api_key };
-// }
-
-// async function fetchPlexFileFullName(downloadApiPath) {
-//   try {
-//     const response = await ngx.fetch(downloadApiPath, {
-//       method: "HEAD",
-//       max_response_body_size: 858993459200 // 100Gb,not important,because HEAD method not have body
-//     });
-//     if (response.ok) {
-//       return getFileNameByHead(decodeURI(response.headers["Content-Disposition"]));
-//     } else {
-//       return `error: plex_download_api ${response.status} ${response.statusText}`;
-//     }
-//   } catch (error) {
-//     return `error: plex_download_api fetchPlexFileNameFiled ${error}`;
-//   }
-// }
+async function fetchPlexFileFullName(downloadApiPath) {
+  try {
+    const response = await ngx.fetch(downloadApiPath, {
+      method: "HEAD",
+      max_response_body_size: 858993459200 // 100Gb,not important,because HEAD method not have body
+    });
+    if (response.ok) {
+      return getFileNameByHead(decodeURI(response.headers["Content-Disposition"]));
+    } else {
+      return `error: plex_download_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: plex_download_api fetchPlexFileNameFiled ${error}`;
+  }
+}
 
 export default {
-  filePathKey,
   proxyUri,
   isDisableRedirect,
   strMatches,
