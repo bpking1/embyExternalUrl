@@ -1,5 +1,7 @@
 import config from "./constant.js";
 
+const filePathKey = "filePath";
+
 function proxyUri(uri) {
   return `/proxy${uri}`;
 }
@@ -66,6 +68,10 @@ function strMatches(type, searchValue, matcher) {
   return false;
 }
 
+function checkIsRemoteStrm(protocol, filePath) {
+  return "File" != protocol && filePath.toLowerCase().endsWith(".strm");
+}
+
 function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
@@ -93,6 +99,7 @@ function getItemInfo(r) {
 }
 
 export default {
+  filePathKey,
   appendUrlArg,
   addDefaultApiKey,
   proxyUri,
@@ -100,5 +107,6 @@ export default {
   generateUrl,
   isDisableRedirect,
   strMatches,
+  checkIsRemoteStrm,
   getCurrentRequestUrl
 };

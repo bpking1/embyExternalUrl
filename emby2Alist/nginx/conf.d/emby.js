@@ -7,21 +7,33 @@ async function redirect2Pan(r) {
   const embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  // fetch mount emby/jellyfin file path
-  const itemInfo = util.getItemInfo(r);
-  r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+  const filePath = r.args[util.filePathKey];
+  const protocol = r.args["protocol"];
+
+  let embyRes = {
+    "protocol": protocol,
+    "path": filePath,
+    "isRemoteStrm": util.checkIsRemoteStrm(protocol, filePath)
+  };
   let start = Date.now();
-  const embyRes = await fetchEmbyFilePath(
-    itemInfo.itemInfoUri, 
-    itemInfo.itemId, 
-    itemInfo.Etag, 
-    itemInfo.mediaSourceId
-  );
   let end = Date.now();
-  r.log(`embyRes: ${JSON.stringify(embyRes)}`);
-  if (embyRes.message.startsWith("error")) {
-    r.error(embyRes.message);
-    return r.return(500, embyRes.message);
+  if (!filePath) {
+    // fetch mount emby/jellyfin file path
+    const itemInfo = util.getItemInfo(r);
+    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+    start = Date.now();
+    embyRes = await fetchEmbyFilePath(
+      itemInfo.itemInfoUri, 
+      itemInfo.itemId, 
+      itemInfo.Etag, 
+      itemInfo.mediaSourceId
+    );
+    end = Date.now();
+    r.log(`embyRes: ${JSON.stringify(embyRes)}`);
+    if (embyRes.message.startsWith("error")) {
+      r.error(embyRes.message);
+      return r.return(500, embyRes.message);
+    }
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
@@ -42,7 +54,7 @@ async function redirect2Pan(r) {
   });
   r.warn(`mapped emby file path: ${alistFilePath}`);
 
-  // strm file inner remote link direct,like: http,rtsp
+  // strm file inner remote link redirect,like: http,rtsp
   if (embyRes.isRemoteStrm) {
     r.warn(`!!!warnning remote strm file protocol: ${embyRes.protocol}`);
     return redirect(r, alistFilePath);
@@ -152,6 +164,17 @@ async function transferPlaybackInfo(r) {
         source.DirectStreamUrl,
         "Static",
         "true"
+      );
+      // addFilePath cache to clients
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        util.filePathKey,
+        source.Path
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "protocol",
+        source.Protocol
       );
       // a few players not support special character
       source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
@@ -281,7 +304,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           }
           rvt.protocol = mediaSource.Protocol;
           rvt.path = mediaSource.Path;
-          rvt.isRemoteStrm = "File" != rvt.protocol && item.Path.toLowerCase().endsWith(".strm");
+          rvt.isRemoteStrm = util.checkIsRemoteStrm(rvt.protocol, item.Path);
           // remote strm file internal text need encodeURI
           if (rvt.isRemoteStrm) {
             rvt.path = encodeURI(decodeURI(rvt.path));

@@ -12,7 +12,7 @@ async function redirect2Pan(r) {
 
   let mediaServerRes = {path: filePath};
   let start = Date.now();
-  let end;
+  let end = Date.now();
   if (!filePath) {
     // fetch mount plex file path
     const itemInfo = await util.getPlexItemInfo(r);
@@ -28,8 +28,8 @@ async function redirect2Pan(r) {
       r.error(mediaServerRes.message);
       return r.return(500, mediaServerRes.message);
     }
-    r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   }
+  r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
 
   if (util.isDisableRedirect(r, mediaServerRes.path)) {
     r.warn(`mediaServerRes hit isDisableRedirect`);
