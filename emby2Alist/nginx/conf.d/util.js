@@ -69,6 +69,9 @@ function strMatches(type, searchValue, matcher) {
 }
 
 function checkIsRemoteStrm(protocol, filePath) {
+  if (!protocol || !filePath) {
+    return false;
+  }
   return "File" != protocol && filePath.toLowerCase().endsWith(".strm");
 }
 
