@@ -6,8 +6,8 @@ date: 2023/11/04 22:00:00
 ### 文章更新记录 
 2024/03/07
 1.测试并添加https相关示例,plex情况特殊,服务端必须设置-网络-自定义服务器访问 URL: https://自己的域名:自己的端口号,以发布到plex.tv发现服务器,客户端保持默认设置,不用更改高级设置-自定义ip和端口,高级设置-允许非加密连接-永不
-![alt text](image.png)
-![alt text](image-2.png)
+![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/5efd2df2-33ba-4dc5-9aff-707f25022a9d)
+![image-2](https://github.com/chen3861229/embyExternalUrl/assets/42368856/0431fcc9-9c08-4ccb-af88-71614df5b9c1)
 
 2.Web端还会提示部分内容不安全,无视即可,是plex的设计问题,可自行查找xxx.plex.direct:端口号,关键字解决
 
