@@ -229,10 +229,14 @@ function redirect(r, uri) {
   r.return(302, uri);
 }
 
-function internalRedirect(r) {
-  r.warn(`use original link`);
+function internalRedirect(r, uri) {
+  if (!uri) {
+    uri = "@root";
+    r.warn(`use original link`);
+  }
+  r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
-  r.internalRedirect(util.proxyUri(r.uri));
+  r.internalRedirect(uri);
 }
 
 export default { redirect2Pan, fetchPlexFilePath, cachePartInfo };
