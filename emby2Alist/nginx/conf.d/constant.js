@@ -73,6 +73,17 @@ const embyNotificationsAdmin = {
   name: "【emby2Alist】",
 };
 
+// 按规则隐藏搜索接口返回的items
+// arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// arg2: emby/jellyfin path
+const itemHiddenRule = [
+  // [0, "/mnt/sda1"],
+  // [1, ".mp3"],
+  // [2, "Google"],
+  // [2, "/NAS/", true],
+  // [3, /private/ig],
+];
+
 // for js_set
 function getEmbyHost(r) {
   return embyHost;
@@ -95,6 +106,7 @@ export default {
   cilentSelfAlistRule,
   embyPathMapping,
   embyNotificationsAdmin,
+  itemHiddenRule,
   transcodeBalanceConfig,
   getEmbyHost,
   getEnableTranscodeBalance,

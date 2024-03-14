@@ -3,6 +3,8 @@
 import config from "./constant.js";
 import util from "./util.js";
 
+let allData = "";
+
 async function redirect2Pan(r) {
   const embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
@@ -343,6 +345,31 @@ async function fetchEmbyNotificationsAdmin(description) {
   }
 }
 
+function itemsFilter(r, data, flags) {
+  allData += data;
+  if (flags.last) {
+    r.log(`itemsFilter: ${allData}, flags: ${JSON.stringify(flags)}`);
+    let body = JSON.parse(allData);
+    r.log(`flags: ${JSON.stringify(flags)}, itemsFilter: ${body.Items.length}`);
+    const itemHiddenRule = config.itemHiddenRule;
+    if (!!body.Items && itemHiddenRule.length > 0) {
+      body.Items = body.Items.filter(item => {
+        if (!item.Path) {
+          return true;
+        }
+        return !itemHiddenRule.some(rule => {
+          if (util.strMatches(rule[0], item.Path, rule[1])) {
+            r.warn(`item.Path hit itemHiddenRule: ${item.Path}`);
+            return true;
+          }
+        });
+      });
+    }
+    r.log(`flags: ${JSON.stringify(flags)}, itemsFilter: ${body.Items.length}`);
+	  r.sendBuffer(JSON.stringify(body), flags);
+  }
+}
+
 function redirect(r, uri) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
@@ -373,4 +400,4 @@ function internalRedirect(r, uri) {
   }
 }
 
-export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, redirect, internalRedirect };
+export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, itemsFilter, redirect, internalRedirect };
