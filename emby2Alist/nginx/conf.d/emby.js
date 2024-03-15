@@ -72,6 +72,7 @@ async function redirect2Pan(r) {
   );
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi`);
+  r.warn(`alistRes: ${alistRes}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true)) {
       r.warn(`alistRes hit isDisableRedirect`);
@@ -85,6 +86,7 @@ async function redirect2Pan(r) {
     return r.return(403, alistRes);
   }
   if (alistRes.startsWith("error500")) {
+    r.warn(`will req alist /api/fs/list to search`);
     const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;
     const foldersRes = await fetchAlistPathApi(
