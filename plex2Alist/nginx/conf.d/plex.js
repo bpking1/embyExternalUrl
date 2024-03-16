@@ -4,7 +4,7 @@ import config from "./constant.js";
 import util from "./util.js";
 
 async function redirect2Pan(r) {
-  const plexPathMapping = config.plexPathMapping;
+  let plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   // fetch mount plex file path
@@ -39,19 +39,20 @@ async function redirect2Pan(r) {
 
   // file path mapping
   r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
-  config.plexMountPath.map(o => {
-    plexPathMapping.unshift([o, ""]);
+  config.plexMountPath.map(s => {
+    plexPathMapping.unshift([s, ""]);
   });
-  let alistFilePath = mediaServerRes.path;
+  let mediaItemPath = mediaServerRes.path;
   plexPathMapping.map(arr => {
-    alistFilePath = alistFilePath.replace(arr[0], arr[1]);
+    mediaItemPath = mediaItemPath.replace(arr[0], arr[1]);
   });
+  const alistFilePath = mediaItemPath;
   r.warn(`mapped plex file path: ${alistFilePath}`);
 
   // fetch alist direct link
   start = Date.now();
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  let alistRes = await fetchAlistPathApi(
+  const alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
     alistToken
@@ -73,7 +74,8 @@ async function redirect2Pan(r) {
   }
   if (alistRes.startsWith("error500")) {
     r.warn(`will req alist /api/fs/list to search`);
-    const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
+    // const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
+    const filePath = alistFilePath;
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;
     const foldersRes = await fetchAlistPathApi(
       alistFsListApiPath,

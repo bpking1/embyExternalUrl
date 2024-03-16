@@ -6,7 +6,7 @@ import util from "./util.js";
 let allData = "";
 
 async function redirect2Pan(r) {
-  const embyPathMapping = config.embyPathMapping;
+  let embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const filePath = r.args[util.filePathKey];
@@ -47,13 +47,14 @@ async function redirect2Pan(r) {
 
   // file path mapping
   r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
-  config.embyMountPath.map(o => {
-    embyPathMapping.unshift([o, ""]);
+  config.embyMountPath.map(s => {
+    embyPathMapping.unshift([s, ""]);
   });
-  let alistFilePath = embyRes.path;
+  let embyItemPath = embyRes.path;
   embyPathMapping.map(arr => {
-    alistFilePath = alistFilePath.replace(arr[0], arr[1]);
+    embyItemPath = embyItemPath.replace(arr[0], arr[1]);
   });
+  const alistFilePath = embyItemPath;
   r.warn(`mapped emby file path: ${alistFilePath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
@@ -65,7 +66,7 @@ async function redirect2Pan(r) {
   // fetch alist direct link
   start = Date.now();
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  let alistRes = await fetchAlistPathApi(
+  const alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
     alistToken
@@ -87,7 +88,8 @@ async function redirect2Pan(r) {
   }
   if (alistRes.startsWith("error500")) {
     r.warn(`will req alist /api/fs/list to search`);
-    const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
+    // const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
+    const filePath = alistFilePath;
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;
     const foldersRes = await fetchAlistPathApi(
       alistFsListApiPath,
@@ -227,9 +229,11 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
         return `error: alist_path_api response is null`;
       }
       if (result.message == "success") {
+        // alist /api/fs/get
         if (result.data.raw_url) {
           return handleAlistRawUrl(result, alistFilePath);
         }
+        // alist /api/fs/list
         return result.data.content.map((item) => item.name).join(",");
       }
       if (result.code == 403) {
