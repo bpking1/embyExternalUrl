@@ -130,9 +130,11 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
         return `error: alist_path_api response is null`;
       }
       if (result.message == "success") {
+        // alist /api/fs/get
         if (result.data.raw_url) {
           return handleAlistRawUrl(result, alistFilePath);
         }
+        // alist /api/fs/list
         return result.data.content.map((item) => item.name).join(",");
       }
       if (result.code == 403) {

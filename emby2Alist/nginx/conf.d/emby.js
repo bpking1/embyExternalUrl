@@ -3,8 +3,6 @@
 import config from "./constant.js";
 import util from "./util.js";
 
-let allData = "";
-
 async function redirect2Pan(r) {
   let embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
@@ -351,29 +349,67 @@ async function fetchEmbyNotificationsAdmin(description) {
   }
 }
 
-function itemsFilter(r, data, flags) {
-  allData += data;
-  if (flags.last) {
-    r.log(`itemsFilter: ${allData}, flags: ${JSON.stringify(flags)}`);
-    let body = JSON.parse(allData);
-    r.log(`flags: ${JSON.stringify(flags)}, itemsFilter: ${body.Items.length}`);
-    const itemHiddenRule = config.itemHiddenRule;
-    if (!!body.Items && itemHiddenRule.length > 0) {
-      body.Items = body.Items.filter(item => {
-        if (!item.Path) {
+async function itemsFilter(r) {
+  r.variables.request_uri += "&Fields=Path";
+  const subR = await r.subrequest(util.proxyUri(r.uri));
+  let body;
+  if (subR.status === 200) {
+  	body = JSON.parse(subR.responseText);
+  } else {
+  	r.warn("itemsFilter subrequest failed");
+	  return internalRedirect(r);
+  }
+  let totalRecordCount = body.Items.length;
+  r.warn(`itemsFilter before: ${totalRecordCount}`);
+
+  const flag = r.variables.flag;
+  r.warn(`itemsFilter flag: ${flag}`);
+  let mainItemPath;
+  if (flag == "itemsFilter2") {
+    // fetch mount emby/jellyfin file path
+    const itemInfo = util.getItemInfo(r);
+    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+    const start = Date.now();
+    const embyRes = await fetchEmbyFilePath(
+      itemInfo.itemInfoUri, 
+      itemInfo.itemId, 
+      itemInfo.Etag, 
+      itemInfo.mediaSourceId
+    );
+    mainItemPath = embyRes.path;
+    const end = Date.now();
+    r.warn(`${end - start}ms, mainItemPath: ${mainItemPath}`);
+  }
+
+  const itemHiddenRule = config.itemHiddenRule;
+  if (!!body.Items && itemHiddenRule.length > 0) {
+    body.Items = body.Items.filter(item => {
+      if (!item.Path) {
+        return true;
+      }
+      return !itemHiddenRule.some(rule => {
+        if ((!rule[2] || rule[2] == 0) && !!mainItemPath 
+          && util.strMatches(rule[0], mainItemPath, rule[1])) {
+          return false;
+        }
+        if (util.strMatches(rule[0], item.Path, rule[1])) {
+          r.warn(`itemPath hit itemHiddenRule: ${item.Path}`);
           return true;
         }
-        return !itemHiddenRule.some(rule => {
-          if (util.strMatches(rule[0], item.Path, rule[1])) {
-            r.warn(`item.Path hit itemHiddenRule: ${item.Path}`);
-            return true;
-          }
-        });
       });
-    }
-    r.log(`flags: ${JSON.stringify(flags)}, itemsFilter: ${body.Items.length}`);
-	  r.sendBuffer(JSON.stringify(body), flags);
+    });
   }
+  totalRecordCount = body.Items.length;
+  r.warn(`itemsFilter after: ${totalRecordCount}`);
+  body.TotalRecordCount = totalRecordCount;
+  for (const key in subR.headersOut) {
+	  if (key === "Content-Length") {
+	    // auto generate content length
+	    continue;
+	  }
+	  r.headersOut[key] = subR.headersOut[key];
+	}
+  return r.return(200, JSON.stringify(body));
 }
 
 function redirect(r, uri) {
