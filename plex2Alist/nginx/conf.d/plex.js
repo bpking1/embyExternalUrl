@@ -51,15 +51,16 @@ async function redirect2Pan(r) {
 
   // fetch alist direct link
   start = Date.now();
+  const ua = r.headersIn["User-Agent"];
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
   const alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
-    alistToken
+    alistToken,
+    ua,
   );
   end = Date.now();
-  r.warn(`${end - start}ms, fetchAlistPathApi`);
-  r.warn(`alistRes: ${alistRes}`);
+  r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true)) {
       r.warn(`alistRes hit isDisableRedirect`);
@@ -68,6 +69,7 @@ async function redirect2Pan(r) {
     }
     return redirect(r, alistRes);
   }
+  r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {
     r.error(alistRes);
     return r.return(403, alistRes);
@@ -80,7 +82,8 @@ async function redirect2Pan(r) {
     const foldersRes = await fetchAlistPathApi(
       alistFsListApiPath,
       "/",
-      alistToken
+      alistToken,
+      ua,
     );
     if (foldersRes.startsWith("error")) {
       r.error(foldersRes);
@@ -92,7 +95,8 @@ async function redirect2Pan(r) {
       let driverRes = await fetchAlistPathApi(
         alistFsGetApiPath,
         `/${folders[i]}${filePath}`,
-        alistToken
+        alistToken,
+        ua,
       );
       if (!driverRes.startsWith("error")) {
         driverRes = driverRes.includes("http://172.17.0.1")
@@ -109,7 +113,7 @@ async function redirect2Pan(r) {
 }
 
 // copy from emby2Alist/nginx/conf.d/emby.js
-async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
+async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
   const alistRequestBody = {
     path: alistFilePath,
     password: "",
@@ -120,6 +124,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken) {
       headers: {
         "Content-Type": "application/json;charset=utf-8",
         Authorization: alistToken,
+        "User-Agent": ua,
       },
       max_response_body_size: 65535,
       body: JSON.stringify(alistRequestBody),
