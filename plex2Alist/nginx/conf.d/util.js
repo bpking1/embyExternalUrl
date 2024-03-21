@@ -9,10 +9,11 @@ function proxyUri(uri) {
 function isDisableRedirect(r, str, isAlistRes) {
   let arr2D;
   if (!!isAlistRes) {
+    // this var isAlistRes = true
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
     // not embyMountPath first
-    if (config.plexMountPath.some(path => !str.startsWith(path))) {
+    if (config.embyMountPath.some(path => !!path && !str.startsWith(path))) {
       return true;
     }
     arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
