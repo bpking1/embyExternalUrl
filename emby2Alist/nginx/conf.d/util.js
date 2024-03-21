@@ -72,7 +72,11 @@ function checkIsRemoteStrm(protocol, filePath) {
   if (!protocol || !filePath) {
     return false;
   }
-  return "File" != protocol && filePath.toLowerCase().endsWith(".strm");
+  // strm: filePath1-itemPath like: /xxx/xxx.strm, filePath2-mediaSourcePath like: http[s]://xxx/xxx.mkv
+  return "File" != protocol && (
+    !filePath.startsWith("/") ||
+    filePath.toLowerCase().endsWith(".strm")
+  );
 }
 
 function getItemInfo(r) {
