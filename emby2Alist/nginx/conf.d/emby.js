@@ -87,7 +87,7 @@ async function redirect2Pan(r) {
     return r.return(403, alistRes);
   }
   if (alistRes.startsWith("error500")) {
-    r.warn(`will req alist /api/fs/list to search`);
+    r.warn(`will req alist /api/fs/list to rerty`);
     // const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
     const filePath = alistFilePath;
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;

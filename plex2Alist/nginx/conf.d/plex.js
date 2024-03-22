@@ -3,6 +3,8 @@
 import config from "./constant.js";
 import util from "./util.js";
 
+const xml = require("xml");
+let allData = "";
 async function redirect2Pan(r) {
   let plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
@@ -75,7 +77,7 @@ async function redirect2Pan(r) {
     return r.return(403, alistRes);
   }
   if (alistRes.startsWith("error500")) {
-    r.warn(`will req alist /api/fs/list to search`);
+    r.warn(`will req alist /api/fs/list to rerty`);
     // const filePath = alistFilePath.substring(alistFilePath.indexOf("/", 1));
     const filePath = alistFilePath;
     const alistFsListApiPath = `${alistAddr}/api/fs/list`;
@@ -209,7 +211,7 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   }
 }
 
-async function cachePartInfo(r) {
+async function cachePartInfo2(r) {
   // replay the request
   const proxyUri = util.proxyUri(r.uri);
   const res = await r.subrequest(proxyUri);
@@ -232,6 +234,105 @@ async function cachePartInfo(r) {
     r.headersOut[key] = res.headersOut[key];
   }
   r.return(res.status, JSON.stringify(body));
+}
+
+function cachePartInfo(r, data, flags) {
+  const contentType = r.headersOut["Content-Type"];
+  //r.log(`cachePartInfo Content-Type Header: ${contentType}`);
+  if (contentType.includes("application/json")) {
+    cachePartInfoForJson(r, data, flags);
+  } else if (contentType.includes("text/xml")) {
+    cachePartInfoForXml(r, data, flags);
+  } else {
+    r.sendBuffer(data, flags);
+  }
+}
+
+function cachePartInfoForJson(r, data, flags) {
+  allData += data;
+  if (flags.last) {
+  	let body = JSON.parse(allData);
+  	const MediaContainer = body.MediaContainer;
+    if (MediaContainer.size > 0) {
+      let metadataArr = [];
+      let partKey;
+      let partFilePath;
+      if (!!MediaContainer.Hub) {
+        MediaContainer.Hub.map(hub => {
+          hub.Metadata.map(metadata => {
+            metadataArr.push(metadata);
+          });
+        });
+      } else {
+        MediaContainer.Metadata.map(metadata => {
+          metadataArr.push(metadata);
+        });
+      }
+      metadataArr.map(metadata => {
+        // Metadata.key prohibit modify, clients not supported
+        if (!!metadata.Media) {
+          metadata.Media.map(media => {
+            if (!!media.Part) {
+              media.Part.map(part => {
+                partKey = part.key;
+                partFilePath = part.file;
+                // Part.key can modify, but some clients not supported
+                // partKey += `?${util.filePathKey}=${partFilePath}`;
+                // cachePartInfo
+                const preValue = ngx.shared.partInfoDict.get(partKey);
+                if (!preValue || (!!preValue && preValue != partFilePath)) {
+                  ngx.shared.partInfoDict.add(partKey, partFilePath);
+                  r.log(`cachePartInfo: ${partKey + " : " + partFilePath}`);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+  	r.sendBuffer(JSON.stringify(body), flags);
+  }
+}
+
+function cachePartInfoForXml(r, data, flags) {
+  allData += data;
+  if (flags.last) {
+    let body = xml.parse(allData);
+    const mediaContainerXmlDoc = body.MediaContainer;
+    let videoXmlNodeArr = mediaContainerXmlDoc.$tags$Video;
+    let mediaXmlNodeArr;
+    let partXmlNodeArr;
+    let partKey;
+    let partFilePath;
+    // r.log(videoXmlNodeArr.length);
+    if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
+    	videoXmlNodeArr.map(video => {
+    		// Video.key prohibit modify, clients not supported
+    		mediaXmlNodeArr = video.$tags$Media;
+    		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
+    			mediaXmlNodeArr.map(media => {
+    				partXmlNodeArr = media.$tags$Part;
+    				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
+    					partXmlNodeArr.map(part => {
+                partKey = part.$attr$key;
+                partFilePath = part.$attr$file;
+    						// Part.key can modify, but some clients not supported
+                // partKey += `?${util.filePathKey}=${partFilePath}`;
+                // cachePartInfo
+                const preValue = ngx.shared.partInfoDict.get(partKey);
+                if (!preValue || (!!preValue && preValue != partFilePath)) {
+                  ngx.shared.partInfoDict.add(partKey, partFilePath);
+                  r.log(`cachePartInfo: ${partKey + " : " + partFilePath}`);
+                }
+    					});
+    				}
+    			});
+    		}
+    	});
+    }
+    // r.log(JSON.stringify(body.MediaContainer.$tags$Video.length));
+    r.sendBuffer(xml.serialize(body), flags);
+  }
 }
 
 function redirect(r, uri) {

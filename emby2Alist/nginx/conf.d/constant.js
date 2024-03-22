@@ -4,6 +4,7 @@
 const embyHost = "http://172.17.0.1:8096";
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始emby处理,不用重复填写至disableRedirectRule
+// 如果没有挂载,全部使用strm文件,此项填[""],必须要是数组
 const embyMountPath = ["/mnt"];
 // emby/jellyfin api key, 在emby/jellyfin后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
