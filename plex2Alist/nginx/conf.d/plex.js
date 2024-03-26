@@ -313,19 +313,19 @@ async function fetchStrmInnerText(r) {
   }
 }
 
-function cachePartInfo(r, data, flags) {
+function plexApiHandler(r, data, flags) {
   const contentType = r.headersOut["Content-Type"];
-  //r.log(`cachePartInfo Content-Type Header: ${contentType}`);
+  //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
   if (contentType.includes("application/json")) {
-    cachePartInfoForJson(r, data, flags);
+    plexApiHandlerForJson(r, data, flags);
   } else if (contentType.includes("text/xml")) {
-    cachePartInfoForXml(r, data, flags);
+    plexApiHandlerForXml(r, data, flags);
   } else {
     r.sendBuffer(data, flags);
   }
 }
 
-function cachePartInfoForJson(r, data, flags) {
+function plexApiHandlerForJson(r, data, flags) {
   allData += data;
   if (flags.last) {
   	let body = JSON.parse(allData);
@@ -349,18 +349,14 @@ function cachePartInfoForJson(r, data, flags) {
         // Metadata.key prohibit modify, clients not supported
         if (!!metadata.Media) {
           metadata.Media.map(media => {
+            fillMediaContainer(media);
             if (!!media.Part) {
               media.Part.map(part => {
                 partKey = part.key;
                 partFilePath = part.file;
+                cachePartInfo(partKey, partFilePath);
                 // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
-                // cachePartInfo
-                const preValue = ngx.shared.partInfoDict.get(partKey);
-                if (!preValue || (!!preValue && preValue != partFilePath)) {
-                  ngx.shared.partInfoDict.add(partKey, partFilePath);
-                  r.log(`cachePartInfo: ${partKey + " : " + partFilePath}`);
-                }
               });
             }
           });
@@ -371,7 +367,7 @@ function cachePartInfoForJson(r, data, flags) {
   }
 }
 
-function cachePartInfoForXml(r, data, flags) {
+function plexApiHandlerForXml(r, data, flags) {
   allData += data;
   if (flags.last) {
     let body = xml.parse(allData);
@@ -388,19 +384,15 @@ function cachePartInfoForXml(r, data, flags) {
     		mediaXmlNodeArr = video.$tags$Media;
     		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
     			mediaXmlNodeArr.map(media => {
+            fillMediaContainer(media, true);
     				partXmlNodeArr = media.$tags$Part;
     				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
     					partXmlNodeArr.map(part => {
                 partKey = part.$attr$key;
                 partFilePath = part.$attr$file;
-    						// Part.key can modify, but some clients not supported
+                cachePartInfo(partKey, partFilePath);
+                // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
-                // cachePartInfo
-                const preValue = ngx.shared.partInfoDict.get(partKey);
-                if (!preValue || (!!preValue && preValue != partFilePath)) {
-                  ngx.shared.partInfoDict.add(partKey, partFilePath);
-                  r.log(`cachePartInfo: ${partKey + " : " + partFilePath}`);
-                }
     					});
     				}
     			});
@@ -409,6 +401,31 @@ function cachePartInfoForXml(r, data, flags) {
     }
     // r.log(JSON.stringify(body.MediaContainer.$tags$Video.length));
     r.sendBuffer(xml.serialize(body), flags);
+  }
+}
+
+function fillMediaContainer(media, isXmlNode) {
+  if (!media) {
+    return;
+  }
+  // only strm file not have mediaContainer
+  // no real container required can playback, but subtitles maby error
+  const mediaContainer = "mp4";
+  if (!!isXmlNode && isXmlNode) {
+    if (!media.$attr$container) {
+      media.$attr$container = mediaContainer;
+    }
+  }
+  if (!media.container) {
+    media.container = mediaContainer;
+  }
+}
+
+function cachePartInfo(partKey, partFilePath) {
+  const preValue = ngx.shared.partInfoDict.get(partKey);
+  if (!preValue || (!!preValue && preValue != partFilePath)) {
+    ngx.shared.partInfoDict.add(partKey, partFilePath);
+    ngx.log(ngx.INFO, `cachePartInfo: ${partKey + " : " + partFilePath}`);
   }
 }
 
@@ -428,4 +445,4 @@ function internalRedirect(r, uri) {
   r.internalRedirect(uri);
 }
 
-export default { redirect2Pan, fetchPlexFilePath, cachePartInfo };
+export default { redirect2Pan, fetchPlexFilePath, plexApiHandler };
