@@ -9,9 +9,10 @@ async function redirect2Pan(r) {
   let plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
+
   // fetch mount plex file path
   let start = Date.now();
-  const itemInfo = await util.getPlexItemInfo(r);
+  const itemInfo = await getPlexItemInfo(r);
   let end = Date.now();
   let mediaServerRes;
   if (itemInfo.filePath) {
@@ -31,12 +32,26 @@ async function redirect2Pan(r) {
       return r.return(500, mediaServerRes.message);
     }
   }
+  // strm file internal text need encodeURI
+  const isStrm = util.checkIsStrmByPath(mediaServerRes.path);
+  if (isStrm) {
+      mediaServerRes.path = decodeURI(mediaServerRes.path);
+  }
   r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
-
-  if (util.isDisableRedirect(r, mediaServerRes.path)) {
+  
+  if (!isStrm && util.isDisableRedirect(mediaServerRes.path)) {
     r.warn(`mediaServerRes hit isDisableRedirect`);
     // use original link
     return internalRedirect(r);
+  }
+
+  // strm support
+  if (isStrm) {
+    start = Date.now();
+    const strmInnerText = await fetchStrmInnerText(r);
+    end = Date.now();
+    r.warn(`${end - start}ms, fetchStrmInnerText cover mount plex file path: ${strmInnerText}`);
+    mediaServerRes.path = strmInnerText;
   }
 
   // file path mapping
@@ -51,6 +66,13 @@ async function redirect2Pan(r) {
   const alistFilePath = mediaItemPath;
   r.warn(`mapped plex file path: ${alistFilePath}`);
 
+  // strm file inner remote link redirect,like: http,rtsp
+  const isRemote = !alistFilePath.startsWith("/");
+  if (isRemote) {
+    r.warn(`!!!warnning remote strm file`);
+    return redirect(r, encodeURI(decodeURI(alistFilePath)));
+  }
+
   // fetch alist direct link
   start = Date.now();
   const ua = r.headersIn["User-Agent"];
@@ -64,7 +86,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(r, alistRes, true)) {
+    if (util.isDisableRedirect(alistRes, true)) {
       r.warn(`alistRes hit isDisableRedirect`);
       // use original link
       return internalRedirect(r);
@@ -171,6 +193,8 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   return rawUrl;
 }
 
+// plex only
+
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   let rvt = {
     "message": "success",
@@ -211,29 +235,82 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   }
 }
 
-async function cachePartInfo2(r) {
-  // replay the request
-  const proxyUri = util.proxyUri(r.uri);
-  const res = await r.subrequest(proxyUri);
-  const body = JSON.parse(res.responseText);
-  body.MediaContainer.Metadata.forEach(metadata => {
-    if (!!metadata.Media) {
-      metadata.Media.forEach(media => {
-        media.Part.forEach(part => {
-          const preValue = ngx.shared.partInfoDict.get(part.key);
-          if (!preValue || (!!preValue && preValue != part.file)) {
-            const filePath = part.file;
-            ngx.shared.partInfoDict.add(part.key, filePath);
-            r.log(`cachePartInfo: ${part.key + " : " + filePath}`);
-          }
-        });
-      });
+async function getPlexItemInfo(r) {
+  const plexHost = config.plexHost;
+  const path = r.args.path;
+  const mediaIndex = r.args.mediaIndex;
+  const partIndex = r.args.partIndex;
+  const api_key = r.args[util.args.plexTokenKey];
+  let filePath;
+  let itemInfoUri = "";
+  if (path) {
+	  // see: location ~* /video/:/transcode/universal/start
+  	itemInfoUri = `${plexHost}${path}?${util.args.plexTokenKey}=${api_key}`;
+  } else {
+  	// see: location ~* /library/parts/(\d+)/(\d+)/file
+    filePath = ngx.shared.partInfoDict.get(r.uri);
+    r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
+    if (!filePath) {
+      const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${util.args.plexTokenKey}=${api_key}`);
+      if (!plexRes.startsWith("error")) {
+        const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
+        itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${util.args.plexTokenKey}=${api_key}`;
+      } else {
+        r.warn(plexRes);
+      }
     }
-  });
-  for (const key in res.headersOut) {
-    r.headersOut[key] = res.headersOut[key];
   }
-  r.return(res.status, JSON.stringify(body));
+  return { filePath, itemInfoUri, mediaIndex, partIndex, api_key };
+}
+
+async function fetchPlexFileFullName(downloadApiPath) {
+  try {
+    const response = await ngx.fetch(downloadApiPath, {
+      method: "HEAD",
+      max_response_body_size: 858993459200 // 100Gb,not important,because HEAD method not have body
+    });
+    if (response.ok) {
+      return util.getFileNameByHead(decodeURI(response.headers["Content-Disposition"]));
+    } else {
+      return `error: plex_download_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: plex_download_api fetchPlexFileNameFiled ${error}`;
+  }
+}
+
+async function fetchStrmInnerText(r) {
+  const plexHost = config.plexHost;
+  const api_key = r.args[util.args.plexTokenKey];
+  const downloadApiPath = `${plexHost}${r.uri}?download=1&${util.args.plexTokenKey}=${api_key}`;
+  try {
+  	// fetch Api ignore nginx locations
+    const response = await ngx.fetch(downloadApiPath, {
+      method: "GET",
+      max_response_body_size: 1024
+    });
+    // plex strm downloadApi self return 301, response.redirected api error return false
+    if (response.status == 301) {
+      const location = response.headers["Location"];
+      let strmInnerText = location;
+      const tmpArr = plexHost.split(":");
+      const plexHostWithoutPort = `${tmpArr[0]}:${tmpArr[1]}`;
+      if (location.startsWith(plexHostWithoutPort)) {
+        // strmInnerText is local path
+        strmInnerText = location.replace(plexHostWithoutPort, "");
+      }
+      r.warn(`fetchStrmInnerText innerText: ${strmInnerText}`);
+      return decodeURI(strmInnerText);
+    }
+    if (response.ok) {
+      r.warn(`fetchStrmInnerText innerText: ${response.text()}`);
+      return decodeURI(response.text());
+    } else {
+      return `error: plex_download_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: plex_download_api fetchStrmInnerText ${error}`;
+  }
 }
 
 function cachePartInfo(r, data, flags) {
