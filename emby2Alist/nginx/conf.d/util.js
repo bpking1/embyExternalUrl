@@ -1,6 +1,10 @@
 import config from "./constant.js";
 
-const filePathKey = "filePath";
+const args = {
+  filePathKey: "filePath",
+  isStrmKey: "isStrm",
+  isRemoteKey: "isRemote",
+}
 
 function proxyUri(uri) {
   return `/proxy${uri}`;
@@ -38,7 +42,7 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
-function isDisableRedirect(r, str, isAlistRes) {
+function isDisableRedirect(str, isAlistRes) {
   let arr2D;
   if (!!isAlistRes) {
     // this var isAlistRes = true
@@ -69,15 +73,23 @@ function strMatches(type, searchValue, matcher) {
   return false;
 }
 
-function checkIsRemoteStrm(protocol, filePath) {
-  if (!protocol || !filePath) {
-    return false;
+function checkIsStrmByPath(filePath) {
+  if (!!filePath) {
+    // strm: filePath1-itemPath like: /xxx/xxx.strm
+    return filePath.toLowerCase().endsWith(".strm");
   }
-  // strm: filePath1-itemPath like: /xxx/xxx.strm, filePath2-mediaSourcePath like: http[s]://xxx/xxx.mkv
-  return "File" != protocol && (
-    !filePath.startsWith("/") ||
-    filePath.toLowerCase().endsWith(".strm")
-  );
+  return false;
+}
+
+function checkIsStrmByLength(protocol, mediaStreamsLength) {
+  // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+  if (!!protocol) {
+    if (protocol != "File") {
+      return true;
+    }
+    return mediaStreamsLength == 0;
+  }
+  return false;
 }
 
 function getItemInfo(r) {
@@ -107,7 +119,7 @@ function getItemInfo(r) {
 }
 
 export default {
-  filePathKey,
+  args,
   appendUrlArg,
   addDefaultApiKey,
   proxyUri,
@@ -115,6 +127,7 @@ export default {
   generateUrl,
   isDisableRedirect,
   strMatches,
-  checkIsRemoteStrm,
+  checkIsStrmByPath,
+  checkIsStrmByLength,
   getCurrentRequestUrl
 };

@@ -7,17 +7,15 @@ async function redirect2Pan(r) {
   let embyPathMapping = config.embyPathMapping;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
-  const filePath = r.args[util.filePathKey];
-  const protocol = r.args["protocol"];
 
   let embyRes = {
-    "protocol": protocol,
-    "path": filePath,
-    "isRemoteStrm": util.checkIsRemoteStrm(protocol, filePath)
+    path: r.args[util.args.filePathKey],
+    isStrm: r.args[util.args.isStrmKey],
+    isRemote: r.args[util.args.isRemoteKey]
   };
   let start = Date.now();
   let end = Date.now();
-  if (!filePath) {
+  if (!embyRes.path) {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
@@ -35,9 +33,13 @@ async function redirect2Pan(r) {
       return r.return(500, embyRes.message);
     }
   }
+  // strm file internal text need encodeURI
+  if (embyRes.isStrm) {
+      embyRes.path = decodeURI(embyRes.path);
+  }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
-  if (util.isDisableRedirect(r, embyRes.path)) {
+  if (!embyRes.isStrm && util.isDisableRedirect(embyRes.path)) {
     r.warn(`embyRes hit isDisableRedirect`);
     // use original link
     return internalRedirect(r);
@@ -56,9 +58,9 @@ async function redirect2Pan(r) {
   r.warn(`mapped emby file path: ${alistFilePath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
-  if (embyRes.isRemoteStrm) {
-    r.warn(`!!!warnning remote strm file protocol: ${embyRes.protocol}`);
-    return redirect(r, alistFilePath);
+  if (embyRes.isRemote) {
+    r.warn(`!!!warnning remote strm file`);
+    return redirect(r, encodeURI(decodeURI(alistFilePath)));
   }
 
   // fetch alist direct link
@@ -74,7 +76,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(r, alistRes, true)) {
+    if (util.isDisableRedirect(alistRes, true)) {
       r.warn(`alistRes hit isDisableRedirect`);
       // use original link
       return internalRedirect(r);
@@ -173,7 +175,7 @@ async function transferPlaybackInfo(r) {
         "Static",
         "true"
       );
-      // addFilePath cache to clients
+      // addFilePath and strmInfo cache to clients
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
         util.filePathKey,
@@ -181,8 +183,13 @@ async function transferPlaybackInfo(r) {
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
-        "protocol",
-        source.Protocol
+        "isStrm",
+        util.checkIsStrmByLength(source.Protocol, source.MediaStreams.length)
+      );
+      source.DirectStreamUrl = util.appendUrlArg(
+        source.DirectStreamUrl,
+        "isRemote",
+        source.IsRemote
       );
       // a few players not support special character
       source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
@@ -268,10 +275,10 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
 
 async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
-    "message": "success",
-    "protocol": "File", // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-    "path": "",
-    "isRemoteStrm": false,
+    message: "success",
+    path: "",
+    isStrm: false,
+    isRemote: false,
   };
   try {
     const res = await ngx.fetch(itemInfoUri, {
@@ -291,8 +298,9 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
       if (itemInfoUri.includes("JobItems")) {
         const jobItem = result.Items.find(o => o.Id == itemId);
         if (jobItem) {
-          rvt.protocol = jobItem.MediaSource.Protocol;
           rvt.path = jobItem.MediaSource.Path;
+          rvt.isStrm = util.checkIsStrmByPath(jobItem.OutputPath);
+          rvt.isRemote = jobItem.MediaSource.IsRemote;
         } else {
           rvt.message = `error: emby_api /Sync/JobItems response is null`;
           return rvt;
@@ -313,13 +321,9 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           if (mediaSourceId) {
             mediaSource = item.MediaSources.find((m) => m.Id == mediaSourceId);
           }
-          rvt.protocol = mediaSource.Protocol;
           rvt.path = mediaSource.Path;
-          rvt.isRemoteStrm = util.checkIsRemoteStrm(rvt.protocol, item.Path);
-          // remote strm file internal text need encodeURI
-          if (rvt.isRemoteStrm) {
-            rvt.path = encodeURI(decodeURI(rvt.path));
-          }
+          rvt.isStrm = util.checkIsStrmByPath(item.Path);
+          rvt.isRemote = mediaSource.IsRemote;
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
           rvt.path = item.Path;
