@@ -33,9 +33,9 @@ async function redirect2Pan(r) {
       return r.return(500, embyRes.message);
     }
   }
-  // strm file internal text need encodeURI
+  // strm file internal text maybe encode
   if (embyRes.isStrm) {
-      embyRes.path = decodeURI(embyRes.path);
+      embyRes.path = decodeURIComponent(embyRes.path);
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 

@@ -32,10 +32,10 @@ async function redirect2Pan(r) {
       return r.return(500, mediaServerRes.message);
     }
   }
-  // strm file internal text need encodeURI
+  // strm file internal text maybe encode
   const isStrm = util.checkIsStrmByPath(mediaServerRes.path);
   if (isStrm) {
-      mediaServerRes.path = decodeURI(mediaServerRes.path);
+      mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
   r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   
@@ -70,7 +70,7 @@ async function redirect2Pan(r) {
   const isRemote = !alistFilePath.startsWith("/");
   if (isRemote) {
     r.warn(`!!!warnning remote strm file`);
-    return redirect(r, encodeURI(decodeURI(alistFilePath)));
+    return redirect(r, encodeURIComponent(decodeURIComponent(alistFilePath)));
   }
 
   // fetch alist direct link
@@ -409,15 +409,17 @@ function fillMediaContainer(media, isXmlNode) {
     return;
   }
   // only strm file not have mediaContainer
-  // no real container required can playback, but subtitles maby error
+  // no real container required can playback, but subtitles maybe error
   const mediaContainer = "mp4";
   if (!!isXmlNode && isXmlNode) {
     if (!media.$attr$container) {
       media.$attr$container = mediaContainer;
+      return;
     }
   }
   if (!media.container) {
     media.container = mediaContainer;
+    return;
   }
 }
 
