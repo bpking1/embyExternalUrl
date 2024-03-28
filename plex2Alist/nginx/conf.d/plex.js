@@ -1,5 +1,6 @@
-//author: @bpking  https://github.com/bpking1/embyExternalUrl
-//查看日志: "docker logs -f -n 10 plex-nginx 2>&1  | grep js:"
+// author: @bpking  https://github.com/bpking1/embyExternalUrl
+// 查看日志: "docker logs -f -n 10 plex-nginx 2>&1  | grep js:"
+// 正常情况下此文件所有内容不需要更改
 import config from "./constant.js";
 import util from "./util.js";
 
@@ -414,12 +415,11 @@ function fillMediaContainer(media, isXmlNode) {
   if (!!isXmlNode && isXmlNode) {
     if (!media.$attr$container) {
       media.$attr$container = mediaContainer;
-      return;
     }
-  }
-  if (!media.container) {
-    media.container = mediaContainer;
-    return;
+  } else {
+    if (!media.container) {
+      media.container = mediaContainer;
+    }
   }
 }
 

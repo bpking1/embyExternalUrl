@@ -1,3 +1,4 @@
+// 全量配置模板,媒体库混合,本地文件 + CD2/rclone挂载的alist文件 + strm文件
 // export constant allocation
 // 必填项,根据实际情况修改下面的设置
 // 这里默认plex的地址是宿主机,要注意iptables给容器放行端口
