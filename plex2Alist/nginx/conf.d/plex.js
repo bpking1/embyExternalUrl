@@ -414,12 +414,11 @@ function fillMediaContainer(media, isXmlNode) {
   if (!!isXmlNode && isXmlNode) {
     if (!media.$attr$container) {
       media.$attr$container = mediaContainer;
-      return;
     }
-  }
-  if (!media.container) {
-    media.container = mediaContainer;
-    return;
+  } else {
+    if (!media.container) {
+      media.container = mediaContainer;
+    }
   }
 }
 
