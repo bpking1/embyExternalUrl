@@ -1,3 +1,4 @@
+// 全量配置模板,媒体库混合,本地文件 + CD2/rclone挂载的alist文件 + strm文件
 // export constant allocation
 // 必填项,根据实际情况修改下面的设置
 // 这里默认emby/jellyfin的地址是宿主机,要注意iptables给容器放行端口
@@ -23,8 +24,7 @@ const alistPublicAddr = "http://youralist.com:5244";
 const cilentSelfAlistRule = [
   // [2, "xxx", alistPublicAddr],
 ];
-// url映射,会在xxxMountPath之后全部替换一遍,不要有重叠
-// strm文件提醒,填写规则参考emby官方文档,强烈建议strm文件内部只填路径,重定向后的远程链接将被部分浏览器跨域限制
+// 路径映射,会在xxxMountPath之后全部替换一遍,不要有重叠,此处会同时处理本地路径和strm的内部内容
 const embyPathMapping = [
   // ["/mnt/aliyun-01", "/mnt/aliyun-02"],
   // ["http:", "https:"], 
