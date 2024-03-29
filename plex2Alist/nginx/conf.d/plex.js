@@ -71,7 +71,7 @@ async function redirect2Pan(r) {
   const isRemote = !alistFilePath.startsWith("/");
   if (isRemote) {
     r.warn(`!!!warnning remote strm file`);
-    return redirect(r, encodeURIComponent(decodeURIComponent(alistFilePath)));
+    return redirect(r, encodeURI(decodeURIComponent(alistFilePath)));
   }
 
   // fetch alist direct link

@@ -61,7 +61,7 @@ async function redirect2Pan(r) {
   // strm file inner remote link redirect,like: http,rtsp
   if (embyRes.isRemote) {
     r.warn(`!!!warnning remote strm file`);
-    return redirect(r, encodeURI(decodeURI(alistFilePath)));
+    return redirect(r, encodeURI(decodeURIComponent(alistFilePath)));
   }
 
   // fetch alist direct link
