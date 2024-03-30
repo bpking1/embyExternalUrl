@@ -11,8 +11,7 @@ async function redirect2Pan(r) {
 
   let embyRes = {
     path: r.args[util.args.filePathKey],
-    isStrm: r.args[util.args.isStrmKey],
-    isRemote: r.args[util.args.isRemoteKey]
+    isStrm: r.args[util.args.isStrmKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
   };
   let start = Date.now();
   let end = Date.now();
@@ -40,31 +39,49 @@ async function redirect2Pan(r) {
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
-  if (!embyRes.isStrm && util.isDisableRedirect(embyRes.path)) {
-    r.warn(`embyRes hit isDisableRedirect`);
+  if (util.isDisableRedirect(embyRes.path, false, embyRes.isStrm)) {
     // use original link
     return internalRedirect(r);
   }
 
+  let isRemote = !embyRes.path.startsWith("/");
   // file path mapping
-  r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
   config.embyMountPath.map(s => {
-    embyPathMapping.unshift([s, ""]);
+    if (!!s) {
+      embyPathMapping.unshift([0, 0 , s, ""]);
+    }
   });
+  r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
   let embyItemPath = embyRes.path;
   embyPathMapping.map(arr => {
-    embyItemPath = embyItemPath.replace(arr[0], arr[1]);
+    if ((arr[1] == 0 && embyRes.isStrm)
+      || (arr[1] == 1 && (!embyRes.isStrm || isRemote))
+      || (arr[1] == 2 && (!embyRes.isStrm || !isRemote))) {
+        return;
+    }
+    embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
-  const alistFilePath = embyItemPath;
-  r.warn(`mapped emby file path: ${alistFilePath}`);
+  isRemote = !embyItemPath.startsWith("/");
+  r.warn(`mapped emby file path: ${embyItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
-  if (embyRes.isRemote) {
-    r.warn(`!!!warnning remote strm file`);
-    return redirect(r, encodeURI(decodeURI(alistFilePath)));
+  if (isRemote) {
+    const ruleArr2D = config.redirectStrmLastLinkRule;
+    for (let i = 0; i < ruleArr2D.length; i++) {
+      const rule = ruleArr2D[i];
+      if (util.strMatches(rule[0], embyItemPath, rule[1])) {
+        r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
+        const directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
+        if (!!directUrl) {
+          return redirect(r, directUrl);
+        }
+      }
+    }
+    return redirect(r, encodeURI(decodeURIComponent(embyItemPath)));
   }
 
   // fetch alist direct link
+  const alistFilePath = embyItemPath;
   start = Date.now();
   const ua = r.headersIn["User-Agent"];
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
@@ -77,8 +94,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(alistRes, true)) {
-      r.warn(`alistRes hit isDisableRedirect`);
+    if (util.isDisableRedirect(alistRes, true, embyRes.isStrm)) {
       // use original link
       return internalRedirect(r);
     }
@@ -179,18 +195,13 @@ async function transferPlaybackInfo(r) {
       // addFilePath and strmInfo cache to clients
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
-        util.filePathKey,
+        util.args.filePathKey,
         source.Path
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
         "isStrm",
-        util.checkIsStrmByLength(source.Protocol, source.MediaStreams.length)
-      );
-      source.DirectStreamUrl = util.appendUrlArg(
-        source.DirectStreamUrl,
-        "isRemote",
-        source.IsRemote
+        util.checkIsStrmByLength(source.Protocol, source.MediaStreams.length) ? "1" : "0"
       );
       // a few players not support special character
       source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
@@ -274,12 +285,39 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   return rawUrl;
 }
 
+async function fetchAlistAuthApi(url, username, password) {
+  const body = {
+    username: username,
+    password: password,
+  };
+  try {
+    const response = await ngx.fetch(url, {
+      method: "POST",
+      max_response_body_size: 1024,
+      body: JSON.stringify(body),
+    });
+    if (response.ok) {
+      const result = await response.json();
+      if (!result) {
+        return `error: alist_auth_api response is null`;
+      }
+      if (result.message == "success") {
+        return result.data.token;
+      }
+      return `error500: alist_auth_api ${result.code} ${result.message}`;
+    } else {
+      return `error: alist_auth_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: alist_auth_api filed ${error}`;
+  }
+}
+
 async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
     message: "success",
     path: "",
     isStrm: false,
-    isRemote: false,
   };
   try {
     const res = await ngx.fetch(itemInfoUri, {
@@ -301,7 +339,6 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
         if (jobItem) {
           rvt.path = jobItem.MediaSource.Path;
           rvt.isStrm = util.checkIsStrmByPath(jobItem.OutputPath);
-          rvt.isRemote = jobItem.MediaSource.IsRemote;
         } else {
           rvt.message = `error: emby_api /Sync/JobItems response is null`;
           return rvt;
@@ -324,7 +361,6 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           }
           rvt.path = mediaSource.Path;
           rvt.isStrm = util.checkIsStrmByPath(item.Path);
-          rvt.isRemote = mediaSource.IsRemote;
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
           rvt.path = item.Path;
@@ -375,10 +411,10 @@ async function itemsFilter(r) {
   const flag = r.variables.flag;
   r.warn(`itemsFilter flag: ${flag}`);
   let mainItemPath;
-  if (flag == "itemsFilter2") {
+  if (flag == "itemSimilar") {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
-    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+    r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
     const start = Date.now();
     const embyRes = await fetchEmbyFilePath(
       itemInfo.itemInfoUri, 
@@ -398,8 +434,14 @@ async function itemsFilter(r) {
         return true;
       }
       return !itemHiddenRule.some(rule => {
-        if ((!rule[2] || rule[2] == 0) && !!mainItemPath 
+        if ((!rule[2] || rule[2] == 0 || rule[2] == 2) && !!mainItemPath 
           && util.strMatches(rule[0], mainItemPath, rule[1])) {
+          return false;
+        }
+        if (flag == "searchSuggest" && rule[2] == 2) {
+          return false;
+        }
+        if (flag == "itemSimilar" && rule[2] == 1) {
           return false;
         }
         if (util.strMatches(rule[0], item.Path, rule[1])) {
@@ -420,6 +462,38 @@ async function itemsFilter(r) {
 	  r.headersOut[key] = subR.headersOut[key];
 	}
   return r.return(200, JSON.stringify(body));
+}
+
+async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
+  let token;
+  if (!!authType) {
+    if (authType == "FixedToken" && !!authInfo) {
+      token = authInfo;
+    }
+    if (authType == "TempToken" && !!authInfo && !!authUrl) {
+      const arr = authInfo.split(":");
+      token = await fetchAlistAuthApi(authUrl, arr[0], arr[1]);
+    }
+  }
+  try {
+  	// fetch Api ignore nginx locations
+    const response = await ngx.fetch(encodeURI(strmLink), {
+      method: "HEAD",
+      headers: {
+        Authorization: token
+      },
+      max_response_body_size: 1024
+    });
+    ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}`);
+    // response.redirected api error return false
+    if (300 < response.status < 309 || response.status == 403) {
+      return response.headers["Location"];
+    } else {
+      ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${error}`);
+  }
 }
 
 function redirect(r, uri) {

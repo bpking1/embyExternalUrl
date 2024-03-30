@@ -8,18 +8,36 @@ const plexHost = "http://172.17.0.1:32400";
 // 选填项,用不到保持默认即可
 // 指定客户端自己请求并获取alist直链的规则,特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
 // arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// arg1: 匹配的规则,对象为Alist接口返回的链接
+// arg1: 匹配的规则,对象为Alist接口返回的链接raw_url
 // arg2: 指定转发给客户端的alist的host前缀
 const cilentSelfAlistRule = [
   // [2, "xxx", alistPublicAddr],
 ];
-// 路径映射,会在xxxMountPath之后全部替换一遍,不要有重叠,此处会同时处理本地路径和strm的内部内容
+// 路径映射,会在xxxMountPath之后从上到下依次全部替换一遍,不要有重叠
+// arg0: 0: 默认做字符串替换, 1: 前插, 2: 尾插
+// arg1: 0: 默认只处理/开头的路径且不为strm, 1: 只处理strm内部为/开头的相对路径, 2: 只处理strm内部为远程链接的
+// arg2: 来源, arg3: 目标
 const plexPathMapping = [
-  // ["/mnt/aliyun-01", "/mnt/aliyun-02"],
-  // ["http:", "https:"], 
-  // [":5244", "/alist"], 
-  // ["D:", "F:"],
-  // [/blue/g, "red"],
+  // [0, 0, "/mnt/aliyun-01", "/mnt/aliyun-02"],
+  // [0, 2, "http:", "https:"], 
+  // [0, 2, ":5244", "/alist"], 
+  // [0, 0, "D:", "F:"],
+  // [0, 0, /blue/g, "red"], // 此处正则不要加引号
+  // [1, 1, `${alistPublicAddr}/d`],
+  // [2, 2, "?xxx"],
+];
+// 指定是否转发由njs获取strm重定向后直链地址的规则,例如strm内部为局域网ip或链接需要请求头验证
+// arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// arg1: 匹配的规则,对象为xxxPathMapping映射后的strm内部链接
+// arg2: 请求验证类型,已为直链的不需要此参数,例如.../d
+const redirectStrmLastLinkRule = [
+  [0, "http://172."], [0, "http://10."], [0, "http://192."], [0, "http://[fd00:"], 
+  // [0, alistAddr], 
+  // [0, "http:"], 
+  // // arg3: 已为直链的不需要此参数
+  // [0, "http://otheralist1.com", "FixedToken", alistToken], 
+  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址
+  // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
 ];
 // 禁用直链的规则,将转给原始媒体服务器处理,字幕和图片没有走直链,不用添加
 // arg0: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
@@ -57,5 +75,6 @@ export default {
   alistPublicAddr,
   cilentSelfAlistRule,
   plexPathMapping,
+  redirectStrmLastLinkRule,
   getPlexHost
 }

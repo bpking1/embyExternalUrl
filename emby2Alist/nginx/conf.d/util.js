@@ -3,7 +3,6 @@ import config from "./constant.js";
 const args = {
   filePathKey: "filePath",
   isStrmKey: "isStrm",
-  isRemoteKey: "isRemote",
 }
 
 function proxyUri(uri) {
@@ -42,19 +41,43 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
-function isDisableRedirect(str, isAlistRes) {
+function isDisableRedirect(str, isAlistRes, isStrm) {
   let arr2D;
   if (!!isAlistRes) {
     // this var isAlistRes = true
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
-    // not embyMountPath first
-    if (config.embyMountPath.some(path => !!path && !str.startsWith(path))) {
+    // not xxxMountPath first
+    if (config.embyMountPath.some(path => !!path && !str.startsWith(path) && !isStrm)) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
       return true;
     }
     arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
   }
-  return arr2D.some(rule => strMatches(rule[0], str, rule[1]));
+  return arr2D.some(rule => {
+    let flag = strMatches(rule[0], str, rule[1]);
+    if (flag) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(rule)}`);
+    }
+    return flag;
+  });
+}
+
+function strMapping(type, sourceValue, searchValue, replaceValue) {
+  let str = sourceValue;
+  if (type == 1) {
+    str = searchValue + str;
+    ngx.log(ngx.WARN, `strMapping append: ${searchValue}`);
+  }
+  if (type == 2) {
+    str += searchValue;
+    ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
+  }
+  if (type == 0) {
+    str = str.replace(searchValue, replaceValue);
+    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+  }
+  return str;
 }
 
 function strMatches(type, searchValue, matcher) {
@@ -126,6 +149,7 @@ export default {
   getItemInfo,
   generateUrl,
   isDisableRedirect,
+  strMapping,
   strMatches,
   checkIsStrmByPath,
   checkIsStrmByLength,
