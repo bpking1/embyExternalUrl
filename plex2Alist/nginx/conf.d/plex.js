@@ -6,6 +6,7 @@ import util from "./util.js";
 
 const xml = require("xml");
 let allData = "";
+
 async function redirect2Pan(r) {
   let plexPathMapping = config.plexPathMapping;
   const alistToken = config.alistToken;
@@ -40,8 +41,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   
-  if (!isStrm && util.isDisableRedirect(mediaServerRes.path)) {
-    r.warn(`mediaServerRes hit isDisableRedirect`);
+  if (util.isDisableRedirect(mediaServerRes.path, false, isStrm)) {
     // use original link
     return internalRedirect(r);
   }
@@ -55,26 +55,44 @@ async function redirect2Pan(r) {
     mediaServerRes.path = strmInnerText;
   }
 
+  let isRemote = !mediaServerRes.path.startsWith("/");
   // file path mapping
-  r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
-  config.plexMountPath.map(s => {
-    plexPathMapping.unshift([s, ""]);
+  config.plexPathMapping.map(s => {
+    if (!!s) {
+      plexPathMapping.unshift([0, 0 , s, ""]);
+    }
   });
+  r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
   let mediaItemPath = mediaServerRes.path;
   plexPathMapping.map(arr => {
-    mediaItemPath = mediaItemPath.replace(arr[0], arr[1]);
+    if ((arr[1] == 0 && isStrm)
+      || (arr[1] == 1 && (!isStrm || isRemote))
+      || (arr[1] == 2 && (!isStrm || !isRemote))) {
+        return;
+    }
+    mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  const alistFilePath = mediaItemPath;
-  r.warn(`mapped plex file path: ${alistFilePath}`);
+  isRemote = !mediaItemPath.startsWith("/");
+  r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
-  const isRemote = !alistFilePath.startsWith("/");
   if (isRemote) {
-    r.warn(`!!!warnning remote strm file`);
-    return redirect(r, encodeURI(decodeURIComponent(alistFilePath)));
+    const ruleArr2D = config.redirectStrmLastLinkRule;
+    for (let i = 0; i < ruleArr2D.length; i++) {
+      const rule = ruleArr2D[i];
+      if (util.strMatches(rule[0], mediaItemPath, rule[1])) {
+        r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
+        const directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], rule[4]);
+        if (!!directUrl) {
+          return redirect(r, directUrl);
+        }
+      }
+    }
+    return redirect(r, encodeURI(decodeURIComponent(mediaItemPath)));
   }
 
   // fetch alist direct link
+  const alistFilePath = mediaItemPath;
   start = Date.now();
   const ua = r.headersIn["User-Agent"];
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
@@ -87,8 +105,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(alistRes, true)) {
-      r.warn(`alistRes hit isDisableRedirect`);
+    if (util.isDisableRedirect(alistRes, true, isStrm)) {
       // use original link
       return internalRedirect(r);
     }
@@ -194,6 +211,66 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   return rawUrl;
 }
 
+async function fetchAlistAuthApi(url, username, password) {
+  const body = {
+    username: username,
+    password: password,
+  };
+  try {
+    const response = await ngx.fetch(url, {
+      method: "POST",
+      max_response_body_size: 1024,
+      body: JSON.stringify(body),
+    });
+    if (response.ok) {
+      const result = await response.json();
+      if (!result) {
+        return `error: alist_auth_api response is null`;
+      }
+      if (result.message == "success") {
+        return result.data.token;
+      }
+      return `error500: alist_auth_api ${result.code} ${result.message}`;
+    } else {
+      return `error: alist_auth_api ${response.status} ${response.statusText}`;
+    }
+  } catch (error) {
+    return `error: alist_auth_api filed ${error}`;
+  }
+}
+
+async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
+  let token;
+  if (!!authType) {
+    if (authType == "FixedToken" && !!authInfo) {
+      token = authInfo;
+    }
+    if (authType == "TempToken" && !!authInfo && !!authUrl) {
+      const arr = authInfo.split(":");
+      token = await fetchAlistAuthApi(authUrl, arr[0], arr[1]);
+    }
+  }
+  try {
+  	// fetch Api ignore nginx locations
+    const response = await ngx.fetch(encodeURI(strmLink), {
+      method: "HEAD",
+      headers: {
+        Authorization: token
+      },
+      max_response_body_size: 1024
+    });
+    ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}`);
+    // response.redirected api error return false
+    if (300 < response.status < 309 || response.status == 403) {
+      return response.headers["Location"];
+    } else {
+      ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${error}`);
+  }
+}
+
 // plex only
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
@@ -287,11 +364,11 @@ async function fetchStrmInnerText(r) {
   try {
   	// fetch Api ignore nginx locations
     const response = await ngx.fetch(downloadApiPath, {
-      method: "GET",
+      method: "HEAD",
       max_response_body_size: 1024
     });
     // plex strm downloadApi self return 301, response.redirected api error return false
-    if (response.status == 301) {
+    if (300 < response.status < 309) {
       const location = response.headers["Location"];
       let strmInnerText = location;
       const tmpArr = plexHost.split(":");
@@ -424,6 +501,9 @@ function fillMediaContainer(media, isXmlNode) {
 }
 
 function cachePartInfo(partKey, partFilePath) {
+  if (!partKey || !partFilePath) {
+    return;
+  }
   const preValue = ngx.shared.partInfoDict.get(partKey);
   if (!preValue || (!!preValue && preValue != partFilePath)) {
     ngx.shared.partInfoDict.add(partKey, partFilePath);
