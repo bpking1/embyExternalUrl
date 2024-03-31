@@ -486,8 +486,13 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     });
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}`);
     // response.redirected api error return false
-    if (300 < response.status < 309 || response.status == 403) {
+    if ((response.status > 300 && response.status < 309) || response.status == 403) {
       return response.headers["Location"];
+    } else if (response.status == 200) {
+      // alist
+      if (response.headers["Content-Type"].includes("application/json")) {
+        ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
+      }
     } else {
       ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
     }

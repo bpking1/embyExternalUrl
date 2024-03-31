@@ -57,7 +57,7 @@ async function redirect2Pan(r) {
 
   let isRemote = !mediaServerRes.path.startsWith("/");
   // file path mapping
-  config.plexPathMapping.map(s => {
+  config.plexMountPath.map(s => {
     if (!!s) {
       plexPathMapping.unshift([0, 0 , s, ""]);
     }
@@ -261,8 +261,13 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     });
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}`);
     // response.redirected api error return false
-    if (300 < response.status < 309 || response.status == 403) {
+    if ((response.status > 300 && response.status < 309) || response.status == 403) {
       return response.headers["Location"];
+    } else if (response.status == 200) {
+      // alist
+      if (response.headers["Content-Type"].includes("application/json")) {
+        ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
+      }
     } else {
       ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
     }
@@ -368,7 +373,7 @@ async function fetchStrmInnerText(r) {
       max_response_body_size: 1024
     });
     // plex strm downloadApi self return 301, response.redirected api error return false
-    if (300 < response.status < 309) {
+    if (response.status > 300 && response.status < 309) {
       const location = response.headers["Location"];
       let strmInnerText = location;
       const tmpArr = plexHost.split(":");
@@ -377,11 +382,11 @@ async function fetchStrmInnerText(r) {
         // strmInnerText is local path
         strmInnerText = location.replace(plexHostWithoutPort, "");
       }
-      r.warn(`fetchStrmInnerText innerText: ${strmInnerText}`);
+      r.log(`fetchStrmInnerText: ${strmInnerText}`);
       return decodeURI(strmInnerText);
     }
     if (response.ok) {
-      r.warn(`fetchStrmInnerText innerText: ${response.text()}`);
+      r.log(`fetchStrmInnerText: ${response.text()}`);
       return decodeURI(response.text());
     } else {
       return `error: plex_download_api ${response.status} ${response.statusText}`;
