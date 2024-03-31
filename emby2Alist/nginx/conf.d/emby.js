@@ -3,6 +3,7 @@
 // 正常情况下此文件所有内容不需要更改
 import config from "./constant.js";
 import util from "./util.js";
+import embyApi from "./emby-api.js";
 
 async function redirect2Pan(r) {
   let embyPathMapping = config.embyPathMapping;
@@ -377,24 +378,6 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   }
 }
 
-async function fetchEmbyNotificationsAdmin(description) {
-  const body = {
-    Name: config.embyNotificationsAdmin.name,
-    Description: description
-  }
-  try {
-    await ngx.fetch(`${config.embyHost}/Notifications/Admin?api_key=${config.embyApiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json;charset=utf-8"
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    rvt.message = `error: emby_api fetchEmbyNotificationsAdmin failed, ${error}`;
-  }
-}
-
 async function itemsFilter(r) {
   r.variables.request_uri += "&Fields=Path";
   const subR = await r.subrequest(util.proxyUri(r.uri));
@@ -501,16 +484,37 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
   }
 }
 
+async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
+  if (!deviceId) {
+    ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
+    return;
+  }
+  const sessionRes = await embyApi.fetchEmbySessions(deviceId);
+  if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
+    ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchEmbySessions: session not found`);
+    return;
+  }
+  embyApi.fetchEmbySessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+}
+
 function redirect(r, uri) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
+  // async
   if (config.embyNotificationsAdmin.enable) {
-    fetchEmbyNotificationsAdmin(
+    embyApi.fetchEmbyNotificationsAdmin(
+      config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       `original link: ${r.uri}\nredirect to: ${uri}` :
       `redirect success`
     );
+  }
+  if (config.embyRedirectSendMessage.enable) {
+    sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
+      config.embyRedirectSendMessage.header,
+      `redirect success`,
+      config.embyRedirectSendMessage.timeoutMs);
   }
 }
 
@@ -522,12 +526,20 @@ function internalRedirect(r, uri) {
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
+  // async
   if (config.embyNotificationsAdmin.enable) {
-    fetchEmbyNotificationsAdmin(
+    embyApi.fetchEmbyNotificationsAdmin(
+      config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       `use original link: ${r.uri}` :
       `use original link success`
     );
+  }
+  if (config.embyRedirectSendMessage.enable) {
+    sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
+      config.embyRedirectSendMessage.header,
+      `use original link success`,
+      config.embyRedirectSendMessage.timeoutMs);
   }
 }
 

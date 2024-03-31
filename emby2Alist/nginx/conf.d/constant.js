@@ -86,11 +86,17 @@ const transcodeBalanceConfig = {
 // 2: 不同尺寸设备共用一份缓存,空间占用最大,移除emby的缩放参数,直接原图高清显示
 const imageCachePolicy = 0;
 
-// 对接emby通知管理员设置,目前只发送是否直链成功
+// 对接emby通知管理员设置,目前只发送是否直链成功,依赖emby/jellyfin的webhook配置并勾选外部通知
 const embyNotificationsAdmin = {
   enable: false,
   includeUrl: false, // 链接太长,默认关闭
   name: "【emby2Alist】",
+};
+// 对接emby设备控制推送通知消息,目前只发送是否直链成功,此处为统一开关,范围为所有的客户端,通知目标只为当前播放的设备
+const embyRedirectSendMessage = {
+  enable: false,
+  header: "【emby2Alist】",
+  timeoutMs: 0, // 消息通知弹窗持续毫秒值
 };
 
 // 按路径匹配规则隐藏部分接口返回的items
@@ -128,6 +134,7 @@ export default {
   embyPathMapping,
   redirectStrmLastLinkRule,
   embyNotificationsAdmin,
+  embyRedirectSendMessage,
   itemHiddenRule,
   transcodeBalanceConfig,
   getEmbyHost,
