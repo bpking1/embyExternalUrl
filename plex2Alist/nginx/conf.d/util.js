@@ -16,7 +16,7 @@ function isDisableRedirect(str, isAlistRes, isStrm) {
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
     // not xxxMountPath first
-    if (config.embyMountPath.some(path => !!path && !str.startsWith(path) && !isStrm)) {
+    if (config.plexMountPath.some(path => !!path && !str.startsWith(path) && !isStrm)) {
       ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
       return true;
     }
