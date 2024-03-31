@@ -1,5 +1,10 @@
 import config from "./constant.js";
 
+const args = {
+  filePathKey: "filePath",
+  isStrmKey: "isStrm",
+}
+
 function proxyUri(uri) {
   return `/proxy${uri}`;
 }
@@ -20,14 +25,10 @@ function addDefaultApiKey(r, u) {
   return url;
 }
 
-function generateUrl(r, host, uri, ignoreSpChar) {
+function generateUrl(r, host, uri) {
   let url = host + uri;
   let isFirst = true;
   for (const key in r.args) {
-    // a few players not support special character
-    if (ignoreSpChar && (key === "X-Emby-Client" || key === "X-Emby-Device-Name")) {
-      continue;
-    }
     url += isFirst ? "?" : "&";
     url += `${key}=${r.args[key]}`;
     isFirst = false;
@@ -35,16 +36,83 @@ function generateUrl(r, host, uri, ignoreSpChar) {
   return url;
 }
 
-function getEmbyOriginRequestUrl(r) {
-  const embyHost = config.publicDomain == ""
-    ? config.embyHost
-    : config.publicDomain + ":" + config.embyPort;
-  return generateUrl(r, embyHost, r.uri);
-}
-
 function getCurrentRequestUrl(r) {
   const host = r.headersIn["Host"];
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
+}
+
+function isDisableRedirect(str, isAlistRes, isStrm) {
+  let arr2D;
+  if (!!isAlistRes) {
+    // this var isAlistRes = true
+    arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
+  } else {
+    // not xxxMountPath first
+    if (config.embyMountPath.some(path => !!path && !str.startsWith(path) && !isStrm)) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
+      return true;
+    }
+    arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
+  }
+  return arr2D.some(rule => {
+    let flag = strMatches(rule[0], str, rule[1]);
+    if (flag) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(rule)}`);
+    }
+    return flag;
+  });
+}
+
+function strMapping(type, sourceValue, searchValue, replaceValue) {
+  let str = sourceValue;
+  if (type == 1) {
+    str = searchValue + str;
+    ngx.log(ngx.WARN, `strMapping append: ${searchValue}`);
+  }
+  if (type == 2) {
+    str += searchValue;
+    ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
+  }
+  if (type == 0) {
+    str = str.replace(searchValue, replaceValue);
+    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+  }
+  return str;
+}
+
+function strMatches(type, searchValue, matcher) {
+  if (0 == type && searchValue.startsWith(matcher)) {
+    return true;
+  }
+  if (1 == type && searchValue.endsWith(matcher)) {
+    return true;
+  }
+  if (2 == type && searchValue.includes(matcher)) {
+    return true;
+  }
+  if (3 == type && !!searchValue.match(matcher)) {
+    return true;
+  }
+  return false;
+}
+
+function checkIsStrmByPath(filePath) {
+  if (!!filePath) {
+    // strm: filePath1-itemPath like: /xxx/xxx.strm
+    return filePath.toLowerCase().endsWith(".strm");
+  }
+  return false;
+}
+
+function checkIsStrmByLength(protocol, mediaStreamsLength) {
+  // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+  if (!!protocol) {
+    if (protocol != "File") {
+      return true;
+    }
+    return mediaStreamsLength == 0;
+  }
+  return false;
 }
 
 function getItemInfo(r) {
@@ -62,7 +130,7 @@ function getItemInfo(r) {
   api_key = api_key ? api_key : embyApiKey;
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
-	itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
+	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
       itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
@@ -74,11 +142,16 @@ function getItemInfo(r) {
 }
 
 export default {
+  args,
   appendUrlArg,
   addDefaultApiKey,
   proxyUri,
   getItemInfo,
   generateUrl,
-  getCurrentRequestUrl,
-  getEmbyOriginRequestUrl,
+  isDisableRedirect,
+  strMapping,
+  strMatches,
+  checkIsStrmByPath,
+  checkIsStrmByLength,
+  getCurrentRequestUrl
 };

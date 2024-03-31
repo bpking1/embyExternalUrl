@@ -1,9 +1,127 @@
 ---
-title: emby挂载阿里盘转直链
+title: emby挂载alist转直链
 date: 2021/09/06 22:00:00
 ---
 
 ### 文章更新记录 
+2024/03/30
+
+1.增强路径映射功能,区分来源类型
+
+2.strm文件内部目前建议为远程链接,这样emby会在第一次播放后进行补充媒体数据,例如媒体格式和字幕流信息,这样官方客户端兼容性更好
+
+3.strm文件内部为/开头的相对路径的虽然强行兼容支持播放,但是好像官方客户端的播放记录和回传存在bug,备选使用
+
+4.添加默认可选参数以支持issue建议的指定strm规则获取重定向后的地址进行转发,兼容局域网的strm链接
+
+5.alist >= 3.20的默认对直链开启了sign全部参数,属于额外验证,不接受token验证,
+如果要兼容,性能会很差,需要多用token请求一次alist获取到直链和sign参数,解决方案两种
+
+5.1.用/开头的路径,这样会用alistToken走fsGet接口一次获取最终直链返回,缺点是官方客户端字幕流不正常且播放记录不准确或者没有
+
+5.2.nginx请求的alist建议关闭设置-全局-签名所有,将此alist部署为和nginx同一局域网,接口响应也会快很多,通常在200ms-2000ms之间,跨网络会更慢
+如果对直链安全有介意,去掉此alist的公网端口映射,只在局域网使用,公网使用另行部署一个开启sign全部的alist
+
+2024/03/28
+
+1.添加基本的配置示例文件,若符合需求,更改内容并删除文件名后缀,复制文件到上一级目录覆盖原始文件即可,\emby2Alist\nginx\conf.d\constant.js
+
+2024/03/18
+
+1.优化请求alist的115直链获取逻辑,透传UA,减少一次302过程,以兼容媒体服务器https而alist为http默认被浏览器客户端强制改写导致的错误
+
+2.115直链不在需要cilentSelfAlistRule参数,但保留处理逻辑,有特殊需要可自定义配置
+
+3.将items隐藏升级为按路径匹配规则并新增,更多类似,接口隐藏
+
+2024/03/14
+
+1.按规则隐藏搜索接口返回的items
+
+2024/03/13
+
+1.媒体服务器https后,如果alist没有https,且相同域名情况,http链接会被浏览器默认强制改写为https,导致115的处理的第一次302会失败
+
+2.地址栏左边-此网站权限-不安全的内容-允许,或者浏览器设置-Cookie 和网站权限-不安全的内容-允许
+
+3.非浏览器不存在此问题,例如第三方播放器,默认不会阻止,也可将alist套上证书解决此问题
+
+2024/03/10
+
+1.测试并修复本地视频兼容问题,意外发现http2对本地原始链接的视频在部分跨宽带网络阻断有帮助(电信->联通),如有相同情况请开启http2或者http3
+
+2024/03/04
+
+1.优化播放时减少一次媒体查询接口
+
+2024/03/01
+
+1.串流地址加入媒体文件名方便标识和字幕匹配
+
+2.添加图片缓存策略可选配置项
+
+2024/01/20
+
+1.添加实验功能,转码分流
+
+2023/12/31
+
+1.115的302需要alist最新版v3.30.0,由于115直链并没有响应允许跨域标识,所以只能用客户端播放,测试emby所有官方客户端和第三方客户端支持跨域,~~不支持跨域的播放为Web浏览器...~~
+
+2.115播放形式为响应302到原始alist链接,由alist再302一次到直链
+
+3.Web浏览器被跨域拦截请使用拓展解决,该拓展有时不稳定,表现形式为开启状态,但是并没有添加跨域响应头,可以寻找类似拓展测试,或者多开关几次并增大urlRegex匹配范围确保成功添加自定义响应头后再使用
+
+https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbiafapkbbnbnjcdomjaghbckfkglc
+````
+[
+    {
+        "respHeaders": [
+            {
+                "enabled": true,
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+            }
+        ],
+        "shortTitle": "1",
+        "title": "CORS Support",
+        "urlFilters": [
+            {
+                "enabled": true,
+                "urlRegex": "*.115.com"
+            }
+        ],
+        "version": 2
+    }
+]
+````
+![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/3ea94076-829f-4542-88e2-3221b9a8c8f4)
+
+4.添加部分可选配置项,对接emby/jellyfin通知管理员设置,方便排查直链情况
+
+2023/10/02
+
+1.支持strm文件的直链,下边第一种情况已做处理默认支持
+
+有多种填写方式，一个strm文件内部只能有一行路径或者链接,具体可以参考emby官方文档,我这里只测试了两种情况,例如:
+
+1-1:
+从alist的根路径开始填写,注意不要包含embyMountPath这个参数的路径,特殊字符不用转义,代码内部已做处理
+![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/240f5aa5-a603-40b6-ab6f-ed7c1b13c806)
+
+1-2:
+直接填写直链,~~这种稍微有风险,不建议使用,而且携带密码会被浏览器拦截,~~
+且重定向后的远程链接将被部分浏览器跨域限制,无法修复,emby的客户端直接获取到并请求地址
+![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/5e904160-717b-4b8c-abf6-e08a8756de35)
+
+2.emby在扫库的时候不会刮削strm文件的元数据,只有在视频第一次播放的时候才会获取,这需要几秒钟的时间,且是根据这个文件本身的路径以及文件名来识别的,和strm内容无关,空文件也能刮削出来,在播放时将内部链接传给客户端自己请求
+
+3.根据部分反馈看,1-1的相对路径方式可能存在进度跟踪不准确,且没有在播放完毕后自动标记完成,建议使用标准的第三方工具生成的样式1-2
+
+2023/09/28
+
+1.实现客户端直链下载
+
 2023/2/2
 
 升级到alist v3了，脚本github地址 [bpking1/embyExternalUrl (github.com)](https://github.com/bpking1/embyExternalUrl)
@@ -11,21 +129,31 @@ date: 2021/09/06 22:00:00
 调用外部播放器的油猴脚本账号无法登陆了，换了个新地址:[embyLaunchPotplayer (greasyfork.org)](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
 2022/5/13
+
 1.兼容jellyfin
+
 2.解决infuse无法播放的问题,感谢@amwamw968
+
 3.用nignx添加了字幕文件的缓存支持
 
 2022/1/12
+
 1.重写了js脚本,支持rclone union,不再需要挂载名和alist盘名一致,不再需要设置emby api_key
+
 2.修复了js脚本不能正确获取同一个视频不同清晰度版本的问题
 
 2021/12/06
 
 1.alist项目作者最近的更新中加入了阿里云盘之外的网盘的支持,且不在需要刷新目录
+
 2.换了另外一个用rust语言写的阿里盘webdav项目,内存占用很小
+
 3.修改了njs脚本中的正则,来修复emby魔改客户端terminusPlayer没有走直链
+
 4.修改nginx配置修复了阿里云盘直链无法在emby web中播放
+
 5.修复了由于反代无法使用jellyfin-mpv-shim直链播放
+
 6.用nignx添加了emby图片的缓存支持
 
 ## 这篇文章的受众:
@@ -114,8 +242,7 @@ docker logs -f -n 10 emby-nginx 2>&1  | grep js:
 web端各大浏览器对音频和视频编码支持情况不一,碰到不支持的情况emby会强制走转码而不会走直链
 
 ## 已知问题:
-1. emby web播放时如果需要使用内封的字幕,实际上是需要embyServer在后台用ffmpeg去提取的,ffmpeg要读取整个视频文件才能获取所有的字幕流,相当于几乎整个视频文件都要通过rclone下载,并且消耗cpu资源,对于比较大的视频文件是不现实的,所以web端建议使用外挂字幕
-2. 
-~~google Drive由于api的限制直链只能通过server中转,所以还是建议在cf上搭建goindex来获取直链 ,如何给到emby请参考 这篇[文章](https://blog.738888.xyz/2021/09/09/emby%E6%8C%82%E8%BD%BD%E7%BD%91%E7%9B%98%E8%BD%AC%E7%9B%B4%E9%93%BE%E6%92%AD%E6%94%BE/)结尾,另外一种方法是给alist添加cf worker中转gd的支持,有待研究~~
+1. emby web播放时如果需要使用内封的字幕,实际上是需要embyServer在后台用ffmpeg去提取的,~~ffmpeg要读取整个视频文件才能获取所有的字幕流,相当于几乎整个视频文件都要通过rclone下载,并且消耗cpu资源,对于比较大的视频文件是不现实的,所以web端建议使用外挂字幕~~,从头读取到字幕流位置截止,大概占文件大小的40%. 只有修改版emby客户端调用MX Player会同时传递所有外挂字幕,其余方式包括串流地址不支持外挂字幕加载,需要手动下载字幕文件并选择装载
+2. ~~google Drive由于api的限制直链只能通过server中转,所以还是建议在cf上搭建goindex来获取直链 ,如何给到emby请参考 这篇[文章](https://blog.738888.xyz/2021/09/09/emby%E6%8C%82%E8%BD%BD%E7%BD%91%E7%9B%98%E8%BD%AC%E7%9B%B4%E9%93%BE%E6%92%AD%E6%94%BE/)结尾,另外一种方法是给alist添加cf worker中转gd的支持,有待研究~~
 alist新版已经支持cf worker代理gd下载了,详情参考alist文档
 3. 可能会有其他问题,请留言

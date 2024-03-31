@@ -1,4 +1,4 @@
-// 全量配置,媒体库混合,本地文件 + CD2/rclone挂载的alist文件 + strm文件
+// 全量配置模板,媒体库混合,本地文件 + CD2/rclone挂载的alist文件 + strm文件
 // export constant allocation
 // 必填项,根据实际情况修改下面的设置
 // 这里默认emby/jellyfin的地址是宿主机,要注意iptables给容器放行端口
@@ -45,9 +45,9 @@ const redirectStrmLastLinkRule = [
   [0, "http://172."], [0, "http://10."], [0, "http://192."], [0, "http://[fd00:"], 
   // [0, alistAddr], 
   // [0, "http:"], 
-  // // arg3: 已为直链的不需要此参数, 参数暂无作用, sign属于额外验证
+  // // arg3: 已为直链的不需要此参数
   // [0, "http://otheralist1.com", "FixedToken", alistToken], 
-  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址, 参数暂无作用, sign属于额外验证
+  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址
   // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
 ];
 // 禁用直链的规则,将转给原始媒体服务器处理,字幕和图片没有走直链,不用添加

@@ -12,33 +12,28 @@ async function directLive(r) {
   // 2 get Item's PlayBackInfo
   // 3 get the live-tv direct m3u8 url
   const itemInfoUri = `${embyHost}/Items/${itemId}/PlaybackInfo?api_key=${itemInfo.api_key}&AutoOpenLiveStream=true`;
-  r.warn(`itemInfoUri: ${itemInfoUri}`);
+  r.warn(`directLive itemInfoUri: ${itemInfoUri}`);
   const response = await ngx.fetch(itemInfoUri, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json;charset=utf-8"
     }
   });
   if (!response.ok) {
     r.error(response.statusText);
-    return redirect2Origin(r);
+    return Emby.internalRedirect(r);
   }
   const body = await response.json();
   if (!body.MediaSources || body.MediaSources.length === 0) {
     r.error('no media source found');
-    return redirect2Origin(r);
+    return Emby.internalRedirect(r);
   }
   if (!body.MediaSources[0].IsRemote) {
     // not a remote link
     return Emby.redirect2Pan(r);
   }
   // 5 execute redirect
-  r.return(302, body.MediaSources[0].Path);
-}
-
-function redirect2Origin(r) {
-  const url = util.getEmbyOriginRequestUrl(r);
-  r.return(302, url);
+  Emby.redirect(r, body.MediaSources[0].Path);
 }
 
 export default { directLive };
