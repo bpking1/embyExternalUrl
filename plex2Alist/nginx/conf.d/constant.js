@@ -42,9 +42,9 @@ const redirectStrmLastLinkRule = [
   [0, "http://172."], [0, "http://10."], [0, "http://192."], [0, "http://[fd00:"], 
   // [0, alistAddr], 
   // [0, "http:"], 
-  // // arg3: 已为直链的不需要此参数
+  // // arg3: 已为直链的不需要此参数,参数暂无作用, sign属于额外验证
   // [0, "http://otheralist1.com", "FixedToken", alistToken], 
-  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址
+  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址,参数暂无作用, sign属于额外验证
   // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
 ];
 // 禁用直链的规则,将转给原始媒体服务器处理,字幕和图片没有走直链,不用添加

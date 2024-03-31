@@ -57,7 +57,7 @@ async function redirect2Pan(r) {
 
   let isRemote = !mediaServerRes.path.startsWith("/");
   // file path mapping
-  config.plexPathMapping.map(s => {
+  config.plexMountPath.map(s => {
     if (!!s) {
       plexPathMapping.unshift([0, 0 , s, ""]);
     }
@@ -261,8 +261,13 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     });
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}`);
     // response.redirected api error return false
-    if (300 < response.status < 309 || response.status == 403) {
+    if ((response.status > 300 && response.status < 309) || response.status == 403) {
       return response.headers["Location"];
+    } else if (response.status == 200) {
+      // alist
+      if (response.headers["Content-Type"].includes("application/json")) {
+        ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
+      }
     } else {
       ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
     }
@@ -368,7 +373,7 @@ async function fetchStrmInnerText(r) {
       max_response_body_size: 1024
     });
     // plex strm downloadApi self return 301, response.redirected api error return false
-    if (300 < response.status < 309) {
+    if (response.status > 300 && response.status < 309) {
       const location = response.headers["Location"];
       let strmInnerText = location;
       const tmpArr = plexHost.split(":");
@@ -377,11 +382,11 @@ async function fetchStrmInnerText(r) {
         // strmInnerText is local path
         strmInnerText = location.replace(plexHostWithoutPort, "");
       }
-      r.warn(`fetchStrmInnerText innerText: ${strmInnerText}`);
+      r.log(`fetchStrmInnerText: ${strmInnerText}`);
       return decodeURI(strmInnerText);
     }
     if (response.ok) {
-      r.warn(`fetchStrmInnerText innerText: ${response.text()}`);
+      r.log(`fetchStrmInnerText: ${response.text()}`);
       return decodeURI(response.text());
     } else {
       return `error: plex_download_api ${response.status} ${response.statusText}`;
@@ -414,25 +419,30 @@ function plexApiHandlerForJson(r, data, flags) {
       let partFilePath;
       if (!!MediaContainer.Hub) {
         MediaContainer.Hub.map(hub => {
-          hub.Metadata.map(metadata => {
-            metadataArr.push(metadata);
-          });
+          if (!!hub.Metadata) {
+            hub.Metadata.map(metadata => {
+              metadataArr.push(metadata);
+            });
+          }
         });
       } else {
-        MediaContainer.Metadata.map(metadata => {
-          metadataArr.push(metadata);
-        });
+        if (!!MediaContainer.Metadata) {
+          MediaContainer.Metadata.map(metadata => {
+            metadataArr.push(metadata);
+          });
+        }
       }
       metadataArr.map(metadata => {
         // Metadata.key prohibit modify, clients not supported
         if (!!metadata.Media) {
           metadata.Media.map(media => {
-            fillMediaContainer(media);
+            fillMediaInfo(media);
             if (!!media.Part) {
               media.Part.map(part => {
                 partKey = part.key;
                 partFilePath = part.file;
                 cachePartInfo(partKey, partFilePath);
+                fillPartInfo(part);
                 // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
               });
@@ -462,13 +472,14 @@ function plexApiHandlerForXml(r, data, flags) {
     		mediaXmlNodeArr = video.$tags$Media;
     		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
     			mediaXmlNodeArr.map(media => {
-            fillMediaContainer(media, true);
+            fillMediaInfo(media, true);
     				partXmlNodeArr = media.$tags$Part;
     				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
     					partXmlNodeArr.map(part => {
                 partKey = part.$attr$key;
                 partFilePath = part.$attr$file;
                 cachePartInfo(partKey, partFilePath);
+                fillPartInfo(part, true);
                 // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
     					});
@@ -482,20 +493,46 @@ function plexApiHandlerForXml(r, data, flags) {
   }
 }
 
-function fillMediaContainer(media, isXmlNode) {
+function fillMediaInfo(media, isXmlNode) {
   if (!media) {
     return;
   }
   // only strm file not have mediaContainer
   // no real container required can playback, but subtitles maybe error
-  const mediaContainer = "mp4";
+  const defaultContainer = "mp4";
   if (!!isXmlNode && isXmlNode) {
     if (!media.$attr$container) {
-      media.$attr$container = mediaContainer;
+      media.$attr$container = defaultContainer;
     }
   } else {
     if (!media.container) {
-      media.container = mediaContainer;
+      media.container = defaultContainer;
+    }
+  }
+}
+
+function fillPartInfo(part, isXmlNode) {
+  // !!!important is MediaInfo, PartInfo is not important
+  if (!part) {
+    return;
+  }
+  // only strm file not have mediaContainer
+  // no real container required can playback, but subtitles maybe error
+  const defaultContainer = "mp4";
+  const defaultStream = [];
+  if (!!isXmlNode && isXmlNode) {
+    if (!part.$attr$container) {
+      part.$attr$container = defaultContainer;
+    }
+    if (!part.$attr$Stream) {
+      part.$attr$Stream = defaultStream;
+    }
+  } else {
+    if (!part.container) {
+      part.container = defaultContainer;
+    }
+    if (!part.Stream) {
+      part.Stream = defaultStream;
     }
   }
 }
