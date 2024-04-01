@@ -72,10 +72,23 @@ date: 2021/09/06 22:00:00
 
 1.115的302需要alist最新版v3.30.0,由于115直链并没有响应允许跨域标识,所以只能用客户端播放,测试emby所有官方客户端和第三方客户端支持跨域,~~不支持跨域的播放为Web浏览器...~~
 
-2.115播放形式为响应302到原始alist链接,由alist再302一次到直链
+~~2.115播放形式为响应302到原始alist链接,由alist再302一次到直链~~
 
 3.Web浏览器被跨域拦截请使用拓展解决,该拓展有时不稳定,表现形式为开启状态,但是并没有添加跨域响应头,可以寻找类似拓展测试,或者多开关几次并增大urlRegex匹配范围确保成功添加自定义响应头后再使用
 
+3.1
+https://microsoftedge.microsoft.com/addons/detail/header-editor/afopnekiinpekooejpchnkgfffaeceko
+
+````
+CORS Support
+匹配类型: 域名
+匹配规则: cdnfhnfile.115.com
+执行类型: 常规
+头名称: access-control-allow-origin
+头内容: *
+````
+
+3.2
 https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbiafapkbbnbnjcdomjaghbckfkglc
 ````
 [
