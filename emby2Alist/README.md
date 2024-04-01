@@ -87,6 +87,7 @@ CORS Support
 头名称: access-control-allow-origin
 头内容: *
 ````
+![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/5a06f4c5-3a39-4117-87db-899e7a0b22a6)
 
 3.2
 https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbiafapkbbnbnjcdomjaghbckfkglc
