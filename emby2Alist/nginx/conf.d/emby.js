@@ -33,6 +33,9 @@ async function redirect2Pan(r) {
       r.error(embyRes.message);
       return r.return(500, embyRes.message);
     }
+  } else {
+    embyRes.path = decodeURIComponent(embyRes.path);
+    r.warn(`cached PlaybackInfo path, will skip excess fetchEmbyFilePath`);
   }
   // strm file internal text maybe encode
   if (embyRes.isStrm) {
@@ -197,7 +200,7 @@ async function transferPlaybackInfo(r) {
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
         util.args.filePathKey,
-        source.Path
+        encodeURIComponent(source.Path)
       );
       source.DirectStreamUrl = util.appendUrlArg(
         source.DirectStreamUrl,
@@ -489,12 +492,15 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
     return;
   }
-  const sessionRes = await embyApi.fetchEmbySessions(deviceId);
-  if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
-    ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchEmbySessions: session not found`);
-    return;
-  }
-  embyApi.fetchEmbySessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+  embyApi.fetchEmbySessions(deviceId).then(sessionResPromise => {
+    sessionResPromise.json().then(sessionRes => {
+      if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
+        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchEmbySessions: session not found`);
+        return;
+      }
+      embyApi.fetchEmbySessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+    });
+  });
 }
 
 function redirect(r, uri) {
