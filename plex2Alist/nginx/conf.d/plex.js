@@ -35,19 +35,19 @@ async function redirect2Pan(r) {
     }
   }
   // strm file internal text maybe encode
-  const isStrm = util.checkIsStrmByPath(mediaServerRes.path);
-  if (isStrm) {
+  const notLocal = util.checkIsStrmByPath(mediaServerRes.path);
+  if (notLocal) {
       mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
   r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   
-  if (util.isDisableRedirect(mediaServerRes.path, false, isStrm)) {
+  if (util.isDisableRedirect(mediaServerRes.path, false, notLocal)) {
     // use original link
     return internalRedirect(r);
   }
 
   // strm support
-  if (isStrm) {
+  if (notLocal) {
     start = Date.now();
     const strmInnerText = await fetchStrmInnerText(r);
     end = Date.now();
@@ -65,9 +65,9 @@ async function redirect2Pan(r) {
   r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
   let mediaItemPath = mediaServerRes.path;
   plexPathMapping.map(arr => {
-    if ((arr[1] == 0 && isStrm)
-      || (arr[1] == 1 && (!isStrm || isRemote))
-      || (arr[1] == 2 && (!isStrm || !isRemote))) {
+    if ((arr[1] == 0 && notLocal)
+      || (arr[1] == 1 && (!notLocal || isRemote))
+      || (arr[1] == 2 && (!notLocal || !isRemote))) {
         return;
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
@@ -105,7 +105,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(alistRes, true, isStrm)) {
+    if (util.isDisableRedirect(alistRes, true, notLocal)) {
       // use original link
       return internalRedirect(r);
     }

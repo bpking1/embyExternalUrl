@@ -2,7 +2,7 @@ import config from "./constant.js";
 
 const args = {
   filePathKey: "filePath",
-  isStrmKey: "isStrm",
+  notLocalKey: "notLocal",
 }
 
 function proxyUri(uri) {
@@ -41,7 +41,7 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
-function isDisableRedirect(str, isAlistRes, isStrm) {
+function isDisableRedirect(str, isAlistRes, notLocal) {
   let arr2D;
   let flag;
   if (!!isAlistRes) {
@@ -49,13 +49,12 @@ function isDisableRedirect(str, isAlistRes, isStrm) {
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
     // not xxxMountPath first
-    flag = config.embyMountPath.some(path => {
-      ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
-      return !!path && !str.startsWith(path) && !isStrm;
+    config.embyMountPath.some(path => {
+      if (!!path && !str.startsWith(path) && !notLocal) {
+        ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
+        return true;
+      }
     });
-    if (flag) {
-      return true;
-    }
     arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
   }
   return arr2D.some(rule => {
@@ -108,8 +107,9 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
-function checkIsStrmByLength(protocol, mediaStreamsLength) {
+function checkNotLocal(protocol, mediaStreamsLength) {
   // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+  // live stream "IsInfiniteStream": true
   if (!!protocol) {
     if (protocol != "File") {
       return true;
@@ -156,6 +156,6 @@ export default {
   strMapping,
   strMatches,
   checkIsStrmByPath,
-  checkIsStrmByLength,
+  checkNotLocal,
   getCurrentRequestUrl
 };
