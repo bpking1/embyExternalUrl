@@ -43,19 +43,23 @@ function getCurrentRequestUrl(r) {
 
 function isDisableRedirect(str, isAlistRes, isStrm) {
   let arr2D;
+  let flag;
   if (!!isAlistRes) {
     // this var isAlistRes = true
     arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
   } else {
     // not xxxMountPath first
-    if (config.embyMountPath.some(path => !!path && !str.startsWith(path) && !isStrm)) {
+    flag = config.embyMountPath.some(path => {
       ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
+      return !!path && !str.startsWith(path) && !isStrm;
+    });
+    if (flag) {
       return true;
     }
     arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
   }
   return arr2D.some(rule => {
-    let flag = strMatches(rule[0], str, rule[1]);
+    flag = strMatches(rule[0], str, rule[1]);
     if (flag) {
       ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(rule)}`);
     }
