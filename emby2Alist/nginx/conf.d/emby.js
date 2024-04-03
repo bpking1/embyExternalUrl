@@ -39,7 +39,7 @@ async function redirect2Pan(r) {
   }
   // strm file internal text maybe encode
   if (embyRes.notLocal) {
-      embyRes.path = decodeURIComponent(embyRes.path);
+    embyRes.path = decodeURIComponent(embyRes.path);
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
@@ -48,7 +48,7 @@ async function redirect2Pan(r) {
     return internalRedirect(r);
   }
 
-  let isRemote = !embyRes.path.startsWith("/");
+  let isRemote = util.checkIsRemoteByPath(embyRes.path);
   // file path mapping
   config.embyMountPath.map(s => {
     if (!!s) {
@@ -65,7 +65,7 @@ async function redirect2Pan(r) {
     }
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
-  isRemote = !embyItemPath.startsWith("/");
+  isRemote = util.checkIsRemoteByPath(embyItemPath)
   r.warn(`mapped emby file path: ${embyItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp

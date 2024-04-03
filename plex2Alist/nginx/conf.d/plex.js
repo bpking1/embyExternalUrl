@@ -55,7 +55,7 @@ async function redirect2Pan(r) {
     mediaServerRes.path = strmInnerText;
   }
 
-  let isRemote = !mediaServerRes.path.startsWith("/");
+  let isRemote = util.checkIsRemoteByPath(mediaServerRes.path);
   // file path mapping
   config.plexMountPath.map(s => {
     if (!!s) {
@@ -72,7 +72,7 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  isRemote = !mediaItemPath.startsWith("/");
+  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
