@@ -88,7 +88,8 @@ async function redirect2Pan(r) {
         }
       }
     }
-    return redirect(r, encodeURI(decodeURIComponent(mediaItemPath)));
+    // don't encode, excepted webClient, clients not decode
+    return redirect(r, mediaItemPath);
   }
 
   // fetch alist direct link
