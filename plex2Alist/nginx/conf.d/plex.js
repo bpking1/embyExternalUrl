@@ -550,6 +550,10 @@ function cachePartInfo(partKey, partFilePath) {
 }
 
 function redirect(r, uri) {
+  // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
+  // add_header Access-Control-Allow-Origin *;
+  r.headersOut["Access-Control-Allow-Origin"] = "*";
+
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
