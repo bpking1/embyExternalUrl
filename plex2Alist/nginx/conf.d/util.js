@@ -76,6 +76,13 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
+function checkIsRemoteByPath(filePath) {
+  if (!!filePath) {
+    return !filePath.startsWith("/") && !filePath.startsWith("\\");
+  }
+  return false;
+}
+
 // plex only
 function getFileNameByHead(contentDisposition) {
   if (contentDisposition && contentDisposition.length > 0) {
@@ -90,6 +97,7 @@ export default {
   proxyUri,
   isDisableRedirect,
   checkIsStrmByPath,
+  checkIsRemoteByPath,
   strMapping,
   strMatches,
   getFileNameByHead,

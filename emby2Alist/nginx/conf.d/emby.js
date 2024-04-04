@@ -39,7 +39,7 @@ async function redirect2Pan(r) {
   }
   // strm file internal text maybe encode
   if (embyRes.notLocal) {
-      embyRes.path = decodeURIComponent(embyRes.path);
+    embyRes.path = decodeURIComponent(embyRes.path);
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
@@ -48,7 +48,7 @@ async function redirect2Pan(r) {
     return internalRedirect(r);
   }
 
-  let isRemote = !embyRes.path.startsWith("/");
+  let isRemote = util.checkIsRemoteByPath(embyRes.path);
   // file path mapping
   config.embyMountPath.map(s => {
     if (!!s) {
@@ -65,7 +65,7 @@ async function redirect2Pan(r) {
     }
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
-  isRemote = !embyItemPath.startsWith("/");
+  isRemote = util.checkIsRemoteByPath(embyItemPath)
   r.warn(`mapped emby file path: ${embyItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
@@ -81,7 +81,8 @@ async function redirect2Pan(r) {
         }
       }
     }
-    return redirect(r, encodeURI(decodeURIComponent(embyItemPath)));
+    // don't encode, excepted webClient, clients not decode
+    return redirect(r, embyItemPath);
   }
 
   // fetch alist direct link
@@ -158,76 +159,75 @@ async function transferPlaybackInfo(r) {
     method: r.method,
     args: query
   });
-  const body = JSON.parse(response.responseText);
-  if (
-    response.status === 200 &&
-    body.MediaSources &&
-    body.MediaSources.length > 0
-  ) {
-    r.log(`main request headersOut: ${JSON.stringify(r.headersOut)}`);
-    r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
-    r.warn(`origin playbackinfo: ${response.responseText}`);
-    for (let i = 0; i < body.MediaSources.length; i++) {
-      const source = body.MediaSources[i];
-      // if (source.IsRemote) {
-      //   // live streams are not blocked
-      //   // return r.return(200, response.responseText);
-      // }
-      r.warn(`modify direct play info`);
-      source.SupportsDirectPlay = true;
-      source.SupportsDirectStream = true;
-      source.OriginDirectStreamUrl = source.DirectStreamUrl; // for debug
-      source.DirectStreamUrl = util.addDefaultApiKey(
-        r,
-        util
-          .generateUrl(r, "", r.uri)
-          .replace("/emby/Items", "/videos")
-          // origin link: /emby/videos/401929/stream.xxx?xxx
-          // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-          .replace("PlaybackInfo", `stream/${source.Name}.${source.Container}`)
-      );
-      source.DirectStreamUrl = util.appendUrlArg(
-        source.DirectStreamUrl,
-        "MediaSourceId",
-        source.Id
-      );
-      source.DirectStreamUrl = util.appendUrlArg(
-        source.DirectStreamUrl,
-        "Static",
-        "true"
-      );
-      // addFilePath and strmInfo cache to clients
-      source.DirectStreamUrl = util.appendUrlArg(
-        source.DirectStreamUrl,
-        util.args.filePathKey,
-        encodeURIComponent(source.Path)
-      );
-      source.DirectStreamUrl = util.appendUrlArg(
-        source.DirectStreamUrl,
-        util.args.notLocalKey,
-        util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0"
-      );
-      // a few players not support special character
-      source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
-      r.warn(`remove transcode config`);
-      source.SupportsTranscoding = false;
-      if (source.TranscodingUrl) {
-        delete source.TranscodingUrl;
-        delete source.TranscodingSubProtocol;
-        delete source.TranscodingContainer;
+  if (response.status === 200) {
+    const body = JSON.parse(response.responseText);
+    if (body.MediaSources && body.MediaSources.length > 0) {
+      r.log(`main request headersOut: ${JSON.stringify(r.headersOut)}`);
+      r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
+      r.warn(`origin playbackinfo: ${response.responseText}`);
+      for (let i = 0; i < body.MediaSources.length; i++) {
+        const source = body.MediaSources[i];
+        // if (source.IsRemote) {
+        //   // live streams are not blocked
+        //   // return r.return(200, response.responseText);
+        // }
+        r.warn(`modify direct play info`);
+        source.SupportsDirectPlay = true;
+        source.SupportsDirectStream = true;
+        source.OriginDirectStreamUrl = source.DirectStreamUrl; // for debug
+        source.DirectStreamUrl = util.addDefaultApiKey(
+          r,
+          util
+            .generateUrl(r, "", r.uri)
+            .replace("/emby/Items", "/videos")
+            // origin link: /emby/videos/401929/stream.xxx?xxx
+            // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+            .replace("PlaybackInfo", `stream/${source.Name}.${source.Container}`)
+        );
+        source.DirectStreamUrl = util.appendUrlArg(
+          source.DirectStreamUrl,
+          "MediaSourceId",
+          source.Id
+        );
+        source.DirectStreamUrl = util.appendUrlArg(
+          source.DirectStreamUrl,
+          "Static",
+          "true"
+        );
+        // addFilePath and strmInfo cache to clients
+        source.DirectStreamUrl = util.appendUrlArg(
+          source.DirectStreamUrl,
+          util.args.filePathKey,
+          // r.args default remove special character
+          encodeURIComponent(source.Path)
+        );
+        source.DirectStreamUrl = util.appendUrlArg(
+          source.DirectStreamUrl,
+          util.args.notLocalKey,
+          util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0"
+        );
+        // a few players not support special character
+        source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
+        r.warn(`remove transcode config`);
+        source.SupportsTranscoding = false;
+        if (source.TranscodingUrl) {
+          delete source.TranscodingUrl;
+          delete source.TranscodingSubProtocol;
+          delete source.TranscodingContainer;
+        }
       }
-    }
-    for (const key in response.headersOut) {
-      if (key === "Content-Length") {
-        // auto generate content length
-        continue;
+      for (const key in response.headersOut) {
+        if (key === "Content-Length") {
+          // auto generate content length
+          continue;
+        }
+        r.headersOut[key] = response.headersOut[key];
       }
-      r.headersOut[key] = response.headersOut[key];
+      const bodyJson = JSON.stringify(body);
+      r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+      r.warn(`transfer playbackinfo: ${bodyJson}`);
+      return r.return(200, bodyJson);
     }
-    const bodyJson = JSON.stringify(body);
-    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-    r.warn(`transfer playbackinfo: ${bodyJson}`);
-    return r.return(200, bodyJson);
   }
   r.warn("playbackinfo subrequest failed");
   return internalRedirect(r);

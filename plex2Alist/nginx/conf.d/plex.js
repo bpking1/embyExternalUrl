@@ -55,7 +55,7 @@ async function redirect2Pan(r) {
     mediaServerRes.path = strmInnerText;
   }
 
-  let isRemote = !mediaServerRes.path.startsWith("/");
+  let isRemote = util.checkIsRemoteByPath(mediaServerRes.path);
   // file path mapping
   config.plexMountPath.map(s => {
     if (!!s) {
@@ -72,7 +72,7 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  isRemote = !mediaItemPath.startsWith("/");
+  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
@@ -88,7 +88,8 @@ async function redirect2Pan(r) {
         }
       }
     }
-    return redirect(r, encodeURI(decodeURIComponent(mediaItemPath)));
+    // don't encode, excepted webClient, clients not decode
+    return redirect(r, mediaItemPath);
   }
 
   // fetch alist direct link
@@ -549,6 +550,10 @@ function cachePartInfo(partKey, partFilePath) {
 }
 
 function redirect(r, uri) {
+  // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
+  // add_header Access-Control-Allow-Origin *;
+  r.headersOut["Access-Control-Allow-Origin"] = "*";
+
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);

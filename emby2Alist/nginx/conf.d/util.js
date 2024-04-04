@@ -119,6 +119,13 @@ function checkNotLocal(protocol, mediaStreamsLength) {
   return false;
 }
 
+function checkIsRemoteByPath(filePath) {
+  if (!!filePath) {
+    return !filePath.startsWith("/") && !filePath.startsWith("\\");
+  }
+  return false;
+}
+
 function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
@@ -157,5 +164,6 @@ export default {
   strMatches,
   checkIsStrmByPath,
   checkNotLocal,
+  checkIsRemoteByPath,
   getCurrentRequestUrl
 };
