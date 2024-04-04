@@ -34,6 +34,8 @@ https://clients.plex.tv/api/v2/resources
 
 测试已通过
 1.局域网环境下的Web浏览器添加拓展解决，并更新最新代码
+![e6cb4294e72b3140870f42da1bb966bb](https://github.com/bpking1/embyExternalUrl/assets/42368856/96e1a512-2021-4aff-83dc-bc1424d6e0db)
+![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/ab71279e-296c-4845-af69-19738b25aae2)
 
 2024/03/30
 
