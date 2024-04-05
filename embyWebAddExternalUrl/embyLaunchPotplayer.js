@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.9
+// @version      1.1.1
 // @description  emby launch extetnal player
 // @description:zh-cn emby调用外部播放器
 // @description:en  emby to external player
@@ -57,35 +57,44 @@
     }
 
     function showFlag() {
-        let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        if (!mainDetailButtons) {
-            return false;
-        }
-        let videoElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectVideoContainer");
-        if (videoElement && videoElement.classList.contains("hide")) {
-            return false;
-        }
-        let audioElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectAudioContainer");
-        return !(audioElement && audioElement.classList.contains("hide"));
+        return !!document.querySelector("div[is='emby-scroller']:not(.hide) .mediaInfoPrimary:not(.hide)");
+
+        // let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
+        // if (!mainDetailButtons) {
+        //     return false;
+        // }
+        // let videoElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectVideoContainer");
+        // if (videoElement && videoElement.classList.contains("hide")) {
+        //     return false;
+        // }
+        // let audioElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectAudioContainer");
+        // return !(audioElement && audioElement.classList.contains("hide"));
     }
 
     async function getItemInfo() {
         let userId = ApiClient._serverInfo.UserId;
         let itemId = /\?id=(\d*)/.exec(window.location.hash)[1];
         let response = await ApiClient.getItem(userId, itemId);
-        //继续播放当前剧集的下一集
+        // 继续播放当前剧集的下一集
         if (response.Type == "Series") {
             let seriesNextUpItems = await ApiClient.getNextUpEpisodes({ SeriesId: itemId, UserId: userId });
-            console.log("nextUpItemId: " + seriesNextUpItems.Items[0].Id);
-            return await ApiClient.getItem(userId, seriesNextUpItems.Items[0].Id);
+            if (seriesNextUpItems.Items.length > 0) {
+                console.log("nextUpItemId: " + seriesNextUpItems.Items[0].Id);
+                return await ApiClient.getItem(userId, seriesNextUpItems.Items[0].Id);
+            } else {
+                // 默认播放第一集
+                let firstItems = await ApiClient.getItems(userId, { parentId: itemId, Recursive: true, IsFolder: false, Limit: 1 });
+                console.log("firstItemId: " + firstItems.Items[0].Id);
+                return await ApiClient.getItem(userId, firstItems.Items[0].Id);
+            }
         }
-        //播放当前季season的第一集
+        // 播放当前季season的第一集
         if (response.Type == "Season") {
             let seasonItems = await ApiClient.getItems(userId, { parentId: itemId });
             console.log("seasonItemId: " + seasonItems.Items[0].Id);
             return await ApiClient.getItem(userId, seasonItems.Items[0].Id);
         }
-        //播放当前集或电影
+        // 播放当前集或电影
         console.log("itemId:  " + itemId);
         return response;
     }
