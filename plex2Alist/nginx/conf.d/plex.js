@@ -41,7 +41,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
   
-  if (util.isDisableRedirect(mediaServerRes.path, false, notLocal)) {
+  if (util.isDisableRedirect(r, mediaServerRes.path, false, notLocal)) {
     // use original link
     return internalRedirect(r);
   }
@@ -77,10 +77,18 @@ async function redirect2Pan(r) {
 
   // strm file inner remote link redirect,like: http,rtsp
   if (isRemote) {
-    const ruleArr2D = config.redirectStrmLastLinkRule;
-    for (let i = 0; i < ruleArr2D.length; i++) {
-      const rule = ruleArr2D[i];
-      if (util.strMatches(rule[0], mediaItemPath, rule[1])) {
+    const ruleArr3D = config.redirectStrmLastLinkRule;
+    for (let i = 0; i < ruleArr3D.length; i++) {
+      const rule = ruleArr3D[i];
+      const matcher = rule[1];
+      let flag;
+      if (Array.isArray(matcher) 
+        && matcher.some(m => util.strMatches(rule[0], mediaItemPath, m))) {
+        flag = true;
+      } else {
+        flag = util.strMatches(rule[0], mediaItemPath, matcher);
+      }
+      if (flag) {
         r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
         const directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], rule[4]);
         if (!!directUrl) {
@@ -106,7 +114,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(alistRes, true, notLocal)) {
+    if (util.isDisableRedirect(r, alistRes, true, notLocal)) {
       // use original link
       return internalRedirect(r);
     }

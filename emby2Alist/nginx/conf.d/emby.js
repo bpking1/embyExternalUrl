@@ -43,7 +43,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
 
-  if (util.isDisableRedirect(embyRes.path, false, embyRes.notLocal)) {
+  if (util.isDisableRedirect(r, embyRes.path, false, embyRes.notLocal)) {
     // use original link
     return internalRedirect(r);
   }
@@ -70,10 +70,18 @@ async function redirect2Pan(r) {
 
   // strm file inner remote link redirect,like: http,rtsp
   if (isRemote) {
-    const ruleArr2D = config.redirectStrmLastLinkRule;
-    for (let i = 0; i < ruleArr2D.length; i++) {
-      const rule = ruleArr2D[i];
-      if (util.strMatches(rule[0], embyItemPath, rule[1])) {
+    const ruleArr3D = config.redirectStrmLastLinkRule;
+    for (let i = 0; i < ruleArr3D.length; i++) {
+      const rule = ruleArr3D[i];
+      const matcher = rule[1];
+      let flag;
+      if (Array.isArray(matcher) 
+        && matcher.some(m => util.strMatches(rule[0], embyItemPath, m))) {
+        flag = true;
+      } else {
+        flag = util.strMatches(rule[0], embyItemPath, matcher);
+      }
+      if (flag) {
         r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
         const directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
         if (!!directUrl) {
@@ -99,7 +107,7 @@ async function redirect2Pan(r) {
   end = Date.now();
   r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(alistRes, true, embyRes.notLocal)) {
+    if (util.isDisableRedirect(r, alistRes, true, embyRes.notLocal)) {
       // use original link
       return internalRedirect(r);
     }

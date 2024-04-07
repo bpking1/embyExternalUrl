@@ -41,29 +41,54 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
-function isDisableRedirect(str, isAlistRes, notLocal) {
-  let arr2D;
-  let flag;
+function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
+  let arr3D;
   if (!!isAlistRes) {
     // this var isAlistRes = true
-    arr2D = config.disableRedirectRule.filter(rule => !!rule[2]);
+    arr3D = config.disableRedirectRule.filter(rule => !!rule[3]);
   } else {
     // not xxxMountPath first
     config.embyMountPath.some(path => {
-      if (!!path && !str.startsWith(path) && !notLocal) {
+      if (!!path && !filePath.startsWith(path) && !notLocal) {
         ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
         return true;
       }
     });
-    arr2D = config.disableRedirectRule.filter(rule => !rule[2]);
+    arr3D = config.disableRedirectRule.filter(rule => !rule[3]);
   }
-  return arr2D.some(rule => {
-    flag = strMatches(rule[0], str, rule[1]);
+  return arr3D.some(rule => {
+    const sourceStr = getSourceStrByType(rule[0], r, filePath);
+    const matcher = rule[2];
+    let flag;
+    if (Array.isArray(matcher) 
+      && matcher.some(m => strMatches(rule[1], sourceStr, m))) {
+      flag = true;
+    } else {
+      flag = strMatches(rule[1], sourceStr, matcher);
+    }
     if (flag) {
       ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(rule)}`);
     }
     return flag;
   });
+}
+
+function getSourceStrByType(type, r, filePath) {
+  let str = filePath;
+  if (type === "0") {
+    return str;
+  }
+  let val;
+  const typeArr = type.split(".");
+  const rootTypeVal = typeArr.shift();
+  if (rootTypeVal === "r") {
+    val = r;
+    typeArr.map(typeVal => {
+      val = val[typeVal];
+    });
+    str = val;
+  }
+  return str;
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
