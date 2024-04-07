@@ -81,11 +81,6 @@
             if (seriesNextUpItems.Items.length > 0) {
                 console.log("nextUpItemId: " + seriesNextUpItems.Items[0].Id);
                 return await ApiClient.getItem(userId, seriesNextUpItems.Items[0].Id);
-            } else {
-                // 默认播放第一集
-                let firstItems = await ApiClient.getItems(userId, { parentId: itemId, Recursive: true, IsFolder: false, Limit: 1 });
-                console.log("firstItemId: " + firstItems.Items[0].Id);
-                return await ApiClient.getItem(userId, firstItems.Items[0].Id);
             }
         }
         // 播放当前季season的第一集
@@ -95,8 +90,14 @@
             return await ApiClient.getItem(userId, seasonItems.Items[0].Id);
         }
         // 播放当前集或电影
-        console.log("itemId:  " + itemId);
-        return response;
+        if (response.MediaSources > 0) {
+            console.log("itemId:  " + itemId);
+            return response;
+        }
+        // 默认播放第一个,集/播放列表第一个媒体
+        let firstItems = await ApiClient.getItems(userId, { parentId: itemId, Recursive: true, IsFolder: false, Limit: 1 });
+        console.log("firstItemId: " + firstItems.Items[0].Id);
+        return await ApiClient.getItem(userId, firstItems.Items[0].Id);
     }
 
     function getSeek(position) {
