@@ -52,7 +52,8 @@ const disableRedirectRule = [
   // ["0", 2, "Google"],
   // ["0", 2, "/NAS/", true],
   // ["0", 3, /private/ig],
-  ["r.variables.remote_addr", 0, lanIpHead], // nginx内置变量不带$,客户端地址($remote_addr)
+  // docker注意必须为host模式,不然此变量全部为内网ip,判断无效,nginx内置变量不带$,客户端地址($remote_addr)
+  // ["r.variables.remote_addr", 0, lanIpHead],
   // ["r.headersIn.User-Agent", 2, "IE"], // 请求头参数,客户端UA
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
