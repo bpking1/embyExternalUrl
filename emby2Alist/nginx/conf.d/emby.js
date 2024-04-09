@@ -224,13 +224,7 @@ async function transferPlaybackInfo(r) {
           delete source.TranscodingContainer;
         }
       }
-      for (const key in response.headersOut) {
-        if (key === "Content-Length") {
-          // auto generate content length
-          continue;
-        }
-        r.headersOut[key] = response.headersOut[key];
-      }
+      util.copyHeaders(response, r);
       const bodyJson = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       r.warn(`transfer playbackinfo: ${bodyJson}`);
@@ -448,13 +442,37 @@ async function itemsFilter(r) {
   totalRecordCount = body.Items.length;
   r.warn(`itemsFilter after: ${totalRecordCount}`);
   body.TotalRecordCount = totalRecordCount;
-  for (const key in subR.headersOut) {
-	  if (key === "Content-Length") {
-	    // auto generate content length
-	    continue;
-	  }
-	  r.headersOut[key] = subR.headersOut[key];
-	}
+  util.copyHeaders(subR, r);
+  return r.return(200, JSON.stringify(body));
+}
+
+async function systemInfoHandler(r) {
+  const currentPort = parseInt(r.variables.server_port);
+  const subR = await r.subrequest(util.proxyUri(r.uri));
+  let body;
+  if (subR.status === 200) {
+  	body = JSON.parse(subR.responseText);
+  } else {
+  	r.warn("systemInfoHandler subrequest failed");
+	  return internalRedirect(r);
+  }
+  const originPort = parseInt(body.HttpServerPortNumber);
+  body.WebSocketPortNumber = currentPort;
+  body.HttpServerPortNumber = currentPort;
+  body.LocalAddresses.forEach((s, i, arr) => {
+    arr[i] = s.replace(originPort, currentPort);
+  });
+  body.RemoteAddresses.forEach((s, i, arr) => {
+    arr[i] = s.replace(originPort, currentPort);
+  });
+  // old clients
+  if (!!body.LocalAddress) {
+    body.LocalAddress = body.LocalAddress.replace(originPort, currentPort);
+  }
+  if (!!body.WanAddress) {
+    body.WanAddress = body.WanAddress.replace(originPort, currentPort);
+  }
+  util.copyHeaders(subR, r);
   return r.return(200, JSON.stringify(body));
 }
 
@@ -557,4 +575,12 @@ function internalRedirect(r, uri) {
   }
 }
 
-export default { redirect2Pan, fetchEmbyFilePath, transferPlaybackInfo, itemsFilter, redirect, internalRedirect };
+export default {
+  redirect2Pan,
+  fetchEmbyFilePath,
+  transferPlaybackInfo,
+  itemsFilter,
+  systemInfoHandler,
+  redirect,
+  internalRedirect,
+};
