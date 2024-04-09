@@ -41,6 +41,19 @@ function getCurrentRequestUrl(r) {
   return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
 }
 
+function copyHeaders(sourceR, targetR, skipKeys) {
+  if (!skipKeys) {
+    // auto generate content length
+    skipKeys = ["Content-Length"];
+  }
+  for (const key in sourceR.headersOut) {
+	  if (skipKeys.includes(key)) {
+	    continue;
+	  }
+	  targetR.headersOut[key] = sourceR.headersOut[key];
+	}
+}
+
 function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
   let arr3D;
   if (!!isAlistRes) {
@@ -179,16 +192,17 @@ function getItemInfo(r) {
 
 export default {
   args,
+  proxyUri,
   appendUrlArg,
   addDefaultApiKey,
-  proxyUri,
-  getItemInfo,
   generateUrl,
+  getCurrentRequestUrl,
+  copyHeaders,
   isDisableRedirect,
   strMapping,
   strMatches,
   checkIsStrmByPath,
   checkNotLocal,
   checkIsRemoteByPath,
-  getCurrentRequestUrl
+  getItemInfo,
 };
