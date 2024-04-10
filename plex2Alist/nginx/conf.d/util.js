@@ -107,6 +107,48 @@ function checkIsRemoteByPath(filePath) {
   return false;
 }
 
+
+function redirectStrmLastLinkRuleFilter(filePath) {
+  return config.redirectStrmLastLinkRule.filter(rule => {
+    const matcher = rule[1];
+    let flag;
+    if (Array.isArray(matcher) 
+      && matcher.some(m => strMatches(rule[0], filePath, m))) {
+      flag = true;
+    } else {
+      flag = strMatches(rule[0], filePath, matcher);
+    }
+    return flag;
+  });
+}
+
+function strmLinkFailback(url) {
+  if (!url) {
+    return url;
+  }
+  let rvt = alistLinkFailback(url);
+  return rvt;
+}
+
+function alistLinkFailback(url) {
+  let rvt = url;
+  const alistAddr = config.alistAddr;
+  const alistPublicAddr = config.alistPublicAddr;
+  let uri = url.replace(alistAddr, "");
+  if (!!alistAddr && url.startsWith(alistAddr) && !uri.startsWith("/d/")) {
+    rvt = `${alistAddr}/d${uri}`;
+    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
+    return rvt;
+  }
+  uri = url.replace(alistPublicAddr, "");
+  if (!!alistPublicAddr && url.startsWith(alistPublicAddr) && !uri.startsWith("/d/")) {
+    rvt = `${alistPublicAddr}/d${uri}`;
+    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
+    return rvt;
+  }
+  return rvt;
+}
+
 // plex only
 function getFileNameByHead(contentDisposition) {
   if (contentDisposition && contentDisposition.length > 0) {
@@ -119,10 +161,12 @@ function getFileNameByHead(contentDisposition) {
 export default {
   args,
   proxyUri,
+  strMapping,
+  strMatches,
   isDisableRedirect,
   checkIsStrmByPath,
   checkIsRemoteByPath,
-  strMapping,
-  strMatches,
+  redirectStrmLastLinkRuleFilter,
+  strmLinkFailback,
   getFileNameByHead,
 };
