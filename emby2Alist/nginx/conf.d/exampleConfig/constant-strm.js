@@ -19,7 +19,7 @@ const disableRedirectRule = [
   // ["0", 0, "/mnt/sda1"],
   // ["0", 1, ".mp3"],
   // ["0", 2, "Google"],
-  // ["0", 2, "/NAS/", true],
+  // ["0", 2, "/NAS/", true], // 例如使用alias聚合了nas本地文件,可能会存在卡顿或花屏
   // ["0", 3, /private/ig],
   // docker注意必须为host模式,不然此变量全部为内网ip,判断无效,nginx内置变量不带$,客户端地址($remote_addr)
   // ["r.variables.remote_addr", 0, lanIpHead],
