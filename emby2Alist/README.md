@@ -209,8 +209,11 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 写这篇文章默认读者是emby用户,使用rclone挂载网盘,会使用docker,因篇幅问题以上软件的使用方法不在文章范围之中,此项目不会对原有的emby和rclone配置造成影响或修改
 
 ## 原理:
-使用[aliyundrive-webdav](https://github.com/messense/aliyundrive-webdav) 项目将阿里盘转为webdav, 再使用rclone挂载以供emby读取
-使用[alist项目](https://github.com/Xhofe/alist) 将阿里盘及别的网盘的文件转为直链,使用nginx及其njs模块将emby视频播放地址劫持到 alist直链 (暂时只测试了od,gd和阿里云盘可用,alist目前支持好几种网盘,感兴趣的可以测试一下)
+~~使用[aliyundrive-webdav](https://github.com/messense/aliyundrive-webdav) 项目将阿里盘转为webdav, 再~~
+使用rclone挂载以供emby读取
+使用[alist项目](https://github.com/Xhofe/alist) 将阿里盘及别的网盘的文件转为直链,使用nginx及其njs模块将emby视频播放地址劫持到 alist直链 
+(~~暂时只测试了od,gd和阿里云盘可用,~~
+alist目前支持好几种网盘,感兴趣的可以测试一下)
 
 ## 步骤:
 
@@ -222,7 +225,8 @@ wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Al
 
 此时文件结构如下:
 ~/emby2Alist
-├── docker-compose.yml
+├── docker
+|   ├── docker-compose.yml
 └── nginx
     ├── conf.d
     │   ├── emby.conf
@@ -230,14 +234,27 @@ wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Al
     └── nginx.conf
 
 ### 2. 
-看情况修改emby.js 中的设置项目,通常来说只需要改alist密码
-这里默认emby在同一台机器并且使用8096端口,否则要修改 emby.js和emby.conf中emby的地址
+看情况修改constant.js 中的设置项目,通常来说只需要改alist密码
+这里默认emby在同一台机器并且使用8096端口,~~否则要修改 emby.js和emby.conf中emby的地址~~
 ### 3 . 如果不挂载阿里云盘 可以跳过这一步
 修改docker-compose.yml 中 service.ali-webdav 的 REFRESH_TOKEN
 获取方法参考原项目地址: https://github.com/messense/aliyundrive-webdav
 
-### 4. 
-启动服务: 在 ~/emby2Alist 目录下执行
+### docker部署的任选以下一种
+xxx为示例目录名,请根据自身情况修改
+
+前置条件1: 需要手动创建目录
+````
+/xxx/nginx-emby/log
+/xxx/nginx-emby/embyCache
+````
+前置条件2: 需要手动移动项目配置文件
+````
+将本项目xxx2Alist/nginx/下所有文件移动到/xxx/nginx-emby/config/下面
+````
+
+### 4.1 - docker-compose
+启动服务: 在 ~/emby2Alist/docker 目录下执行
 ```bash
 docker-compose up -d
 ```
@@ -249,9 +266,12 @@ docker-compose logs -f
 1. docker端口占用冲突:  修改docker-comopse映射端口
 2. webdav 的refresh token 填写错误 (**如果不挂载阿里云盘则忽略**)
 
+### 4.2 - 群晖docker
+容器=>设置=>导入=>选择json配置文件=>确认
+
 ### 5. 
-防火墙放行 5244, 8095 和 8080端口
-8080端口为阿里盘 webdav地址 , 8095端口为emby转直链端口与默认的8096互不影响
+防火墙放行 5244, 8091 ~~和 8080端口~~
+8080端口为阿里盘 webdav地址 , 8091 端口为emby转直链端口与默认的8096互不影响
 访问5244端口,初始密码查看docker log能看到 ,根据项目文档 https://github.com/Xhofe/alist 在Alist项目后台添加网盘 
 注意: 
 
@@ -281,11 +301,11 @@ nohup rclone mount ali: /mnt/ali --umask 0000 --default-permissions --allow-non-
 
 ### 7.
 
-访问 8095端口打开emby 测试直链是否生效,查看执行log
+访问 8091 端口打开emby 测试直链是否生效,查看执行log
 ```bash
 docker logs -f -n 10 emby-nginx 2>&1  | grep js:
 ```
-8095端口为走直链端口  , 原本的 8096端口 走 emby server 不变
+8091端口为走直链端口  , 原本的 8096端口 走 emby server 不变
 直链播放不支持转码,转码的话只能走emby server
 所以最好 在emby设置中将 播放 --> 视频 --> 互联网质量 设置为最高 ,并且将用户的转码权限关掉,确保走直链
 web端各大浏览器对音频和视频编码支持情况不一,碰到不支持的情况emby会强制走转码而不会走直链

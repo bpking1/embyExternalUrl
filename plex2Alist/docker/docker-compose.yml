@@ -3,16 +3,18 @@ version: '3.5'
 services:
 
     service.nginx:
-      image: nginx:alpine
-      container_name: nginx-emby
+      image: nginx:latest
+      container_name: nginx-plex
+      # 更改为默认host网络,纠正流量标识,直接占用宿主机端口,docker层会禁用端口映射
       network_mode: host
+      # 如果需要使用bridge(桥接)网络,请取消ports(端口映射)注释,并注释network_mode
+      # 端口映射规则为,宿主机端口:容器内部端口
       # ports:
-      #   - 8095:8090
+      #   - 32410:32410
       volumes:
-        - ./nginx-emby/nginx.conf:/etc/nginx/nginx.conf
-        - ./nginx-emby/conf.d:/etc/nginx/conf.d
-        - ./nginx-emby/embyCache:/var/cache/nginx/emby
-        - ./nginx-emby/log:/var/log/nginx
+        - ./nginx-plex/nginx.conf:/etc/nginx/nginx.conf
+        - ./nginx-plex/conf.d:/etc/nginx/conf.d
+        - ./nginx-plex/log:/var/log/nginx
       restart: always
       # depends_on:
       #   - service.ali
