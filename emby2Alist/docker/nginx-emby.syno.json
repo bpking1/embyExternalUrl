@@ -1,0 +1,65 @@
+{
+   "CapAdd" : null,
+   "CapDrop" : null,
+   "cmd" : "nginx -g daemon\\ off\\;",
+   "cpu_priority" : 50,
+   "enable_publish_all_ports" : false,
+   "enable_restart_policy" : true,
+   "enabled" : false,
+   "entrypoint_default" : "/docker-entrypoint.sh",
+   "env_variables" : [
+      {
+         "key" : "TZ",
+         "value" : "Asia/Shanghai"
+      }
+   ],
+   "exporting" : false,
+   "image" : "nginx:latest",
+   "is_ddsm" : false,
+   "is_package" : false,
+   "links" : [],
+   "memory_limit" : 134217728,
+   "name" : "nginx-emby",
+   // 更改为默认host网络,纠正流量标识,直接占用宿主机端口,docker层会禁用端口映射
+   "network_mode" : "host",
+   // "network_mode" : "bridge",
+   // 如果需要使用bridge(桥接)网络,请取消ports(端口映射)注释,并修改network_mode为bridge
+   // 端口映射规则为,host_port(宿主机端口),container_port(容器内部端口)
+   "port_bindings" : [
+      // {
+      //    "host_port" : 8091,
+      //    "container_port" : 8091,
+      //    "type" : "tcp"
+      // }
+   ],
+   "privileged" : false,
+   "shortcut" : {
+      "enable_shortcut" : false,
+      "enable_status_page" : false,
+      "enable_web_page" : false,
+      "web_page_url" : ""
+   },
+   // "use_host_network" : true,
+   "volume_bindings" : [
+      {
+         "host_volume_file" : "/docker/nginx-emby/log",
+         "mount_point" : "/var/log/nginx",
+         "type" : "rw"
+      },
+      {
+         "host_volume_file" : "/docker/nginx-emby/embyCache",
+         "mount_point" : "/var/cache/nginx/emby",
+         "type" : "rw"
+      },
+      {
+         "host_volume_file" : "/docker/nginx-emby/config/conf.d",
+         "mount_point" : "/etc/nginx/conf.d",
+         "type" : "rw"
+      },
+      {
+         "host_volume_file" : "/docker/nginx-emby/config/nginx.conf",
+         "mount_point" : "/etc/nginx/nginx.conf",
+         "type" : "rw"
+      }
+   ]
+}
