@@ -1,57 +1,12 @@
-import config from "./constant.js";
+import config from "../constant.js";
 
 const args = {
-  filePathKey: "filePath",
-  notLocalKey: "notLocal",
+  plexTokenKey: "X-Plex-Token",
 }
 
+// copy from emby2Alist/nginx/conf.d/util.js
 function proxyUri(uri) {
   return `/proxy${uri}`;
-}
-
-function appendUrlArg(u, k, v) {
-  if (u.includes(k)) {
-    return u;
-  }
-  return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
-}
-
-function addDefaultApiKey(r, u) {
-  let url = u;
-  const itemInfo = getItemInfo(r);
-  if (!url.includes("api_key") && !url.includes("X-Emby-Token")) {
-    url = appendUrlArg(url, "api_key", itemInfo.api_key);
-  }
-  return url;
-}
-
-function generateUrl(r, host, uri) {
-  let url = host + uri;
-  let isFirst = true;
-  for (const key in r.args) {
-    url += isFirst ? "?" : "&";
-    url += `${key}=${r.args[key]}`;
-    isFirst = false;
-  }
-  return url;
-}
-
-function getCurrentRequestUrl(r) {
-  const host = r.headersIn["Host"];
-  return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
-}
-
-function copyHeaders(sourceR, targetR, skipKeys) {
-  if (!skipKeys) {
-    // auto generate content length
-    skipKeys = ["Content-Length"];
-  }
-  for (const key in sourceR.headersOut) {
-	  if (skipKeys.includes(key)) {
-	    continue;
-	  }
-	  targetR.headersOut[key] = sourceR.headersOut[key];
-	}
 }
 
 function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
@@ -61,7 +16,7 @@ function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
     arr3D = config.disableRedirectRule.filter(rule => !!rule[3]);
   } else {
     // not xxxMountPath first
-    config.embyMountPath.some(path => {
+    config.plexMountPath.some(path => {
       if (!!path && !filePath.startsWith(path) && !notLocal) {
         ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
         return true;
@@ -145,24 +100,13 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
-function checkNotLocal(protocol, mediaStreamsLength) {
-  // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-  // live stream "IsInfiniteStream": true
-  if (!!protocol) {
-    if (protocol != "File") {
-      return true;
-    }
-    return mediaStreamsLength == 0;
-  }
-  return false;
-}
-
 function checkIsRemoteByPath(filePath) {
   if (!!filePath) {
     return !filePath.startsWith("/") && !filePath.startsWith("\\");
   }
   return false;
 }
+
 
 function redirectStrmLastLinkRuleFilter(filePath) {
   return config.redirectStrmLastLinkRule.filter(rule => {
@@ -205,47 +149,24 @@ function alistLinkFailback(url) {
   return rvt;
 }
 
-function getItemInfo(r) {
-  const embyHost = config.embyHost;
-  const embyApiKey = config.embyApiKey;
-  const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
-  const mediaSourceId = r.args.MediaSourceId
-    ? r.args.MediaSourceId
-    : r.args.mediaSourceId;
-  const Etag = r.args.Tag;
-  let api_key = r.args["X-Emby-Token"]
-    ? r.args["X-Emby-Token"]
-    : r.args.api_key;
-  api_key = api_key ? api_key : embyApiKey;
-  let itemInfoUri = "";
-  if (r.uri.includes("JobItems")) {
-	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
-  } else {
-    if (mediaSourceId) {
-      itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
-    } else {
-      itemInfoUri = `${embyHost}/Items?Ids=${itemId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
-    }
+// plex only
+function getFileNameByHead(contentDisposition) {
+  if (contentDisposition && contentDisposition.length > 0) {
+    const regex = /filename[^;\n]*=(UTF-\d['"]*)?((['"]).*?[.]$\2|[^;\n]*)?/gi;
+    return contentDisposition.match(regex)[1].replace("filename*=UTF-8''", "");
   }
-  return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
+  return null;
 }
 
 export default {
   args,
   proxyUri,
-  appendUrlArg,
-  addDefaultApiKey,
-  generateUrl,
-  getCurrentRequestUrl,
-  copyHeaders,
-  isDisableRedirect,
   strMapping,
   strMatches,
+  isDisableRedirect,
   checkIsStrmByPath,
-  checkNotLocal,
   checkIsRemoteByPath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
-  getItemInfo,
+  getFileNameByHead,
 };

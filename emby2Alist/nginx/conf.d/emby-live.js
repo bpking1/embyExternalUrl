@@ -1,7 +1,7 @@
 // @author: Ambitious
 // @date: 2023-09-04
 import config from "./constant.js";
-import util from "./util.js";
+import util from "./common/util.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
