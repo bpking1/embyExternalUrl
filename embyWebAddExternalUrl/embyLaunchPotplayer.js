@@ -90,7 +90,7 @@
             return await ApiClient.getItem(userId, seasonItems.Items[0].Id);
         }
         // 播放当前集或电影
-        if (response.MediaSources > 0) {
+        if (response.MediaSources.length > 0) {
             console.log("itemId:  " + itemId);
             return response;
         }
