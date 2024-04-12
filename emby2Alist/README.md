@@ -5,9 +5,41 @@ date: 2021/09/06 22:00:00
 
 ### 文章更新记录 
 
+2024/04/12
+
+1.添加定时任务默认7天自动清空nginx日志,请结合日志重要程度和硬盘占用情况自行调整为合适间隔,建议不要改为小于1天以免影响性能,
+使用条件为没有更改过默认日志的路径和名称
+````
+/var/log/nginx/error.log
+/var/log/nginx/access.log
+````
+
+2024/04/11
+
+1.当媒体服务中存在过多的媒体时访问首页很慢,优化方式为,设置=>服务器=>数据库=>数据库缓存大小（MB）=>进行适当调大,
+个人目前为460MB,请根据物理机内存情况合理设置,其他数据库设置请勿更改
+
+2.添加nginx对接日志中心示例配置,可以和原xxx_log共存,如有需要,打开注释并修改为自己的ip和端口即可
+发送日志到syslog,默认使用UDP的514端口,群晖=>日志中心=>接收日志=>新增=>名称随意,保持默认的BSD格式,UDP,514
+
+2024/04/10
+
+客户端绕过nginx-emby的参考,新代码已经对系统信息接口反代修改了端口号,不确定是否还有问题
+
+1.之前遇到过类似的,但不完全相同,媒体服务都是有UDP广播局域网自动发现的,
+但是广域网走的是服务开放的接口获取服务器的ip以及端口信息,例如emby默认的8096端口,
+我路由器映射出去也是8096,这就导致接入了网络发现接口的客户端会擅自连接8096端口,
+而忽略连接nginx的反代端口8098之类的,尽管我是手动使用8098端口登录的也没用,我是用的官方emby安卓客户端
+
+我这边的解决方案是将路由器端口映射为8096=>7096,路由器这边的设置,emby是不可能知道的,
+表现形式为控制台端口还是8096,所以客户端在擅自连接8096不通时就会老实连接反代的8091了
+
+猜测fileball接口接入比较完善了,使用了媒体服务提供的网络发现接口,而infuse并没有调用此接口,以用户手动填写的为准
+
 2024/04/08
 
-1.增强禁用直链的规则配置,docker环境需要注意此参数客户端地址($remote_addr),nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无效
+1.增强禁用直链的规则配置,docker环境需要注意此参数客户端地址($remote_addr),
+nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无效
 
 2024/04/05
 
@@ -152,7 +184,7 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 
 1.支持strm文件的直链,下边第一种情况已做处理默认支持
 
-有多种填写方式，一个strm文件内部只能有一行路径或者链接,具体可以参考emby官方文档,我这里只测试了两种情况,例如:
+有多种填写方式,一个strm文件内部只能有一行路径或者链接,具体可以参考emby官方文档,我这里只测试了两种情况,例如:
 
 1-1:
 从alist的根路径开始填写,注意不要包含embyMountPath这个参数的路径,特殊字符不用转义,代码内部已做处理
@@ -173,9 +205,9 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 
 2023/2/2
 
-升级到alist v3了，脚本github地址 [bpking1/embyExternalUrl (github.com)](https://github.com/bpking1/embyExternalUrl)
+升级到alist v3了,脚本github地址 [bpking1/embyExternalUrl (github.com)](https://github.com/bpking1/embyExternalUrl)
 
-调用外部播放器的油猴脚本账号无法登陆了，换了个新地址:[embyLaunchPotplayer (greasyfork.org)](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
+调用外部播放器的油猴脚本账号无法登陆了,换了个新地址:[embyLaunchPotplayer (greasyfork.org)](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
 2022/5/13
 
