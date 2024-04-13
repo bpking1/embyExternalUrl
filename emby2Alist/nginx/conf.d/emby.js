@@ -81,11 +81,17 @@ async function redirect2Pan(r) {
   // strm file inner remote link redirect,like: http,rtsp
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
-    if (!!rule) {
+    if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
       let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
       if (!!directUrl) {
         embyItemPath = directUrl;
+      } else {
+        r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4]);
+        if (!!directUrl) {
+          embyItemPath = directUrl;
+        }
       }
     }
     // don't encode, excepted webClient, clients not decode
@@ -509,12 +515,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
         ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
         return;
       }
-      ngx.log(ngx.ERR, `warn: fetchStrmLastLink, not expected result status, failback once`);
-      const directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), authType, authInfo, authUrl);
-      if (!!directUrl) {
-        return directUrl;
-      }
-      ngx.log(ngx.ERR, `error: fetchStrmLastLink, not expected result, last fail`);
+      ngx.log(ngx.ERR, `error: fetchStrmLastLink, not expected result`);
     } else {
       ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
     }
