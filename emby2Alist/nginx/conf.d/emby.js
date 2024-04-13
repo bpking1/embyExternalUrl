@@ -6,9 +6,18 @@ import util from "./common/util.js";
 import embyApi from "./emby-api.js";
 
 async function redirect2Pan(r) {
-  let embyPathMapping = config.embyPathMapping;
-  const alistToken = config.alistToken;
-  const alistAddr = config.alistAddr;
+  const ua = r.headersIn["User-Agent"];
+  // check redirect link cache
+  const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
+  if (!!cachedLink) {
+    r.warn(`hit redirectCache: ${cachedLink}`);
+    if (cachedLink.startsWith("@")) {
+      // use original link
+      return internalRedirect(r, cachedLink, true);
+    } else {
+      return redirect(r, cachedLink, true);
+    }
+  }
 
   let embyRes = {
     path: r.args[util.args.filePathKey],
@@ -50,6 +59,7 @@ async function redirect2Pan(r) {
 
   let isRemote = util.checkIsRemoteByPath(embyRes.path);
   // file path mapping
+  let embyPathMapping = config.embyPathMapping;
   config.embyMountPath.map(s => {
     if (!!s) {
       embyPathMapping.unshift([0, 0 , s, ""]);
@@ -84,9 +94,10 @@ async function redirect2Pan(r) {
 
   // fetch alist direct link
   const alistFilePath = embyItemPath;
-  start = Date.now();
-  const ua = r.headersIn["User-Agent"];
+  const alistToken = config.alistToken;
+  const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
+  start = Date.now();
   const alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
@@ -147,6 +158,7 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
+  let start = Date.now();
   // replay the request
   const proxyUri = util.proxyUri(r.uri);
   r.warn(`playbackinfo proxy uri: ${proxyUri}`);
@@ -216,7 +228,8 @@ async function transferPlaybackInfo(r) {
       util.copyHeaders(response, r);
       const bodyJson = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-      r.warn(`transfer playbackinfo: ${bodyJson}`);
+      let end = Date.now();
+      r.warn(`${end - start}ms, transfer playbackinfo: ${bodyJson}`);
       return r.return(200, bodyJson);
     }
   }
@@ -436,15 +449,15 @@ async function itemsFilter(r) {
 }
 
 async function systemInfoHandler(r) {
-  const currentPort = parseInt(r.variables.server_port);
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
   if (subR.status === 200) {
   	body = JSON.parse(subR.responseText);
   } else {
-  	r.warn("systemInfoHandler subrequest failed");
+  	r.warn(`systemInfoHandler subrequest failed`);
 	  return internalRedirect(r);
   }
+  const currentPort = parseInt(r.variables.server_port);
   const originPort = parseInt(body.HttpServerPortNumber);
   body.WebSocketPortNumber = currentPort;
   body.HttpServerPortNumber = currentPort;
@@ -526,28 +539,29 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
   });
 }
 
-function redirect(r, uri) {
+function redirect(r, uri, isCached) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
   // async
+  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   if (config.embyNotificationsAdmin.enable) {
     embyApi.fetchEmbyNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
-      `original link: ${r.uri}\nredirect to: ${uri}` :
-      `redirect success`
+      `hit redirectCache: ${!!isCached}, original link: ${r.uri}\nredirect to: ${uri}` :
+      `hit redirectCache: ${!!isCached}, redirect: success`
     );
   }
   if (config.embyRedirectSendMessage.enable) {
     sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
       config.embyRedirectSendMessage.header,
-      `redirect success`,
+      `hit redirectCache: ${!!isCached},redirect: success`,
       config.embyRedirectSendMessage.timeoutMs);
   }
 }
 
-function internalRedirect(r, uri) {
+function internalRedirect(r, uri, isCached) {
   if (!uri) {
     uri = "@root";
     r.warn(`use original link`);
@@ -556,18 +570,20 @@ function internalRedirect(r, uri) {
   // need caller: return;
   r.internalRedirect(uri);
   // async
+  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  const msgPrefix = `hit redirectCache: ${!!isCached}, use original link: `;
   if (config.embyNotificationsAdmin.enable) {
     embyApi.fetchEmbyNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
-      `use original link: ${r.uri}` :
-      `use original link success`
+      msgPrefix + r.uri :
+      `${msgPrefix}success`
     );
   }
   if (config.embyRedirectSendMessage.enable) {
     sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
       config.embyRedirectSendMessage.header,
-      `use original link success`,
+      `${msgPrefix}success`,
       config.embyRedirectSendMessage.timeoutMs);
   }
 }

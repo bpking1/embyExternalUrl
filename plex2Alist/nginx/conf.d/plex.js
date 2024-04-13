@@ -8,9 +8,18 @@ const xml = require("xml");
 let allData = "";
 
 async function redirect2Pan(r) {
-  let plexPathMapping = config.plexPathMapping;
-  const alistToken = config.alistToken;
-  const alistAddr = config.alistAddr;
+  const ua = r.headersIn["User-Agent"];
+  // check redirect link cache
+  const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
+  if (!!cachedLink) {
+    r.warn(`hit redirectCache: ${cachedLink}`);
+    if (cachedLink.startsWith("@")) {
+      // use original link
+      return internalRedirect(r, cachedLink, true);
+    } else {
+      return redirect(r, cachedLink, true);
+    }
+  }
 
   // fetch mount plex file path
   let start = Date.now();
@@ -56,6 +65,7 @@ async function redirect2Pan(r) {
   }
 
   let isRemote = util.checkIsRemoteByPath(mediaServerRes.path);
+  let plexPathMapping = config.plexPathMapping;
   // file path mapping
   config.plexMountPath.map(s => {
     if (!!s) {
@@ -90,10 +100,11 @@ async function redirect2Pan(r) {
   }
 
   // fetch alist direct link
+  const alistToken = config.alistToken;
+  const alistAddr = config.alistAddr;
   const alistFilePath = mediaItemPath;
-  start = Date.now();
-  const ua = r.headersIn["User-Agent"];
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
+  start = Date.now();
   const alistRes = await fetchAlistPathApi(
     alistFsGetApiPath,
     alistFilePath,
@@ -447,7 +458,7 @@ function plexApiHandlerForJson(r, data, flags) {
               media.Part.map(part => {
                 partKey = part.key;
                 partFilePath = part.file;
-                cachePartInfo(partKey, partFilePath);
+                util.dictAdd("partInfoDict", partKey, partFilePath);
                 fillPartInfo(part);
                 // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
@@ -484,7 +495,7 @@ function plexApiHandlerForXml(r, data, flags) {
     					partXmlNodeArr.map(part => {
                 partKey = part.$attr$key;
                 partFilePath = part.$attr$file;
-                cachePartInfo(partKey, partFilePath);
+                util.dictAdd("partInfoDict", partKey, partFilePath);
                 fillPartInfo(part, true);
                 // Part.key can modify, but some clients not supported
                 // partKey += `?${util.filePathKey}=${partFilePath}`;
@@ -543,18 +554,7 @@ function fillPartInfo(part, isXmlNode) {
   }
 }
 
-function cachePartInfo(partKey, partFilePath) {
-  if (!partKey || !partFilePath) {
-    return;
-  }
-  const preValue = ngx.shared.partInfoDict.get(partKey);
-  if (!preValue || (!!preValue && preValue != partFilePath)) {
-    ngx.shared.partInfoDict.add(partKey, partFilePath);
-    ngx.log(ngx.INFO, `cachePartInfo: ${partKey + " : " + partFilePath}`);
-  }
-}
-
-function redirect(r, uri) {
+function redirect(r, uri, isCached) {
   // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
   // add_header Access-Control-Allow-Origin *;
   r.headersOut["Access-Control-Allow-Origin"] = "*";
@@ -562,9 +562,11 @@ function redirect(r, uri) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
+  // async
+  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
-function internalRedirect(r, uri) {
+function internalRedirect(r, uri, isCached) {
   if (!uri) {
     uri = "@root";
     r.warn(`use original link`);
@@ -572,6 +574,12 @@ function internalRedirect(r, uri) {
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
+  // async
+  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
-export default { redirect2Pan, fetchPlexFilePath, plexApiHandler };
+export default {
+  redirect2Pan,
+  fetchPlexFilePath,
+  plexApiHandler,
+};

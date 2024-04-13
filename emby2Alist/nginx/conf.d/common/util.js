@@ -231,6 +231,18 @@ function getItemInfo(r) {
   return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
 }
 
+async function dictAdd(dictName, key, value) {
+  if (!key || !value) {
+    return;
+  }
+  const dict = ngx.shared[dictName];
+  const preValue = dict.get(key);
+  if (!preValue || (!!preValue && preValue != value)) {
+    dict.add(key, value);
+    ngx.log(ngx.WARN, `${dictName} add: [${key}] : [${value}]`);
+  }
+}
+
 export default {
   args,
   proxyUri,
@@ -248,4 +260,5 @@ export default {
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
   getItemInfo,
+  dictAdd,
 };

@@ -149,6 +149,18 @@ function alistLinkFailback(url) {
   return rvt;
 }
 
+async function dictAdd(dictName, key, value) {
+  if (!key || !value) {
+    return;
+  }
+  const dict = ngx.shared[dictName];
+  const preValue = dict.get(key);
+  if (!preValue || (!!preValue && preValue != value)) {
+    dict.add(key, value);
+    ngx.log(ngx.WARN, `${dictName} add: [${key}] : [${value}]`);
+  }
+}
+
 // plex only
 function getFileNameByHead(contentDisposition) {
   if (contentDisposition && contentDisposition.length > 0) {
@@ -168,5 +180,6 @@ export default {
   checkIsRemoteByPath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
+  dictAdd,
   getFileNameByHead,
 };
