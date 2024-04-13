@@ -57,7 +57,11 @@
     }
 
     function showFlag() {
-        return !!document.querySelector("div[is='emby-scroller']:not(.hide) .mediaInfoPrimary:not(.hide)");
+        // 评分,上映日期信息栏
+        const btnManualRecording = document.querySelector("div[is='emby-scroller']:not(.hide) .btnManualRecording:not(.hide)");
+        // 创建录制按钮
+        const mediaInfoPrimary = document.querySelector("div[is='emby-scroller']:not(.hide) .mediaInfoPrimary:not(.hide)");
+        return !!btnManualRecording || !!mediaInfoPrimary;
 
         // let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
         // if (!mainDetailButtons) {
@@ -158,7 +162,8 @@
         let domain = `${ApiClient._serverAddress}/emby/videos/${itemInfo.Id}`;
         let subPath = getSubPath(mediaSource);
         let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
-        let streamUrl = `${domain}/stream.${mediaSource.Container}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+        let streamType = mediaSource.IsInfiniteStream ? "live" : "stream";
+        let streamUrl = `${domain}/${streamType}.${mediaSource.Container}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
         let position = parseInt(itemInfo.UserData.PlaybackPositionTicks / 10000);
         let intent = await getIntent(mediaSource, position);
         console.log(streamUrl, subUrl, intent);
@@ -170,7 +175,10 @@
     }
 
     async function getIntent(mediaSource, position) {
-        let title = mediaSource.Path.split('/').pop();
+        // 直播节目查询items接口没有path
+        let title = mediaSource.IsInfiniteStream 
+            ? mediaSource.Name 
+            : mediaSource.Path.split('/').pop();
         let externalSubs = mediaSource.MediaStreams.filter(m => m.IsExternal == true);
         let subs = ''; //要求是android.net.uri[] ?
         let subs_name = '';
