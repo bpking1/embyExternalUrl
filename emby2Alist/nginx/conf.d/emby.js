@@ -529,13 +529,13 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
     return;
   }
-  embyApi.fetchEmbySessions(deviceId).then(sessionResPromise => {
+  embyApi.fetchSessions(deviceId).then(sessionResPromise => {
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
-        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchEmbySessions: session not found`);
+        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchSessions: session not found`);
         return;
       }
-      embyApi.fetchEmbySessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+      embyApi.fetchSessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
     });
   });
 }
@@ -547,7 +547,7 @@ function redirect(r, uri, isCached) {
   // async
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   if (config.embyNotificationsAdmin.enable) {
-    embyApi.fetchEmbyNotificationsAdmin(
+    embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       `hit redirectCache: ${!!isCached}, original link: ${r.uri}\nredirect to: ${uri}` :
@@ -574,7 +574,7 @@ function internalRedirect(r, uri, isCached) {
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   const msgPrefix = `hit redirectCache: ${!!isCached}, use original link: `;
   if (config.embyNotificationsAdmin.enable) {
-    embyApi.fetchEmbyNotificationsAdmin(
+    embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       msgPrefix + r.uri :

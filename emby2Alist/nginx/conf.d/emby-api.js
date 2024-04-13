@@ -2,7 +2,7 @@
 // @date: 2024-03-31
 import config from "./constant.js";
 
-async function fetchEmbyNotificationsAdmin(Name, Description) {
+async function fetchNotificationsAdmin(Name, Description) {
     const body = {
       Name: Name,
       Description: Description
@@ -16,17 +16,17 @@ async function fetchEmbyNotificationsAdmin(Name, Description) {
         body: JSON.stringify(body),
       }).then(res => {
         if (res.ok) {
-          ngx.log(ngx.WARN, `success: fetchEmbyNotificationsAdmin: ${JSON.stringify(body)}`);
+          ngx.log(ngx.WARN, `success: fetchNotificationsAdmin: ${JSON.stringify(body)}`);
         } else {
-          ngx.log(ngx.ERR, `error: fetchEmbyNotificationsAdmin: ${res.status} ${res.statusText}`);
+          ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${res.status} ${res.statusText}`);
         }
       });
     } catch (error) {
-      ngx.log(ngx.ERR, `error: fetchEmbyNotificationsAdmin: ${error}`);
+      ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${error}`);
     }
 }
 
-async function fetchEmbySessionsMessage(Id, Header, Text, TimeoutMs) {
+async function fetchSessionsMessage(Id, Header, Text, TimeoutMs) {
   const body = {
     Header: Header,
     Text: Text,
@@ -41,17 +41,17 @@ async function fetchEmbySessionsMessage(Id, Header, Text, TimeoutMs) {
       body: JSON.stringify(body),
     }).then(res => {
       if (res.ok) {
-        ngx.log(ngx.WARN, `success: fetchEmbySessionsMessage: ${JSON.stringify(body)}`);
+        ngx.log(ngx.WARN, `success: fetchSessionsMessage: ${JSON.stringify(body)}`);
       } else {
-        ngx.log(ngx.ERR, `error: fetchEmbySessionsMessage: ${res.status} ${res.statusText}`);
+        ngx.log(ngx.ERR, `error: fetchSessionsMessage: ${res.status} ${res.statusText}`);
       }
     });
   } catch (error) {
-    ngx.log(ngx.ERR, `error: fetchEmbySessionsMessage: ${error}`);
+    ngx.log(ngx.ERR, `error: fetchSessionsMessage: ${error}`);
   }
 }
 
-async function fetchEmbySessions(DeviceId, Id, IsPlaying, ControllableByUserId) {
+async function fetchSessions(DeviceId, Id, IsPlaying, ControllableByUserId) {
   const body = {
     ControllableByUserId: ControllableByUserId,
     DeviceId: DeviceId,
@@ -67,12 +67,22 @@ async function fetchEmbySessions(DeviceId, Id, IsPlaying, ControllableByUserId) 
       body: JSON.stringify(body),
     });
   } catch (error) {
-    ngx.log(ngx.ERR, `error: fetchEmbySessions: ${error}`);
+    ngx.log(ngx.ERR, `error: fetchSessions: ${error}`);
   }
 }
 
+async function fetchPlaybackInfo(itemId) {
+  return ngx.fetch(`${config.embyHost}/Items/${itemId}/PlaybackInfo?api_key=${config.embyApiKey}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json;charset=utf-8"
+    }
+  });
+}
+
 export default { 
-    fetchEmbyNotificationsAdmin,
-    fetchEmbySessionsMessage,
-    fetchEmbySessions,
+    fetchNotificationsAdmin,
+    fetchSessionsMessage,
+    fetchSessions,
+    fetchPlaybackInfo,
 };
