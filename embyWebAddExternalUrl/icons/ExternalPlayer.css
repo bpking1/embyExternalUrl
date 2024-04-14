@@ -64,6 +64,12 @@
     font-size: 1.4em
 }
 
+.icon-DDPlay {
+    background: url(../ExternalPlayer/icon-DDPlay.webp)no-repeat;
+    background-size: 100% 100%;
+    font-size: 1.4em
+}
+
 .icon-Copy {
     background: url(../ExternalPlayer/icon-Copy.webp)no-repeat;
     background-size: 100% 100%;
