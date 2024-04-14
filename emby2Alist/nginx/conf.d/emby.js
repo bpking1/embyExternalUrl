@@ -467,12 +467,16 @@ async function systemInfoHandler(r) {
   const originPort = parseInt(body.HttpServerPortNumber);
   body.WebSocketPortNumber = currentPort;
   body.HttpServerPortNumber = currentPort;
-  body.LocalAddresses.forEach((s, i, arr) => {
-    arr[i] = s.replace(originPort, currentPort);
-  });
-  body.RemoteAddresses.forEach((s, i, arr) => {
-    arr[i] = s.replace(originPort, currentPort);
-  });
+  if (body.LocalAddresses) {
+    body.LocalAddresses.forEach((s, i, arr) => {
+      arr[i] = s.replace(originPort, currentPort);
+    });
+  }
+  if (body.RemoteAddresses) {
+    body.RemoteAddresses.forEach((s, i, arr) => {
+      arr[i] = s.replace(originPort, currentPort);
+    });
+  }
   // old clients
   if (!!body.LocalAddress) {
     body.LocalAddress = body.LocalAddress.replace(originPort, currentPort);
