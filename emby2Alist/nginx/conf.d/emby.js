@@ -81,11 +81,17 @@ async function redirect2Pan(r) {
   // strm file inner remote link redirect,like: http,rtsp
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
-    if (!!rule) {
+    if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
       let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
       if (!!directUrl) {
         embyItemPath = directUrl;
+      } else {
+        r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4]);
+        if (!!directUrl) {
+          embyItemPath = directUrl;
+        }
       }
     }
     // don't encode, excepted webClient, clients not decode
@@ -509,12 +515,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
         ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
         return;
       }
-      ngx.log(ngx.ERR, `warn: fetchStrmLastLink, not expected result status, failback once`);
-      const directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), authType, authInfo, authUrl);
-      if (!!directUrl) {
-        return directUrl;
-      }
-      ngx.log(ngx.ERR, `error: fetchStrmLastLink, not expected result, last fail`);
+      ngx.log(ngx.ERR, `error: fetchStrmLastLink, not expected result`);
     } else {
       ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
     }
@@ -528,13 +529,13 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
     return;
   }
-  embyApi.fetchEmbySessions(deviceId).then(sessionResPromise => {
+  embyApi.fetchSessions(deviceId).then(sessionResPromise => {
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
-        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchEmbySessions: session not found`);
+        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchSessions: session not found`);
         return;
       }
-      embyApi.fetchEmbySessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+      embyApi.fetchSessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
     });
   });
 }
@@ -546,7 +547,7 @@ function redirect(r, uri, isCached) {
   // async
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   if (config.embyNotificationsAdmin.enable) {
-    embyApi.fetchEmbyNotificationsAdmin(
+    embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       `hit redirectCache: ${!!isCached}, original link: ${r.uri}\nredirect to: ${uri}` :
@@ -573,7 +574,7 @@ function internalRedirect(r, uri, isCached) {
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   const msgPrefix = `hit redirectCache: ${!!isCached}, use original link: `;
   if (config.embyNotificationsAdmin.enable) {
-    embyApi.fetchEmbyNotificationsAdmin(
+    embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       msgPrefix + r.uri :
