@@ -103,9 +103,12 @@ const alistPublicAddr = "";
 // 参数2: 匹配目标,对象为Alist接口返回的链接raw_url
 // 参数3: 指定转发给客户端的alist的host前缀
 const cilentSelfAlistRule = [];
-// !!!实验功能,转码分流,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
-// 使用条件很苛刻,主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
-// 转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,embyApiKey也是一致的
+// !!!实验功能,转码负载均衡,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
+// 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
+// type: "nginx", nginx负载均衡,好处是使用简单且内置均衡参数选择,缺点是流量全部经过此服务器,
+// 且使用条件很苛刻,转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,ApiKey也是一致的
+// type: "distributed-media-server", 分布式媒体服务负载均衡(暂未实现均衡),优先利用302真正实现流量的LB,且灵活,
+// 不区分主从,当前访问服务即为主库,可emby/jellyfin混搭,挂载路径可以不一致,但要求库中的标题和语种一致且原始文件名一致
 const transcodeBalanceConfig = {
   enable: false
 };
@@ -114,8 +117,11 @@ const transcodeBalanceConfig = {
 function getEmbyHost(r) {
   return embyHost;
 }
-function getEnableTranscodeBalance(r) {
+function getTranscodeBalanceEnable(r) {
   return transcodeBalanceConfig.enable;
+}
+function getTranscodeBalanceType(r) {
+  return transcodeBalanceConfig.type;
 }
 function getImageCachePolicy(r) {
   return imageCachePolicy;
@@ -137,6 +143,7 @@ export default {
   itemHiddenRule,
   transcodeBalanceConfig,
   getEmbyHost,
-  getEnableTranscodeBalance,
+  getTranscodeBalanceEnable,
+  getTranscodeBalanceType,
   getImageCachePolicy,
 }

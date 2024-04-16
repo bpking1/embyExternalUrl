@@ -1,6 +1,7 @@
 // author: @bpking  https://github.com/bpking1/embyExternalUrl
 // 查看日志: "docker logs -f -n 10 plex-nginx 2>&1  | grep js:"
 // 正常情况下此文件所有内容不需要更改
+
 import config from "./constant.js";
 import util from "./common/util.js";
 
@@ -9,6 +10,7 @@ let allData = "";
 
 async function redirect2Pan(r) {
   const ua = r.headersIn["User-Agent"];
+
   // check redirect link cache
   const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
   if (!!cachedLink) {
@@ -22,21 +24,18 @@ async function redirect2Pan(r) {
   }
 
   // fetch mount plex file path
-  let start = Date.now();
-  const itemInfo = await getPlexItemInfo(r);
-  let end = Date.now();
+  const itemInfo = await util.cost(getPlexItemInfo, r);
   let mediaServerRes;
   if (itemInfo.filePath) {
     mediaServerRes = {path: itemInfo.filePath};
-    r.warn(`${end - start}ms, itemInfoUri: ${itemInfo.itemInfoUri}`);
+    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
   } else {
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-    mediaServerRes = await fetchPlexFilePath(
+    mediaServerRes = await util.cost(fetchPlexFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.mediaIndex, 
       itemInfo.partIndex
     );
-    end = Date.now();
     r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
     if (mediaServerRes.message.startsWith("error")) {
       r.error(mediaServerRes.message);
@@ -48,7 +47,7 @@ async function redirect2Pan(r) {
   if (notLocal) {
       mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
-  r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
+  r.warn(`mount plex file path: ${mediaServerRes.path}`);
   
   if (util.isDisableRedirect(r, mediaServerRes.path, false, notLocal)) {
     // use original link
@@ -57,10 +56,8 @@ async function redirect2Pan(r) {
 
   // strm support
   if (notLocal) {
-    start = Date.now();
-    const strmInnerText = await fetchStrmInnerText(r);
-    end = Date.now();
-    r.warn(`${end - start}ms, fetchStrmInnerText cover mount plex file path: ${strmInnerText}`);
+    const strmInnerText = await util.cost(fetchStrmInnerText, r);
+    r.warn(`fetchStrmInnerText cover mount plex file path: ${strmInnerText}`);
     mediaServerRes.path = strmInnerText;
   }
 
@@ -90,12 +87,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], rule[4]);
+      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], rule[4], ua);
       if (!!directUrl) {
         mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4]);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4], ua);
         if (!!directUrl) {
           mediaItemPath = directUrl;
         }
@@ -110,15 +107,13 @@ async function redirect2Pan(r) {
   const alistAddr = config.alistAddr;
   const alistFilePath = mediaItemPath;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  start = Date.now();
-  const alistRes = await fetchAlistPathApi(
+  const alistRes = await util.cost(fetchAlistPathApi,
     alistFsGetApiPath,
     alistFilePath,
     alistToken,
     ua,
   );
-  end = Date.now();
-  r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
+  r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true, notLocal)) {
       // use original link
@@ -254,7 +249,7 @@ async function fetchAlistAuthApi(url, username, password) {
   }
 }
 
-async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
+async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
   let token;
   if (!!authType) {
     if (authType == "FixedToken" && !!authInfo) {
@@ -270,7 +265,8 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
-        Authorization: token
+        Authorization: token,
+        "User-Agent": ua,
       },
       max_response_body_size: 1024
     });
@@ -579,8 +575,20 @@ function internalRedirect(r, uri, isCached) {
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
+function internalRedirectExpect(r, uri) {
+  if (!uri) {
+    uri = "@root";
+  }
+  r.log(`internalRedirect to: ${uri}`);
+  // need caller: return;
+  r.internalRedirect(uri);
+}
+
 export default {
   redirect2Pan,
   fetchPlexFilePath,
   plexApiHandler,
+  redirect,
+  internalRedirect,
+  internalRedirectExpect,
 };

@@ -1,12 +1,14 @@
 // author: @bpking  https://github.com/bpking1/embyExternalUrl
 // 查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 // 正常情况下此文件所有内容不需要更改
+
 import config from "./constant.js";
 import util from "./common/util.js";
-import embyApi from "./emby-api.js";
+import embyApi from "./api/emby-api.js";
 
 async function redirect2Pan(r) {
   const ua = r.headersIn["User-Agent"];
+
   // check redirect link cache
   const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
   if (!!cachedLink) {
@@ -23,20 +25,16 @@ async function redirect2Pan(r) {
     path: r.args[util.args.filePathKey],
     notLocal: r.args[util.args.notLocalKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
   };
-  let start = Date.now();
-  let end = Date.now();
   if (!embyRes.path) {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-    start = Date.now();
-    embyRes = await fetchEmbyFilePath(
+    // start = Date.now();
+    embyRes = await util.cost(fetchEmbyFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.itemId, 
       itemInfo.Etag, 
-      itemInfo.mediaSourceId
-    );
-    end = Date.now();
+      itemInfo.mediaSourceId);
     r.log(`embyRes: ${JSON.stringify(embyRes)}`);
     if (embyRes.message.startsWith("error")) {
       r.error(embyRes.message);
@@ -50,7 +48,7 @@ async function redirect2Pan(r) {
   if (embyRes.notLocal) {
     embyRes.path = decodeURIComponent(embyRes.path);
   }
-  r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
+  r.warn(`mount emby file path: ${embyRes.path}`);
 
   if (util.isDisableRedirect(r, embyRes.path, false, embyRes.notLocal)) {
     // use original link
@@ -83,12 +81,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
+      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4], ua);
       if (!!directUrl) {
         embyItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4]);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4], ua);
         if (!!directUrl) {
           embyItemPath = directUrl;
         }
@@ -103,15 +101,13 @@ async function redirect2Pan(r) {
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  start = Date.now();
-  const alistRes = await fetchAlistPathApi(
+  const alistRes = await util.cost(fetchAlistPathApi, 
     alistFsGetApiPath,
     alistFilePath,
     alistToken,
     ua,
   );
-  end = Date.now();
-  r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
+  r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true, embyRes.notLocal)) {
       // use original link
@@ -331,6 +327,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
     message: "success",
     path: "",
+    itemName: "",
     notLocal: false,
   };
   try {
@@ -374,6 +371,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
             mediaSource = item.MediaSources.find((m) => m.Id == mediaSourceId);
           }
           rvt.path = mediaSource.Path;
+          rvt.itemName = item.Name;
           rvt.notLocal = util.checkIsStrmByPath(item.Path);
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
@@ -411,16 +409,14 @@ async function itemsFilter(r) {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
     r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
-    const start = Date.now();
-    const embyRes = await fetchEmbyFilePath(
+    const embyRes = await util.cost(fetchEmbyFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.itemId, 
       itemInfo.Etag, 
       itemInfo.mediaSourceId
     );
     mainItemPath = embyRes.path;
-    const end = Date.now();
-    r.warn(`${end - start}ms, mainItemPath: ${mainItemPath}`);
+    r.warn(`mainItemPath: ${mainItemPath}`);
   }
 
   const itemHiddenRule = config.itemHiddenRule;
@@ -488,7 +484,7 @@ async function systemInfoHandler(r) {
   return r.return(200, JSON.stringify(body));
 }
 
-async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
+async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
   let token;
   if (!!authType) {
     if (authType == "FixedToken" && !!authInfo) {
@@ -504,7 +500,8 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
-        Authorization: token
+        Authorization: token,
+        "User-Agent": ua,
       },
       max_response_body_size: 1024
     });
@@ -533,7 +530,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
     return;
   }
-  embyApi.fetchSessions(deviceId).then(sessionResPromise => {
+  embyApi.fetchSessions(config.embyHost, config.embyApiKey, {DeviceId:deviceId}).then(sessionResPromise => {
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
         ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchSessions: session not found`);
@@ -593,6 +590,15 @@ function internalRedirect(r, uri, isCached) {
   }
 }
 
+function internalRedirectExpect(r, uri) {
+  if (!uri) {
+    uri = "@root";
+  }
+  r.log(`internalRedirect to: ${uri}`);
+  // need caller: return;
+  r.internalRedirect(uri);
+}
+
 export default {
   redirect2Pan,
   fetchEmbyFilePath,
@@ -601,4 +607,5 @@ export default {
   systemInfoHandler,
   redirect,
   internalRedirect,
+  internalRedirectExpect,
 };

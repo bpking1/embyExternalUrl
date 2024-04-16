@@ -1,6 +1,8 @@
 // @author: chen3861229
 // @date: 2024-03-31
-import config from "./constant.js";
+
+import config from "../constant.js";
+import util from "../common/util.js";
 
 async function fetchNotificationsAdmin(Name, Description) {
     const body = {
@@ -51,24 +53,22 @@ async function fetchSessionsMessage(Id, Header, Text, TimeoutMs) {
   }
 }
 
-async function fetchSessions(DeviceId, Id, IsPlaying, ControllableByUserId) {
-  const body = {
-    ControllableByUserId: ControllableByUserId,
-    DeviceId: DeviceId,
-    Id: Id,
-    IsPlaying: IsPlaying
+async function fetchSessions(host, apiKey, queryParams) {
+  if (!host || !apiKey || !queryParams) {
+    ngx.log(ngx.ERR, `error: fetchSessions: params is required`);
+    return;
   }
-  try {
-    return ngx.fetch(`${config.embyHost}/Sessions?api_key=${config.embyApiKey}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json;charset=utf-8"
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (error) {
-    ngx.log(ngx.ERR, `error: fetchSessions: ${error}`);
+  let url = `${host}/Sessions?api_key=${apiKey}`;
+  for (const key in queryParams) {
+    url = util.appendUrlArg(url, key, queryParams[key]);
   }
+  return ngx.fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json;charset=utf-8",
+      "Accept-Encoding": "",
+    },
+  });
 }
 
 async function fetchPlaybackInfo(itemId) {
@@ -80,9 +80,49 @@ async function fetchPlaybackInfo(itemId) {
   });
 }
 
+async function fetchItems(host, apiKey, queryParams) {
+  if (!host || !apiKey || !queryParams) {
+    ngx.log(ngx.ERR, `error: fetchItems: params is required`);
+    return;
+  }
+  let url = `${host}/Items?api_key=${apiKey}`;
+  for (const key in queryParams) {
+    url = util.appendUrlArg(url, key, queryParams[key]);
+  }
+  ngx.log(ngx.WARN, `warn: fetchItems url: ${url}`);
+  return ngx.fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json;charset=utf-8",
+      "Accept-Encoding": "",
+    }
+  });
+}
+
+async function fetchVideosActiveEncodingsDelete(host, apiKey, queryParams) {
+  if (!host || !apiKey || !queryParams) {
+    ngx.log(ngx.ERR, `error: fetchVideosActiveEncodingsDelete: params is required`);
+    return;
+  }
+  let url = `${host}/Videos/ActiveEncodings?api_key=${apiKey}`;
+  for (const key in queryParams) {
+    url = util.appendUrlArg(url, key, queryParams[key]);
+  }
+  ngx.log(ngx.WARN, `warn: fetchVideosActiveEncodingsDelete url: ${url}`);
+  return ngx.fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json;charset=utf-8",
+      "Accept-Encoding": "",
+    }
+  });
+}
+
 export default { 
     fetchNotificationsAdmin,
     fetchSessionsMessage,
     fetchSessions,
     fetchPlaybackInfo,
+    fetchItems,
+    fetchVideosActiveEncodingsDelete,
 };
