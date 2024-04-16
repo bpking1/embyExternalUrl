@@ -72,23 +72,33 @@ const redirectStrmLastLinkRule = [
 const cilentSelfAlistRule = [
   // [2, "xxx", alistPublicAddr],
 ];
-// !!!实验功能,转码分流,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
-// 使用条件很苛刻,主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
-// 转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,embyApiKey也是一致的
+// !!!实验功能,转码负载均衡,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
+// 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
+// type: "nginx", nginx负载均衡,好处是使用简单且内置均衡参数选择,缺点是流量全部经过此服务器,
+// 且使用条件很苛刻,转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,ApiKey也是一致的
+// type: "distributed-media-server", 分布式媒体服务负载均衡(暂未实现均衡),优先利用302真正实现流量的LB,且灵活,
+// 不区分主从,当前访问服务即为主库,可emby/jellyfin混搭,挂载路径可以不一致,但要求库中的标题和语种一致且原始文件名一致
 const transcodeBalanceConfig = {
   enable: false,
-  // method: "least_conn",
+  type: "distributed-media-server", // 可选值, ["nginx", "distributed-media-server"]
+  maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
   server: [
     {
+      type: "emby",
       host: "http://172.17.0.1:8096",
       apiKey: "f839390f50a648fd92108bc11ca6730a",
-      weight: 1
     },
     {
-      host: "http://172.17.0.2:8096",
+      type: "jellyfin",
+      host: "http://172.17.0.2:8097",
       apiKey: "f839390f50a648fd92108bc11ca6730a",
-      weight: 2
-    }
+    },
+    // plex和weight参数暂未实现,很难
+    // {
+    //   type: "plex",
+    //   host: "http://172.17.0.2:32400",
+    //   apiKey: "f839390f50a648fd92108bc11ca6730a",
+    // },
   ]
 };
 // 图片缓存策略,包括主页、详情页、图片库的原图,路由器nginx请手动调小conf中proxy_cache_path的max_size
@@ -126,8 +136,11 @@ const itemHiddenRule = [
 function getEmbyHost(r) {
   return embyHost;
 }
-function getEnableTranscodeBalance(r) {
+function getTranscodeBalanceEnable(r) {
   return transcodeBalanceConfig.enable;
+}
+function getTranscodeBalanceType(r) {
+  return transcodeBalanceConfig.type;
 }
 function getImageCachePolicy(r) {
   return imageCachePolicy;
@@ -149,6 +162,7 @@ export default {
   itemHiddenRule,
   transcodeBalanceConfig,
   getEmbyHost,
-  getEnableTranscodeBalance,
+  getTranscodeBalanceEnable,
+  getTranscodeBalanceType,
   getImageCachePolicy,
 }

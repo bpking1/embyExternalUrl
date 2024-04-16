@@ -331,6 +331,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
     message: "success",
     path: "",
+    itemName: "",
     notLocal: false,
   };
   try {
@@ -374,6 +375,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
             mediaSource = item.MediaSources.find((m) => m.Id == mediaSourceId);
           }
           rvt.path = mediaSource.Path;
+          rvt.itemName = item.Name;
           rvt.notLocal = util.checkIsStrmByPath(item.Path);
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
@@ -533,7 +535,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
     return;
   }
-  embyApi.fetchSessions(deviceId).then(sessionResPromise => {
+  embyApi.fetchSessions(config.embyHost, config.embyApiKey, {DeviceId:deviceId}).then(sessionResPromise => {
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
         ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchSessions: session not found`);
@@ -571,7 +573,7 @@ function internalRedirect(r, uri, isCached) {
     uri = "@root";
     r.warn(`use original link`);
   }
-  r.log(`internalRedirect to: ${uri}`);
+  r.warn(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
   // async
@@ -593,6 +595,15 @@ function internalRedirect(r, uri, isCached) {
   }
 }
 
+function internalRedirectExpect(r, uri) {
+  if (!uri) {
+    uri = "@root";
+  }
+  r.warn(`internalRedirect to: ${uri}`);
+  // need caller: return;
+  r.internalRedirect(uri);
+}
+
 export default {
   redirect2Pan,
   fetchEmbyFilePath,
@@ -601,4 +612,5 @@ export default {
   systemInfoHandler,
   redirect,
   internalRedirect,
+  internalRedirectExpect,
 };

@@ -579,8 +579,20 @@ function internalRedirect(r, uri, isCached) {
   util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
+function internalRedirectExpect(r, uri) {
+  if (!uri) {
+    uri = "@root";
+  }
+  r.warn(`internalRedirect to: ${uri}`);
+  // need caller: return;
+  r.internalRedirect(uri);
+}
+
 export default {
   redirect2Pan,
   fetchPlexFilePath,
   plexApiHandler,
+  redirect,
+  internalRedirect,
+  internalRedirectExpect,
 };
