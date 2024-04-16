@@ -25,20 +25,16 @@ async function redirect2Pan(r) {
     path: r.args[util.args.filePathKey],
     notLocal: r.args[util.args.notLocalKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
   };
-  let start = Date.now();
-  let end = Date.now();
   if (!embyRes.path) {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-    start = Date.now();
-    embyRes = await fetchEmbyFilePath(
+    // start = Date.now();
+    embyRes = await util.cost(fetchEmbyFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.itemId, 
       itemInfo.Etag, 
-      itemInfo.mediaSourceId
-    );
-    end = Date.now();
+      itemInfo.mediaSourceId);
     r.log(`embyRes: ${JSON.stringify(embyRes)}`);
     if (embyRes.message.startsWith("error")) {
       r.error(embyRes.message);
@@ -52,7 +48,7 @@ async function redirect2Pan(r) {
   if (embyRes.notLocal) {
     embyRes.path = decodeURIComponent(embyRes.path);
   }
-  r.warn(`${end - start}ms, mount emby file path: ${embyRes.path}`);
+  r.warn(`mount emby file path: ${embyRes.path}`);
 
   if (util.isDisableRedirect(r, embyRes.path, false, embyRes.notLocal)) {
     // use original link
@@ -105,15 +101,13 @@ async function redirect2Pan(r) {
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  start = Date.now();
-  const alistRes = await fetchAlistPathApi(
+  const alistRes = await util.cost(fetchAlistPathApi, 
     alistFsGetApiPath,
     alistFilePath,
     alistToken,
     ua,
   );
-  end = Date.now();
-  r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
+  r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true, embyRes.notLocal)) {
       // use original link
@@ -415,16 +409,14 @@ async function itemsFilter(r) {
     // fetch mount emby/jellyfin file path
     const itemInfo = util.getItemInfo(r);
     r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
-    const start = Date.now();
-    const embyRes = await fetchEmbyFilePath(
+    const embyRes = await util.cost(fetchEmbyFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.itemId, 
       itemInfo.Etag, 
       itemInfo.mediaSourceId
     );
     mainItemPath = embyRes.path;
-    const end = Date.now();
-    r.warn(`${end - start}ms, mainItemPath: ${mainItemPath}`);
+    r.warn(`mainItemPath: ${mainItemPath}`);
   }
 
   const itemHiddenRule = config.itemHiddenRule;
@@ -576,7 +568,7 @@ function internalRedirect(r, uri, isCached) {
     uri = "@root";
     r.warn(`use original link`);
   }
-  r.warn(`internalRedirect to: ${uri}`);
+  r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
   // async
@@ -602,7 +594,7 @@ function internalRedirectExpect(r, uri) {
   if (!uri) {
     uri = "@root";
   }
-  r.warn(`internalRedirect to: ${uri}`);
+  r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
 }

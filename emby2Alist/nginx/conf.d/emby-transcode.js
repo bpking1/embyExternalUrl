@@ -8,36 +8,28 @@ import embyApi from "./api/emby-api.js";
 import qs from "querystring";
 
 async function transcodeBalance(r) {
-  const transcodeBalanceConfig = config.transcodeBalanceConfig;
-  let serverArr = transcodeBalanceConfig.server;
-  if (transcodeBalanceConfig.type != "distributed-media-server" 
-    || !serverArr || (!!serverArr && serverArr.length < 1)) {
-    r.error(`transcodeBalanceConfig type not excepted`);
-    return emby.internalRedirectExpect(r);
-  }
+  checkEnable(r);
+
   const itemInfo = util.getItemInfo(r);
-  let start = Date.now();
-  let end = Date.now();
-  const embyRes = await emby.fetchEmbyFilePath(
+  const embyRes = await util.cost(fetchEmbyFilePath,
     itemInfo.itemInfoUri, 
     itemInfo.itemId, 
     itemInfo.Etag, 
     itemInfo.mediaSourceId
   );
-  end = Date.now();
   r.log(`embyRes: ${JSON.stringify(embyRes)}`);
   if (embyRes.message.startsWith("error") || !embyRes.itemName || !embyRes.path) {
     r.error(embyRes.message);
     return emby.internalRedirectExpect(r);
   }
-  r.warn(`${end - start}ms, itemName: ${embyRes.itemName}, originalFilePath: ${embyRes.path}`);
+  r.warn(`itemName: ${embyRes.itemName}, originalFilePath: ${embyRes.path}`);
   
   // check transcode load
   const maxNum = transcodeBalanceConfig.maxNum;
   let target;
   let serverTmp;
   let transSessions;
-  start = Date.now();
+  let start = Date.now();
   for (let i = 0; i < serverArr.length; i++) {
     serverTmp = serverArr[i];
     try {
@@ -61,7 +53,7 @@ async function transcodeBalance(r) {
     r.warn(`all server overload, will use least transcode`);
     target = serverArr.sort((a, b) => a.transcodeNum - b.transcodeNum)[0];
   }
-  end = Date.now();
+  let end = Date.now();
   r.warn(`${end - start}ms, find target server: ${target.host}`);
   if (target.host == config.embyHost) {
     r.warn(`find target server same as currentServer`);
@@ -70,22 +62,24 @@ async function transcodeBalance(r) {
 
   // media item match
   let targetRes;
-  start = Date.now();
   try {
-    targetRes = await embyApi.fetchItems(target.host, target.apiKey, {
-      NameStartsWith: encodeURI(embyRes.itemName),
-      Limit: 10,
-      Recursive: true,
-      Fields: "ProviderIds,Path,MediaSources",
-    });
+    targetRes = await util.cost(embyApi.fetchItems,
+      target.host, 
+      target.apiKey,
+      {
+        NameStartsWith: encodeURI(embyRes.itemName),
+        Limit: 10,
+        Recursive: true,
+        Fields: "ProviderIds,Path,MediaSources",
+      }
+    );
   } catch (error) {
     r.error(`media item match fetchItems: ${error}`);
     return emby.internalRedirectExpect(r);
   }
-  end = Date.now();
   r.warn(`media item match targetRes.status: ${targetRes.status}`);
   const targetBody = await targetRes.json();
-  r.warn(`${end - start}ms, media item match fetchItems: ${JSON.stringify(targetBody)}`);
+  r.warn(`media item match fetchItems: ${JSON.stringify(targetBody)}`);
   const targetItems = targetBody.Items;
   if (targetItems.length < 1) {
     r.error(`media item match not found`);
@@ -164,23 +158,26 @@ async function transcodeBalance(r) {
 }
 
 async function syncDelete(r) {
+  checkEnable(r);
+  
+  const uri = r.uri;
   // let rArgs = util.capitalizeKeys(r.args);
   let rArgs = r.args;
   const playSessionId = rArgs["PlaySessionId"];
   r.warn(`syncDelete transcodeDict key: ${playSessionId}`);
   const cachedStr = ngx.shared.transcodeDict.get(playSessionId);
   if (!cachedStr) {
-    r.warn(`syncDelete playSession not exist, skip`);
+    r.warn(`syncDelete playSession not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const cacheObj = JSON.parse(cachedStr);
   if (!cacheObj) {
-    r.warn(`syncDelete cacheObj not exist, skip`);
+    r.warn(`syncDelete cacheObj not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const server = cacheObj.Server;
   if (!server || (!!server && !server.host)) {
-    r.warn(`syncDelete targetServer not exist, skip`);
+    r.warn(`syncDelete targetServer not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   let res;
@@ -190,7 +187,7 @@ async function syncDelete(r) {
       PlaySessionId: playSessionId
     });
   } catch (error) {
-    r.warn(`fetchVideosActiveEncodingsDelete: ${error}, skip`);
+    r.warn(`fetchVideosActiveEncodingsDelete: ${error}, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   if (res && res.ok) {
@@ -201,8 +198,11 @@ async function syncDelete(r) {
 }
 
 async function syncPlayState(r) {
+  checkEnable(r);
+
+  const uri = r.uri;
   if (!r.requestText) {
-    r.warn(`syncPlayState requestText not exist, skip`);
+    r.warn(`syncPlayState requestText not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const reqBody = JSON.parse(r.requestText);
@@ -210,17 +210,17 @@ async function syncPlayState(r) {
   r.warn(`syncPlayState transcodeDict key: ${playSessionId}`);
   const cachedStr = ngx.shared.transcodeDict.get(playSessionId);
   if (!cachedStr) {
-    r.warn(`syncPlayState playSession not exist, skip`);
+    r.warn(`syncPlayState playSession not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const cacheObj = JSON.parse(cachedStr);
   if (!cacheObj) {
-    r.warn(`syncPlayState cacheObj not exist, skip`);
+    r.warn(`syncPlayState cacheObj not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const server = cacheObj.Server;
   if (!server || (!!server && !server.host)) {
-    r.warn(`syncPlayState targetServer not exist, skip`);
+    r.warn(`syncPlayState targetServer not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   reqBody["ItemId"] = cacheObj.TargetItemId;
@@ -247,6 +247,19 @@ async function syncPlayState(r) {
     }
   });
   return emby.internalRedirectExpect(r);
+}
+
+function checkEnable(r) {
+  const transcodeBalanceConfig = config.transcodeBalanceConfig;
+  if (!!transcodeBalanceConfig && transcodeBalanceConfig.enable) {
+    return emby.internalRedirectExpect(r);
+  }
+  let serverArr = transcodeBalanceConfig.server;
+  if (transcodeBalanceConfig.type != "distributed-media-server" 
+    || !serverArr || (!!serverArr && serverArr.length < 1)) {
+    // r.error(`transcodeBalanceConfig type not excepted`);
+    return emby.internalRedirectExpect(r);
+  }
 }
 
 export default {

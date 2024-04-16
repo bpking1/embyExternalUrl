@@ -24,21 +24,18 @@ async function redirect2Pan(r) {
   }
 
   // fetch mount plex file path
-  let start = Date.now();
-  const itemInfo = await getPlexItemInfo(r);
-  let end = Date.now();
+  const itemInfo = await util.cost(getPlexItemInfo, r);
   let mediaServerRes;
   if (itemInfo.filePath) {
     mediaServerRes = {path: itemInfo.filePath};
-    r.warn(`${end - start}ms, itemInfoUri: ${itemInfo.itemInfoUri}`);
+    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
   } else {
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-    mediaServerRes = await fetchPlexFilePath(
+    mediaServerRes = await util.cost(fetchPlexFilePath,
       itemInfo.itemInfoUri, 
       itemInfo.mediaIndex, 
       itemInfo.partIndex
     );
-    end = Date.now();
     r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
     if (mediaServerRes.message.startsWith("error")) {
       r.error(mediaServerRes.message);
@@ -50,7 +47,7 @@ async function redirect2Pan(r) {
   if (notLocal) {
       mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
-  r.warn(`${end - start}ms, mount plex file path: ${mediaServerRes.path}`);
+  r.warn(`mount plex file path: ${mediaServerRes.path}`);
   
   if (util.isDisableRedirect(r, mediaServerRes.path, false, notLocal)) {
     // use original link
@@ -59,10 +56,8 @@ async function redirect2Pan(r) {
 
   // strm support
   if (notLocal) {
-    start = Date.now();
-    const strmInnerText = await fetchStrmInnerText(r);
-    end = Date.now();
-    r.warn(`${end - start}ms, fetchStrmInnerText cover mount plex file path: ${strmInnerText}`);
+    const strmInnerText = await util.cost(fetchStrmInnerText, r);
+    r.warn(`fetchStrmInnerText cover mount plex file path: ${strmInnerText}`);
     mediaServerRes.path = strmInnerText;
   }
 
@@ -112,15 +107,13 @@ async function redirect2Pan(r) {
   const alistAddr = config.alistAddr;
   const alistFilePath = mediaItemPath;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  start = Date.now();
-  const alistRes = await fetchAlistPathApi(
+  const alistRes = await util.cost(fetchAlistPathApi,
     alistFsGetApiPath,
     alistFilePath,
     alistToken,
     ua,
   );
-  end = Date.now();
-  r.warn(`${end - start}ms, fetchAlistPathApi, UA: ${ua}`);
+  r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
     if (util.isDisableRedirect(r, alistRes, true, notLocal)) {
       // use original link
@@ -586,7 +579,7 @@ function internalRedirectExpect(r, uri) {
   if (!uri) {
     uri = "@root";
   }
-  r.warn(`internalRedirect to: ${uri}`);
+  r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
 }

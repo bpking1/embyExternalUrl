@@ -243,6 +243,27 @@ async function dictAdd(dictName, key, value) {
   }
 }
 
+function cost(func) {
+  if (!func || (!!func && !func instanceof Function)) {
+    ngx.log(ngx.ERR, `target function not null or is not function`);
+    return;
+  }
+  const args = Array.prototype.slice.call(arguments, 1);
+  console.log(func.name, args);
+  const start = Date.now();
+  const rvt = func.apply(func, args);
+  if (rvt instanceof Promise) {
+    rvt.then(realRvt => {
+      const end = Date.now();
+      ngx.log(ngx.WARN, `${end - start}ms, ${func.name} async function cost`);
+    });
+  } else {
+    const end = Date.now();
+    ngx.log(ngx.WARN, `${end - start}ms, ${func.name} function cost`);
+  }
+  return rvt;
+}
+
 export default {
   args,
   proxyUri,
@@ -261,4 +282,5 @@ export default {
   strmLinkFailback,
   getItemInfo,
   dictAdd,
+  cost,
 };
