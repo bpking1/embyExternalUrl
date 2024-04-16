@@ -1,7 +1,8 @@
 // @author: chen3861229
 // @date: 2024-03-31
-import config from "./constant.js";
-import util from "./common/util.js";
+
+import config from "../constant.js";
+import util from "../common/util.js";
 
 async function fetchNotificationsAdmin(Name, Description) {
     const body = {

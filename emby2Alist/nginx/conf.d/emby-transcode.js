@@ -3,7 +3,7 @@
 import config from "./constant.js";
 import util from "./common/util.js";
 import emby from "./emby.js";
-import embyApi from "./emby-api.js";
+import embyApi from "./api/emby-api.js";
 
 import qs from "querystring";
 

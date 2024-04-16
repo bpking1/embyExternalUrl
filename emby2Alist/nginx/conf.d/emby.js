@@ -1,12 +1,14 @@
 // author: @bpking  https://github.com/bpking1/embyExternalUrl
 // 查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
 // 正常情况下此文件所有内容不需要更改
+
 import config from "./constant.js";
 import util from "./common/util.js";
-import embyApi from "./emby-api.js";
+import embyApi from "./api/emby-api.js";
 
 async function redirect2Pan(r) {
   const ua = r.headersIn["User-Agent"];
+
   // check redirect link cache
   const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
   if (!!cachedLink) {
@@ -83,12 +85,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4]);
+      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4], ua);
       if (!!directUrl) {
         embyItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4]);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4], ua);
         if (!!directUrl) {
           embyItemPath = directUrl;
         }
@@ -490,7 +492,7 @@ async function systemInfoHandler(r) {
   return r.return(200, JSON.stringify(body));
 }
 
-async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
+async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
   let token;
   if (!!authType) {
     if (authType == "FixedToken" && !!authInfo) {
@@ -506,7 +508,8 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl) {
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
-        Authorization: token
+        Authorization: token,
+        "User-Agent": ua,
       },
       max_response_body_size: 1024
     });
