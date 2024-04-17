@@ -11,7 +11,7 @@ async function transcodeBalance(r) {
   checkEnable(r);
 
   const itemInfo = util.getItemInfo(r);
-  const embyRes = await util.cost(fetchEmbyFilePath,
+  const embyRes = await util.cost(emby.fetchEmbyFilePath,
     itemInfo.itemInfoUri, 
     itemInfo.itemId, 
     itemInfo.Etag, 
