@@ -25,6 +25,8 @@ async function transcodeBalance(r) {
   r.warn(`itemName: ${embyRes.itemName}, originalFilePath: ${embyRes.path}`);
   
   // check transcode load
+  const transcodeBalanceConfig = config.transcodeBalanceConfig;
+  let serverArr = transcodeBalanceConfig.server;
   const maxNum = transcodeBalanceConfig.maxNum;
   let target;
   let serverTmp;
@@ -67,7 +69,7 @@ async function transcodeBalance(r) {
       target.host, 
       target.apiKey,
       {
-        NameStartsWith: encodeURI(embyRes.itemName),
+        SearchTerm: encodeURI(embyRes.itemName),
         Limit: 10,
         Recursive: true,
         Fields: "ProviderIds,Path,MediaSources",
