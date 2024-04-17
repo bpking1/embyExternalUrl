@@ -167,7 +167,6 @@ function cost(func) {
     return;
   }
   const args = Array.prototype.slice.call(arguments, 1);
-  console.log(func.name, args);
   const start = Date.now();
   const rvt = func.apply(func, args);
   if (rvt instanceof Promise) {
