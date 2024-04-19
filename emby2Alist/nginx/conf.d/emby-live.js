@@ -2,9 +2,11 @@
 // @date: 2023-09-04
 import config from "./constant.js";
 import util from "./common/util.js";
+import events from "./common/events.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
+  events.njsOnExit(r);
   const embyHost = config.embyHost;
   const itemInfo = util.getItemInfo(r);
   // 1 get the ItemId

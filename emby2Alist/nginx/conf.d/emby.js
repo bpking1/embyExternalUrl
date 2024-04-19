@@ -4,9 +4,11 @@
 
 import config from "./constant.js";
 import util from "./common/util.js";
+import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 
 async function redirect2Pan(r) {
+  events.njsOnExit(r);
   const ua = r.headersIn["User-Agent"];
 
   // check redirect link cache
@@ -160,6 +162,7 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
+  events.njsOnExit(r);
   let start = Date.now();
   // replay the request
   const proxyUri = util.proxyUri(r.uri);
@@ -390,6 +393,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
 }
 
 async function itemsFilter(r) {
+  events.njsOnExit(r);
   r.variables.request_uri += "&Fields=Path";
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
@@ -451,6 +455,7 @@ async function itemsFilter(r) {
 }
 
 async function systemInfoHandler(r) {
+  events.njsOnExit(r);
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
   if (subR.status === 200) {

@@ -9,23 +9,71 @@ function proxyUri(uri) {
   return `/proxy${uri}`;
 }
 
+
+function groupBy(array, key) {
+  return array.reduce((result, currentItem) => {
+    const groupKey = typeof key === 'function' ? key(currentItem) : currentItem[key];
+    if (!result[groupKey]) {
+      result[groupKey] = [];
+    }
+    result[groupKey].push(currentItem);
+    return result;
+  }, {});
+};
+
 function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
-  let arr3D;
-  if (!!isAlistRes) {
-    // this var isAlistRes = true
-    arr3D = config.disableRedirectRule.filter(rule => !!rule[3]);
-  } else {
-    // not xxxMountPath first
-    config.plexMountPath.some(path => {
-      if (!!path && !filePath.startsWith(path) && !notLocal) {
-        ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${path}`);
-        return true;
-      }
-    });
-    arr3D = config.disableRedirectRule.filter(rule => !rule[3]);
+  const disableRedirectRule = config.disableRedirectRule;
+  const plexMountPath = config.plexMountPath;
+  if (!isAlistRes) {
+    // this var isAlistRes = false
+    // local file not xxxMountPath first
+    if (plexMountPath.every(path => 
+      !!path && !filePath.startsWith(path) && !notLocal)) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${JSON.stringify(plexMountPath)}`);
+      return true;
+    }
   }
-  return arr3D.some(rule => {
-    const sourceStr = getSourceStrByType(rule[0], r, filePath);
+  
+  const oldRules = disableRedirectRule.filter(rule => rule.length <= 3);
+  if (!oldRules || (!!oldRules && oldRules.length === 0)) {
+    return false;
+  }
+  let matchedRule = getMatchedRule(r, oldRules, filePath);
+  if (matchedRule) {
+    ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(matchedRule)}`);
+    return true;
+  }
+  const groupRulesObjArr = groupBy(disableRedirectRule.filter(rule => rule.length > 3), 0);
+  if (Object.keys(groupRulesObjArr) === 0) {
+    return false;
+  }
+  let matchedGroupKey;
+  for (const gKey in groupRulesObjArr) {
+    matchedGroupKey = getMatchedRuleGroupKey(r, gKey, groupRulesObjArr[gKey], filePath);
+    if (matchedGroupKey) {
+      ngx.log(ngx.WARN, `hit isDisableRedirect, group: ${matchedGroupKey}`);
+      return true;
+    }
+  }
+  return false;
+}
+
+function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
+  let rvt;
+  ngx.log(ngx.INFO, `getMatchedRuleGroupKey groupRulesArr3D: ${JSON.stringify(groupRulesArr3D)}`);
+  // remove groupKey
+  const oldRulesArr3D = groupRulesArr3D.map(gRule => gRule.slice(1));
+  ngx.log(ngx.INFO, `getMatchedRuleGroupKey oldRulesArr3D: ${JSON.stringify(oldRulesArr3D)}`);
+  if (oldRulesArr3D.every(rule => !!getMatchedRule(r, [rule], filePath))) {
+    rvt = groupKey;
+  }
+  return rvt;
+}
+
+function getMatchedRule(r, ruleArr3D, filePath) {
+  return ruleArr3D.find(rule => {
+    const sourceStr = getSourceStrByType(r, rule[0], filePath);
+    ngx.log(ngx.WARN, `sourceStrValue, ${rule[0]} = ${sourceStr}`);
     const matcher = rule[2];
     let flag;
     if (Array.isArray(matcher) 
@@ -34,16 +82,13 @@ function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
     } else {
       flag = strMatches(rule[1], sourceStr, matcher);
     }
-    if (flag) {
-      ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(rule)}`);
-    }
     return flag;
   });
 }
 
-function getSourceStrByType(type, r, filePath) {
+function getSourceStrByType(r, type, filePath) {
   let str = filePath;
-  if (type === "0") {
+  if (type === "filePath") {
     return str;
   }
   let val;
