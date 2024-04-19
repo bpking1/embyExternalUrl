@@ -6,8 +6,11 @@
 const plexHost = "http://172.17.0.1:32400";
 
 // 选填项,用不到保持默认即可
-// 局域网ip头
-const lanIpHead = ["172.", "10.", "192.", "[fd00:"];
+// 字符串头,用于特殊匹配判断
+const strtHead = {
+  lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
+  115: "https://cdnfhnfile.115.com",
+};
 // 禁用直链的规则,将转给原始媒体服务器处理(中转流量),字幕和图片没有走直链,不用添加
 // 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),且下面参数序号-1
 // 参数2: 匹配类型或来源(字符串参数类型) "filePath": 文件路径(Item.Path), "alistRes": alist返回的链接
@@ -20,14 +23,14 @@ const disableRedirectRule = [
   // ["alistRes", 2, "/NAS/"], // 例如使用alias聚合了nas本地文件,可能会存在卡顿或花屏
   // ["filePath", 3, /private/ig],
   // docker注意必须为host模式,不然此变量全部为内网ip,判断无效,nginx内置变量不带$,客户端地址($remote_addr)
-  // ["r.variables.remote_addr", 0, lanIpHead],
+  // ["r.variables.remote_addr", 0, strtHead.lanIp],
   // ["r.headersIn.User-Agent", 2, "IE"], // 请求头参数,客户端UA
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
   // 以下规则代表禁用["Emby Web", "Emby for iOS", "Infuse"]中的[本地挂载文件或alist返回的链接]的115直链功能
   // ["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]], // 链接入参,客户端类型
-  // ["115-alist", "alistRes", 2, "115.com"],
+  // ["115-alist", "alistRes", 0, strtHead.115],
   // ["115-local", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]], // 链接入参,客户端类型
   // ["115-local", "filePath", 0, "/mnt/115"],
 ];
@@ -49,7 +52,7 @@ const plexPathMapping = [
 // 参数2: 匹配目标,对象为xxxPathMapping映射后的strm内部链接
 // 参数3: 请求验证类型,已为直链的不需要此参数,例如.../d
 const redirectStrmLastLinkRule = [
-  [0, lanIpHead.map(s => "http://" + s)], 
+  [0, strtHead.lanIp.map(s => "http://" + s)], 
   // [0, alistAddr], 
   // [0, "http:"], 
   // // 参数4: 已为直链的不需要此参数, 参数暂无作用, sign属于额外验证
