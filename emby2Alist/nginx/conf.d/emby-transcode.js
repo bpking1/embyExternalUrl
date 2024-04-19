@@ -1,30 +1,61 @@
 // @author: Chen3861229
 // @date: 2024-02-07
+
 import config from "./constant.js";
 import util from "./common/util.js";
+import events from "./common/events.js";
 import emby from "./emby.js";
 import embyApi from "./api/emby-api.js";
 
 import qs from "querystring";
 
+let keys = {
+  idKey: "Id",
+  filePathKey: "Path",
+  mediaSourcesKey: "MediaSources",
+}
+
 async function transcodeBalance(r) {
+  events.njsOnExit(r);
   checkEnable(r);
 
-  const itemInfo = util.getItemInfo(r);
-  const embyRes = await util.cost(emby.fetchEmbyFilePath,
-    itemInfo.itemInfoUri, 
-    itemInfo.itemId, 
-    itemInfo.Etag, 
-    itemInfo.mediaSourceId
-  );
-  r.log(`embyRes: ${JSON.stringify(embyRes)}`);
-  if (embyRes.message.startsWith("error") || !embyRes.itemName || !embyRes.path) {
-    r.error(embyRes.message);
+  // check transcode load
+  let transServer = await getTransServer(r);
+
+  // media item match
+  const currentItem = await getCurrentItemInfo(r);
+  const targetItem = await mediaItemMatch(r, currentItem, transServer, keys);
+  const targetMediaId = targetItem.source ? targetItem.source[keys.idKey] : targetItem.item[keys.idKey];
+  r.warn(`media item match success target server item id: ${targetMediaId}`);
+
+  // build target server url
+  // redirect to target server
+  emby.redirect(r, buildTransServerUrl(r, transServer, targetMediaId));
+
+  // async add cache
+  util.dictAdd("transcodeDict", r.args["PlaySessionId"], JSON.stringify({
+    DeviceId: r.args["DeviceId"],
+    Server: transServer,
+    TargetItemId: targetItem.item[keys.idKey],
+    TargetItemSourceId: targetItem.source ? targetItem.source[keys.idKey] : "",
+  }));
+  return;
+}
+
+function checkEnable(r) {
+  const transcodeBalanceConfig = config.transcodeBalanceConfig;
+  if (!!transcodeBalanceConfig && transcodeBalanceConfig.enable) {
     return emby.internalRedirectExpect(r);
   }
-  r.warn(`itemName: ${embyRes.itemName}, originalFilePath: ${embyRes.path}`);
-  
-  // check transcode load
+  let serverArr = transcodeBalanceConfig.server;
+  if (transcodeBalanceConfig.type != "distributed-media-server" 
+    || !serverArr || (!!serverArr && serverArr.length < 1)) {
+    // r.error(`transcodeBalanceConfig type not excepted`);
+    return emby.internalRedirectExpect(r);
+  }
+}
+
+async function getTransServer(r) {
   const transcodeBalanceConfig = config.transcodeBalanceConfig;
   let serverArr = transcodeBalanceConfig.server;
   const maxNum = transcodeBalanceConfig.maxNum;
@@ -61,45 +92,108 @@ async function transcodeBalance(r) {
     r.warn(`find target server same as currentServer`);
     return emby.internalRedirectExpect(r);
   }
+  return target;
+}
 
-  // media item match
-  let targetRes;
-  try {
-    targetRes = await util.cost(embyApi.fetchItems,
-      target.host, 
-      target.apiKey,
-      {
-        SearchTerm: encodeURI(embyRes.itemName),
-        Limit: 10,
-        Recursive: true,
-        Fields: "ProviderIds,Path,MediaSources",
-      }
-    );
-  } catch (error) {
-    r.error(`media item match fetchItems: ${error}`);
-    return emby.internalRedirectExpect(r);
+async function getCurrentItemInfo(r) {
+  const isEmby = !!config.embyHost;
+  if (!isEmby) {
+    return r.error(`not supported media server type`);
   }
-  r.warn(`media item match targetRes.status: ${targetRes.status}`);
-  const targetBody = await targetRes.json();
-  r.warn(`media item match fetchItems: ${JSON.stringify(targetBody)}`);
-  const targetItems = targetBody.Items;
+
+  let rvt = {
+    name: "",
+    path: "",
+  }
+  let mediaServerRes;
+  if (isEmby) {
+    const itemInfo = util.getItemInfo(r);
+    mediaServerRes = await util.cost(emby.fetchEmbyFilePath,
+      itemInfo.itemInfoUri, 
+      itemInfo.itemId, 
+      itemInfo.Etag, 
+      itemInfo.mediaSourceId
+    );
+    if (mediaServerRes.message.startsWith("error") || !mediaServerRes.itemName || !mediaServerRes.path) {
+      r.error(mediaServerRes.message);
+      return emby.internalRedirectExpect(r);
+    }
+    rvt.name = mediaServerRes.itemName;
+    rvt.path = mediaServerRes.path;
+  } else {}
+  r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
+  r.warn(`itemName: ${rvt.name}, originalFilePath: ${rvt.path}`);
+  return rvt;
+}
+
+async function mediaItemMatch(r, currentItem, transServer, keys) {
+  const isEmby = transServer.type == "emby" || transServer.type == "jellyfin";
+  if (!isEmby) {
+    return r.error(`not supported media server type`);
+  }
+
+  let targetRes;
+  let targetItems;
+  if (isEmby) {
+    try {
+      targetRes = await util.cost(embyApi.fetchItems,
+        transServer.host, 
+        transServer.apiKey,
+        {
+          SearchTerm: encodeURI(currentItem.name),
+          Limit: 10,
+          Recursive: true,
+          Fields: "ProviderIds,Path,MediaSources",
+        }
+      );
+    } catch (error) {
+      r.error(`media item match fetchItems: ${error}`);
+      return emby.internalRedirectExpect(r);
+    }
+    r.warn(`media item match targetRes.status: ${targetRes.status}`);
+    targetRes = await targetRes.json();
+    targetItems = targetRes.Items;
+  } else {
+    // try {
+    //   targetRes = await util.cost(embyApi.fetchItems,
+    //     transServer.host, 
+    //     transServer.apiKey,
+    //     {
+    //       SearchTerm: encodeURI(currentItem.name),
+    //       Limit: 10,
+    //       Recursive: true,
+    //       Fields: "ProviderIds,Path,MediaSources",
+    //     }
+    //   );
+    // } catch (error) {
+    //   r.error(`media item match fetchItems: ${error}`);
+    //   return emby.internalRedirectExpect(r);
+    // }
+    // targetRes = await targetRes.json();
+    // targetItems = targetRes.Items;
+    // keys.filePathKey = "";
+    // keys.mediaSourcesKey = "";
+  }
+
+  r.warn(`media item match fetchItems: ${JSON.stringify(targetItems)}`);
   if (targetItems.length < 1) {
     r.error(`media item match not found`);
     return emby.internalRedirectExpect(r);
   }
-  const fileName = embyRes.path.split("/").pop();
+
+  const currentFileName = currentItem.path.split("/").pop();
   let fileNameTmp;
-  let targetItem;
-  let targetItemSource;
+  let targetItem; // mutiple versions parent item
+  let targetItemSource; // mutiple versions detail item
   targetItems.map(item => {
-    fileNameTmp = item.Path.split("/").pop();
-    if (fileNameTmp == fileName) {
+    fileNameTmp = item[keys.filePathKey].split("/").pop();
+    if (fileNameTmp == currentFileName) {
       targetItem = item;
       return;
     }
-    item.MediaSources.map(source => {
-      fileNameTmp = source.Path.split("/").pop();
-      if (fileNameTmp == fileName) {
+    item[keys.mediaSourcesKey].map(source => {
+      fileNameTmp = source[keys.filePathKey].split("/").pop();
+      if (fileNameTmp == currentFileName) {
         targetItem = item;
         targetItemSource = source;
         return;
@@ -111,14 +205,21 @@ async function transcodeBalance(r) {
     r.error(`media item match not found`);
     return emby.internalRedirectExpect(r);
   }
-  const targetMediaId = targetItemSource ? targetItemSource.Id : targetItem.Id;
-  r.warn(`media item match success target server item id: ${targetMediaId}`);
 
-  // build target server url
+  return { item: targetItem, itemSource: targetItemSource, keys: keys };
+}
+
+function buildTransServerUrl(r, transServer, targetMediaId) {
+  const isEmby = transServer.type == "emby" || transServer.type == "jellyfin";
+  if (!isEmby) {
+    return r.error(`not supported media server type`);
+  }
+
   // let oriArgs = r.variables.args;
   r.warn(`original args: ${r.variables.args}`);
   let rArgs = r.args;
-  if (target.type == "emby" || target.type == "jellyfin") {
+  let baseUrl;
+  if (isEmby) {
     for (let k in rArgs) {
       // k == "DeviceId"
       if (k == "api_key" || k == "MediaSourceId" || k == "TranscodeReasons") {
@@ -127,7 +228,7 @@ async function transcodeBalance(r) {
         delete rArgs[k];
       }
     }
-    if (target.type == "jellyfin") {
+    if (transServer.type == "jellyfin") {
       // jellyfin, MediaSourceId, The mediaSourceId field is required
       rArgs["MediaSourceId"] = targetMediaId;
       // jellyfin, StartTimeTicks, Error processing request
@@ -138,32 +239,27 @@ async function transcodeBalance(r) {
         // rArgs["runtimeTicks"] = oriVal;
       // }
     }
+    rArgs["api_key"] = transServer.apiKey;
+    baseUrl = `${transServer.host}/Videos/${targetMediaId}/master.m3u8`;
+  } else {
+    // params mapping
+    // rArgs["api_key"] = transServer.apiKey;
+    // baseUrl = `${transServer.host}/Videos/${targetMediaId}/master.m3u8`;
   }
+  
   // important, avoid dead loops
   rArgs["skipDirect"] = "1";
   let args = qs.stringify(rArgs);
   r.warn(`modify args: ${args}`);
 
-  const targetUrl = `${target.host}/Videos/${targetMediaId}/master.m3u8?${args}&api_key=${target.apiKey}`;
-
-  // redirect to target server
-  emby.redirect(r, targetUrl);
-
-  // async add cache
-  util.dictAdd("transcodeDict", rArgs["PlaySessionId"], JSON.stringify({
-    DeviceId: rArgs["DeviceId"],
-    Server: target,
-    TargetItemId: targetItem.Id,
-    TargetItemSourceId: targetItemSource ? targetItemSource.Id : "",
-  }));
-  return;
+  return `${baseUrl}?${args}`;
 }
 
 async function syncDelete(r) {
+  events.njsOnExit(r);
   checkEnable(r);
   
   const uri = r.uri;
-  // let rArgs = util.capitalizeKeys(r.args);
   let rArgs = r.args;
   const playSessionId = rArgs["PlaySessionId"];
   r.warn(`syncDelete transcodeDict key: ${playSessionId}`);
@@ -200,6 +296,7 @@ async function syncDelete(r) {
 }
 
 async function syncPlayState(r) {
+  events.njsOnExit(r);
   checkEnable(r);
 
   const uri = r.uri;
@@ -249,19 +346,6 @@ async function syncPlayState(r) {
     }
   });
   return emby.internalRedirectExpect(r);
-}
-
-function checkEnable(r) {
-  const transcodeBalanceConfig = config.transcodeBalanceConfig;
-  if (!!transcodeBalanceConfig && transcodeBalanceConfig.enable) {
-    return emby.internalRedirectExpect(r);
-  }
-  let serverArr = transcodeBalanceConfig.server;
-  if (transcodeBalanceConfig.type != "distributed-media-server" 
-    || !serverArr || (!!serverArr && serverArr.length < 1)) {
-    // r.error(`transcodeBalanceConfig type not excepted`);
-    return emby.internalRedirectExpect(r);
-  }
 }
 
 export default {

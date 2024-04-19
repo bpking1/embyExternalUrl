@@ -4,11 +4,13 @@
 
 import config from "./constant.js";
 import util from "./common/util.js";
+import events from "./common/events.js";
 
 const xml = require("xml");
 let allData = "";
 
 async function redirect2Pan(r) {
+  events.njsOnExit(r);
   const ua = r.headersIn["User-Agent"];
 
   // check redirect link cache
@@ -411,6 +413,7 @@ async function fetchStrmInnerText(r) {
 }
 
 function plexApiHandler(r, data, flags) {
+  events.njsOnExit(r);
   const contentType = r.headersOut["Content-Type"];
   //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
   if (contentType.includes("application/json")) {
