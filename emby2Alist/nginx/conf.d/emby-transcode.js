@@ -30,12 +30,14 @@ async function transcodeBalance(r) {
   const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
   if (util.routeEnum.proxy == routeMode) {
     return emby.internalRedirectExpect(r);
-  } else if (util.routeEnum.redirect == routeMode) {
-    return emby.redirect2Pan(r);
+    // not need route, clients will self select
+  // } else if (util.routeEnum.redirect == routeMode) {
+  //   // this maybe not support, because player is already init to HSL
+  //   return emby.redirect2Pan(r);
   } else if (util.routeEnum.block == routeMode) {
     return r.return(403, "blocked");
   }
-
+  
   // check transcode load
   let transServer = await getTransServer(r);
 
