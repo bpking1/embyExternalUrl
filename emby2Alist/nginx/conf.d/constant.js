@@ -98,21 +98,22 @@ const transcodeBalanceConfig = {
   enable: false,
   type: "distributed-media-server", // 可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
+  // 注意下列host必须全部为公网地址,会302给客户端访问
   server: [
     {
       type: "emby",
-      host: "http://172.17.0.1:8096",
+      host: "http://yourdomain.com:8096",
       apiKey: "f839390f50a648fd92108bc11ca6730a",
     },
     {
       type: "jellyfin",
-      host: "http://172.17.0.2:8097",
+      host: "http://yourdomain.com:8097",
       apiKey: "f839390f50a648fd92108bc11ca6730a",
     },
     // plex和weight参数暂未实现,很难
     // {
     //   type: "plex",
-    //   host: "http://172.17.0.2:32400",
+    //   host: "http://yourdomain.com:32400",
     //   apiKey: "f839390f50a648fd92108bc11ca6730a",
     // },
   ]
