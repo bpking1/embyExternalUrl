@@ -3,6 +3,7 @@ import config from "../constant.js";
 const args = {
   filePathKey: "filePath",
   notLocalKey: "notLocal",
+  skipRouteKey: "skipRoute",
   useProxyKey: "useProxy",
   useRedirectKey: "useRedirect",
 }

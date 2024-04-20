@@ -197,9 +197,15 @@ async function transferPlaybackInfo(r) {
 
         const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
         // routeRule
+        let isRedirectWithTransOpt = false;
         if (config.transcodeBalanceConfig.enable) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
-          if (util.routeEnum.transcode == routeMode) {
+          if (util.routeEnum.redirect == routeMode) {
+            isRedirectWithTransOpt = true;
+            if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks != 0) {
+              continue;
+            }
+          } else if (util.routeEnum.transcode == routeMode) {
             continue;
           } else if (util.routeEnum.block == routeMode) {
             return r.return(403, "blocked");
@@ -243,6 +249,10 @@ async function transferPlaybackInfo(r) {
         );
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
+        // routeRule
+        if (isRedirectWithTransOpt) {
+          continue;
+        }
         r.warn(`remove transcode config`);
         source.SupportsTranscoding = false;
         if (source.TranscodingUrl) {
