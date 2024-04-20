@@ -12,6 +12,7 @@ let allData = "";
 async function redirect2Pan(r) {
   events.njsOnExit(r);
   const ua = r.headersIn["User-Agent"];
+  r.warn(`redirect2Pan, UA: ${ua}`);
 
   // check redirect link cache
   const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
@@ -50,10 +51,14 @@ async function redirect2Pan(r) {
       mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
   r.warn(`mount plex file path: ${mediaServerRes.path}`);
-  
-  if (util.isDisableRedirect(r, mediaServerRes.path, false, notLocal)) {
+
+  // routeRule
+  const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
+  if (util.routeEnum.proxy == routeMode) {
     // use original link
     return internalRedirect(r);
+  } else if (util.routeEnum.block == routeMode) {
+    return r.return(403, "blocked");
   }
 
   // strm support
@@ -117,9 +122,13 @@ async function redirect2Pan(r) {
   );
   r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(r, alistRes, true, notLocal)) {
+    // routeRule
+    const routeMode = util.getRouteMode(r, alistRes, true, notLocal);
+    if (util.routeEnum.proxy == routeMode) {
       // use original link
       return internalRedirect(r);
+    } else if (util.routeEnum.block == routeMode) {
+      return r.return(403, "blocked");
     }
     return redirect(r, alistRes);
   }

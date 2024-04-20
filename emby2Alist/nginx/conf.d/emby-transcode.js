@@ -19,12 +19,31 @@ async function transcodeBalance(r) {
   events.njsOnExit(r);
   checkEnable(r);
 
+  // getCurrentItemInfo
+  const currentItem = await getCurrentItemInfo(r);
+  if (!currentItem) {
+    return emby.internalRedirectExpect(r);
+  }
+
+  // routeRule
+  const notLocal = util.checkIsStrmByPath(currentItem.path);
+  const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
+  if (util.routeEnum.proxy == routeMode) {
+    return emby.internalRedirectExpect(r);
+  } else if (util.routeEnum.redirect == routeMode) {
+    return emby.redirect2Pan(r);
+  } else if (util.routeEnum.block == routeMode) {
+    return r.return(403, "blocked");
+  }
+
   // check transcode load
   let transServer = await getTransServer(r);
 
   // media item match
-  const currentItem = await getCurrentItemInfo(r);
   const targetItem = await mediaItemMatch(r, currentItem, transServer, keys);
+  if (!targetItem) {
+    return emby.internalRedirectExpect(r);
+  }
   const targetMediaId = targetItem.source ? targetItem.source[keys.idKey] : targetItem.item[keys.idKey];
   r.warn(`media item match success target server item id: ${targetMediaId}`);
 
@@ -102,7 +121,8 @@ async function getCurrentItemInfo(r) {
   }
 
   let rvt = {
-    name: "",
+    notLocal: false,
+    itemName: "",
     path: "",
   }
   let mediaServerRes;
@@ -114,15 +134,16 @@ async function getCurrentItemInfo(r) {
       itemInfo.Etag, 
       itemInfo.mediaSourceId
     );
+    r.warn(`fetchEmbyFilePath mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
     if (mediaServerRes.message.startsWith("error") || !mediaServerRes.itemName || !mediaServerRes.path) {
-      r.error(mediaServerRes.message);
-      return emby.internalRedirectExpect(r);
+      return r.error(mediaServerRes.message);
     }
-    rvt.name = mediaServerRes.itemName;
+    rvt.notLocal = mediaServerRes.notLocal;
+    rvt.itemName = mediaServerRes.itemName;
     rvt.path = mediaServerRes.path;
   } else {}
   r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
-  r.warn(`itemName: ${rvt.name}, originalFilePath: ${rvt.path}`);
+  r.warn(`getCurrentItemInfo: ${JSON.stringify(rvt)}`);
   return rvt;
 }
 
@@ -147,8 +168,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
         }
       );
     } catch (error) {
-      r.error(`media item match fetchItems: ${error}`);
-      return emby.internalRedirectExpect(r);
+      return r.error(`media item match fetchItems: ${error}`);
     }
     r.warn(`media item match targetRes.status: ${targetRes.status}`);
     targetRes = await targetRes.json();
@@ -177,8 +197,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
 
   r.warn(`media item match fetchItems: ${JSON.stringify(targetItems)}`);
   if (targetItems.length < 1) {
-    r.error(`media item match not found`);
-    return emby.internalRedirectExpect(r);
+    return r.error(`media item match not found`);
   }
 
   const currentFileName = currentItem.path.split("/").pop();
@@ -202,8 +221,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
   });
   r.warn(`media item match targetItem: ${JSON.stringify(targetItem)}`);
   if (!targetItem || (!!targetItem && !targetItem.Id)) {
-    r.error(`media item match not found`);
-    return emby.internalRedirectExpect(r);
+    return r.error(`media item match not found`);
   }
 
   return { item: targetItem, itemSource: targetItemSource, keys: keys };
@@ -248,7 +266,7 @@ function buildTransServerUrl(r, transServer, targetMediaId) {
   }
   
   // important, avoid dead loops
-  rArgs["skipDirect"] = "1";
+  rArgs[util.args.useProxyKey] = "1";
   let args = qs.stringify(rArgs);
   r.warn(`modify args: ${args}`);
 
@@ -261,11 +279,12 @@ async function syncDelete(r) {
   
   const uri = r.uri;
   let rArgs = r.args;
+  // Not Expect, this playSessionId on switch video bitrate will always be old value
   const playSessionId = rArgs["PlaySessionId"];
   r.warn(`syncDelete transcodeDict key: ${playSessionId}`);
   const cachedStr = ngx.shared.transcodeDict.get(playSessionId);
   if (!cachedStr) {
-    r.warn(`syncDelete playSession not exist, skip, ${uri}`);
+    r.log(`syncDelete playSession not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const cacheObj = JSON.parse(cachedStr);
@@ -305,11 +324,12 @@ async function syncPlayState(r) {
     return emby.internalRedirectExpect(r);
   }
   const reqBody = JSON.parse(r.requestText);
+  // Expect, this playSessionId is always current
   const playSessionId = reqBody["PlaySessionId"];
   r.warn(`syncPlayState transcodeDict key: ${playSessionId}`);
   const cachedStr = ngx.shared.transcodeDict.get(playSessionId);
   if (!cachedStr) {
-    r.warn(`syncPlayState playSession not exist, skip, ${uri}`);
+    r.log(`syncPlayState playSession not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
   const cacheObj = JSON.parse(cachedStr);

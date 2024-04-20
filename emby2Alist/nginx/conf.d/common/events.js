@@ -19,7 +19,7 @@ function njsOn(eventName, callback) {
 }
 
 function njsOnExitNotice(r) {
-  r.warn(`=== the NJS VM is destroyed ===`);
+  r.warn(`=== ${r.uri}, the NJS VM is destroyed ===`);
 }
 
 export default {
