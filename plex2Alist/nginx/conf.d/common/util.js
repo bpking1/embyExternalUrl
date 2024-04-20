@@ -4,6 +4,12 @@ const args = {
   plexTokenKey: "X-Plex-Token",
 }
 
+const routeEnum = {
+  proxy: "proxy",
+  redirect: "redirect",
+  block: "block",
+};
+
 // copy from emby2Alist/nginx/conf.d/util.js
 function proxyUri(uri) {
   return `/proxy${uri}`;
@@ -21,26 +27,73 @@ function groupBy(array, key) {
   }, {});
 };
 
-function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
-  const disableRedirectRule = config.disableRedirectRule;
+function getRouteMode(r, filePath, isAlistRes, notLocal) {
+  const cRouteRule = config.routeRule;
+  // old proxy
+  let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
+  proxyRules = proxyRules.filter(rule => !Object.keys(routeEnum).includes(rule[0]));
+  proxyRules = proxyRules.concat(cRouteRule
+    .filter(rule => rule[0] === routeEnum.proxy)
+    // new proxy, remove routeMode
+    .map(rule => rule.slice(1)));
+  ngx.log(ngx.INFO, `getRouteMode proxyRules: ${JSON.stringify(proxyRules)}`);
+  if (isProxy(r, proxyRules, filePath, isAlistRes, notLocal)) {
+    return routeEnum.proxy;
+  }
+  // new routeRules and not new proxy
+  let routeRules = cRouteRule.filter(rule => {
+    for (const rKey in routeEnum) {
+      if (routeEnum[rKey] === rule[0] && rule[0] != routeEnum.proxy) {
+        return rule;
+      }
+    }
+  });
+  if (routeRules.length === 0 && isAlistRes) {
+    // default value
+    return routeEnum.redirect;
+  }
+  const routeRulesObjArr = groupBy(routeRules, 0);
+  for (const rKey in routeRulesObjArr) {
+    routeRules = routeRulesObjArr[rKey];
+    // remove routeMode
+    const oldRulesArr3D = routeRules.map(rRule => rRule.slice(1));
+    if (routeRules.length > 4) {
+      let matchedGroupKey = getMatchedRuleGroupKey(r, routeRules[0][1], oldRulesArr3D, filePath);
+      if (matchedGroupKey) {
+        ngx.log(ngx.WARN, `hit ${rKey}, group: ${matchedGroupKey}`);
+        return rKey;
+      }
+    } else {
+      const matchedRule = getMatchedRule(r, oldRulesArr3D, filePath);
+      if (matchedRule) {
+        ngx.log(ngx.WARN, `hit ${rKey}: ${JSON.stringify(matchedRule)}`);
+        return rKey;
+      }
+    }
+  }
+  return routeEnum.redirect;
+}
+
+function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
+  const disableRedirectRule = proxyRules;
   const plexMountPath = config.plexMountPath;
   if (!isAlistRes) {
     // this var isAlistRes = false
     // local file not xxxMountPath first
     if (plexMountPath.every(path => 
       !!path && !filePath.startsWith(path) && !notLocal)) {
-      ngx.log(ngx.WARN, `hit isDisableRedirect, not xxxMountPath first: ${JSON.stringify(plexMountPath)}`);
+      ngx.log(ngx.WARN, `hit proxy, not xxxMountPath first: ${JSON.stringify(plexMountPath)}`);
       return true;
     }
   }
   
   const oldRules = disableRedirectRule.filter(rule => rule.length <= 3);
-  if (!oldRules || (!!oldRules && oldRules.length === 0)) {
+  if (oldRules.length === 0) {
     return false;
   }
   let matchedRule = getMatchedRule(r, oldRules, filePath);
   if (matchedRule) {
-    ngx.log(ngx.WARN, `hit isDisableRedirect: ${JSON.stringify(matchedRule)}`);
+    ngx.log(ngx.WARN, `hit proxy: ${JSON.stringify(matchedRule)}`);
     return true;
   }
   const groupRulesObjArr = groupBy(disableRedirectRule.filter(rule => rule.length > 3), 0);
@@ -51,13 +104,21 @@ function isDisableRedirect(r, filePath, isAlistRes, notLocal) {
   for (const gKey in groupRulesObjArr) {
     matchedGroupKey = getMatchedRuleGroupKey(r, gKey, groupRulesObjArr[gKey], filePath);
     if (matchedGroupKey) {
-      ngx.log(ngx.WARN, `hit isDisableRedirect, group: ${matchedGroupKey}`);
+      ngx.log(ngx.WARN, `hit proxy, group: ${matchedGroupKey}`);
       return true;
     }
   }
   return false;
 }
 
+/**
+ * getMatchedRuleGroupKey
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {String} groupKey "115-alist"
+ * @param {Array} groupRulesArr3D [["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]]]
+ * @param {String} filePath mediaFilePath or alistRes link
+ * @returns "115-alist"
+ */
 function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
   let rvt;
   ngx.log(ngx.INFO, `getMatchedRuleGroupKey groupRulesArr3D: ${JSON.stringify(groupRulesArr3D)}`);
@@ -70,12 +131,22 @@ function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
   return rvt;
 }
 
+/**
+ * getMatchedRule
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {Array} ruleArr3D [["filePath", 3, /private/ig]]
+ * @param {String} filePath mediaFilePath or alistRes link
+ * @returns ["filePath", 3, /private/ig]
+ */
 function getMatchedRule(r, ruleArr3D, filePath) {
   return ruleArr3D.find(rule => {
     const sourceStr = getSourceStrByType(r, rule[0], filePath);
+    let flag = false;
     ngx.log(ngx.WARN, `sourceStrValue, ${rule[0]} = ${sourceStr}`);
+    if (!sourceStr) {
+      return flag;
+    }
     const matcher = rule[2];
-    let flag;
     if (Array.isArray(matcher) 
       && matcher.some(m => strMatches(rule[1], sourceStr, m))) {
       flag = true;
@@ -206,22 +277,37 @@ async function dictAdd(dictName, key, value) {
   }
 }
 
-function cost(func) {
-  if (!func || (!!func && !func instanceof Function)) {
+async function cost(func) {
+  if (!func || !(func instanceof Function)) {
     ngx.log(ngx.ERR, `target function not null or is not function`);
     return;
   }
   const args = Array.prototype.slice.call(arguments, 1);
   const start = Date.now();
-  const rvt = func.apply(func, args);
-  if (rvt instanceof Promise) {
-    rvt.then(realRvt => {
+  let rvt;
+  try {
+    rvt = func.apply(func, args);
+    if (rvt instanceof Promise) {
+      await rvt.then(
+        realRvt => {
+          const end = Date.now();
+          ngx.log(ngx.WARN, `${end - start}ms, ${func.name} async function cost`);
+          // return realRvt;
+        },
+        error => {
+          const end = Date.now();
+          ngx.log(ngx.ERR, `${end - start}ms, ${func.name} async function throw an error`);
+          throw error;
+        }
+      );
+    } else {
       const end = Date.now();
-      ngx.log(ngx.WARN, `${end - start}ms, ${func.name} async function cost`);
-    });
-  } else {
+      ngx.log(ngx.WARN, `${end - start}ms, ${func.name} function cost`);
+    }
+  } catch (error) {
     const end = Date.now();
-    ngx.log(ngx.WARN, `${end - start}ms, ${func.name} function cost`);
+    ngx.log(ngx.ERR, `${end - start}ms, ${func.name} sync function throw an error`);
+    throw error;
   }
   return rvt;
 }
@@ -237,10 +323,11 @@ function getFileNameByHead(contentDisposition) {
 
 export default {
   args,
+  routeEnum,
   proxyUri,
   strMapping,
   strMatches,
-  isDisableRedirect,
+  getRouteMode,
   checkIsStrmByPath,
   checkIsRemoteByPath,
   redirectStrmLastLinkRuleFilter,

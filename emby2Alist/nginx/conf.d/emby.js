@@ -10,6 +10,7 @@ import embyApi from "./api/emby-api.js";
 async function redirect2Pan(r) {
   events.njsOnExit(r);
   const ua = r.headersIn["User-Agent"];
+  r.warn(`redirect2Pan, UA: ${ua}`);
 
   // check redirect link cache
   const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
@@ -52,9 +53,13 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
-  if (util.isDisableRedirect(r, embyRes.path, false, embyRes.notLocal)) {
+  // routeRule
+  const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
+  if (util.routeEnum.proxy == routeMode) {
     // use original link
     return internalRedirect(r);
+  } else if (util.routeEnum.block == routeMode) {
+    return r.return(403, "blocked");
   }
 
   let isRemote = util.checkIsRemoteByPath(embyRes.path);
@@ -111,9 +116,13 @@ async function redirect2Pan(r) {
   );
   r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    if (util.isDisableRedirect(r, alistRes, true, embyRes.notLocal)) {
+    // routeRule
+    const routeMode = util.getRouteMode(r, alistRes, true, embyRes.notLocal);
+    if (util.routeEnum.proxy == routeMode) {
       // use original link
       return internalRedirect(r);
+    } else if (util.routeEnum.block == routeMode) {
+      return r.return(403, "blocked");
     }
     return redirect(r, alistRes);
   }
@@ -185,6 +194,18 @@ async function transferPlaybackInfo(r) {
         //   // live streams are not blocked
         //   // return r.return(200, response.responseText);
         // }
+
+        const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
+        // routeRule
+        if (config.transcodeBalanceConfig.enable) {
+          const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
+          if (util.routeEnum.transcode == routeMode) {
+            continue;
+          } else if (util.routeEnum.block == routeMode) {
+            return r.return(403, "blocked");
+          }
+        }
+
         r.warn(`modify direct play info`);
         source.SupportsDirectPlay = true;
         source.SupportsDirectStream = true;
@@ -218,7 +239,7 @@ async function transferPlaybackInfo(r) {
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
           util.args.notLocalKey,
-          util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0"
+          notLocal
         );
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
@@ -230,6 +251,7 @@ async function transferPlaybackInfo(r) {
           delete source.TranscodingContainer;
         }
       }
+
       util.copyHeaders(response, r);
       const bodyJson = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
