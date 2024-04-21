@@ -15,9 +15,9 @@ async function redirect2Pan(r) {
   r.warn(`redirect2Pan, UA: ${ua}`);
 
   // check redirect link cache
-  const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
+  const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
   if (!!cachedLink) {
-    r.warn(`hit redirectCache: ${cachedLink}`);
+    r.warn(`hit routeDictCache: ${cachedLink}`);
     if (cachedLink.startsWith("@")) {
       // use original link
       return internalRedirect(r, cachedLink, true);
@@ -572,7 +572,7 @@ function redirect(r, uri, isCached) {
   // need caller: return;
   r.return(302, uri);
   // async
-  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
 function internalRedirect(r, uri, isCached) {
@@ -584,7 +584,7 @@ function internalRedirect(r, uri, isCached) {
   // need caller: return;
   r.internalRedirect(uri);
   // async
-  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
 }
 
 function internalRedirectExpect(r, uri) {

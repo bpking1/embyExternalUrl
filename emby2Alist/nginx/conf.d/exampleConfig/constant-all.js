@@ -18,10 +18,12 @@ const alistToken = "alsit-123456";
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "http://youralist.com:5244";
 // 字符串头,用于特殊匹配判断
-const strtHead = {
+const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "https://cdnfhnfile.115.com",
 };
+// 是否开启路由缓存,短时间内同客户端访问相同资源不会再做判断和请求alist,有限的防抖措施,出现问题可以关闭此选项
+const routeCacheEnable = true;
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
@@ -36,14 +38,14 @@ const routeRule = [
   // ["alistRes", 2, "/NAS/"], // 例如使用alias聚合了nas本地文件,可能会存在卡顿或花屏
   // ["filePath", 3, /private/ig],
   // docker注意必须为host模式,不然此变量全部为内网ip,判断无效,nginx内置变量不带$,客户端地址($remote_addr)
-  // ["r.variables.remote_addr", 0, strtHead.lanIp],
+  // ["r.variables.remote_addr", 0, strHead.lanIp],
   // ["r.headersIn.User-Agent", 2, "IE"], // 请求头参数,客户端UA
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
   // 以下规则代表禁用["Emby Web", "Emby for iOS", "Infuse"]中的[本地挂载文件或alist返回的链接]的115直链功能
   // ["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]], // 链接入参,客户端类型
-  // ["115-alist", "alistRes", 0, strtHead["115"]],
+  // ["115-alist", "alistRes", 0, strHead["115"]],
   // ["115-local", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]],
   // ["115-local", "filePath", 0, "/mnt/115"],
   // 注意非"proxy"无法使用"alistRes"条件,因为没有获取alist直链的过程
@@ -72,7 +74,7 @@ const embyPathMapping = [
 // 参数2: 匹配目标,对象为xxxPathMapping映射后的strm内部链接
 // 参数3: 请求验证类型,已为直链的不需要此参数,例如.../d
 const redirectStrmLastLinkRule = [
-  [0, strtHead.lanIp.map(s => "http://" + s)], 
+  [0, strHead.lanIp.map(s => "http://" + s)], 
   // [0, alistAddr], 
   // [0, "http:"], 
   // // 参数4: 已为直链的不需要此参数, 参数暂无作用, sign属于额外验证
@@ -167,6 +169,7 @@ export default {
   embyHost,
   embyMountPath,
   embyApiKey,
+  routeCacheEnable,
   routeRule,
   alistAddr,
   alistToken,
