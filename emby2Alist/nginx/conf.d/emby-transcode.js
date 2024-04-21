@@ -25,21 +25,27 @@ async function transcodeBalance(r) {
     return emby.internalRedirectExpect(r);
   }
 
-  // routeRule
-  const notLocal = util.checkIsStrmByPath(currentItem.path);
-  const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
-  if (util.routeEnum.proxy == routeMode) {
-    return emby.internalRedirectExpect(r);
-    // not need route, clients will self select
-  // } else if (util.routeEnum.redirect == routeMode) {
-  //   // this maybe not support, because player is already init to HSL
-  //   return emby.redirect2Pan(r);
-  } else if (util.routeEnum.block == routeMode) {
-    return r.return(403, "blocked");
+  // swich transcode opt, skip modify
+  if (r.args.StartTimeTicks == 0) {
+    // routeRule
+    const notLocal = util.checkIsStrmByPath(currentItem.path);
+    const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
+    if (util.routeEnum.proxy == routeMode) {
+      return emby.internalRedirectExpect(r);
+      // not need route, clients will self select
+    // } else if (util.routeEnum.redirect == routeMode) {
+    //   // this maybe not support, because player is already init to HSL
+    //   return emby.redirect2Pan(r);
+    } else if (util.routeEnum.block == routeMode) {
+      return r.return(403, "blocked");
+    }
   }
   
   // check transcode load
   let transServer = await getTransServer(r);
+  if (!transServer) {
+    return emby.internalRedirectExpect(r);
+  }
 
   // media item match
   const targetItem = await mediaItemMatch(r, currentItem, transServer, keys);
@@ -79,6 +85,9 @@ function checkEnable(r) {
 async function getTransServer(r) {
   const transcodeBalanceConfig = config.transcodeBalanceConfig;
   let serverArr = transcodeBalanceConfig.server;
+  if (!serverArr || (!!serverArr && serverArr.length === 0)) {
+    return r.warn(`no transServer, will use current server transcode`);
+  }
   const maxNum = transcodeBalanceConfig.maxNum;
   let target;
   let serverTmp;
@@ -163,7 +172,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
         transServer.host, 
         transServer.apiKey,
         {
-          SearchTerm: encodeURI(currentItem.name),
+          SearchTerm: encodeURI(currentItem.itemName),
           Limit: 10,
           Recursive: true,
           Fields: "ProviderIds,Path,MediaSources",
@@ -181,7 +190,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
     //     transServer.host, 
     //     transServer.apiKey,
     //     {
-    //       SearchTerm: encodeURI(currentItem.name),
+    //       SearchTerm: encodeURI(currentItem.itemName),
     //       Limit: 10,
     //       Recursive: true,
     //       Fields: "ProviderIds,Path,MediaSources",
