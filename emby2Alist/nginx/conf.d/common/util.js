@@ -397,6 +397,11 @@ async function cost(func) {
   return rvt;
 }
 
+function getDeviceId(rArgs) {
+  // jellyfin and old emby tv clients use DeviceId
+  return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId;
+}
+
 export default {
   args,
   routeEnum,
@@ -417,4 +422,5 @@ export default {
   getItemInfo,
   dictAdd,
   cost,
+  getDeviceId,
 };

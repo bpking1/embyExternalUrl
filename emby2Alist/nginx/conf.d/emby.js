@@ -564,16 +564,17 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
 
 async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
   if (!deviceId) {
-    ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: deviceId is required`);
+    ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: deviceId is required, skip`);
     return;
   }
   embyApi.fetchSessions(config.embyHost, config.embyApiKey, {DeviceId:deviceId}).then(sessionResPromise => {
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
-        ngx.log(ngx.ERR, `error: sendMessage2EmbyDevice: fetchSessions: session not found`);
+        ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: fetchSessions: session not found, skip`);
         return;
       }
-      embyApi.fetchSessionsMessage(sessionRes[0].Id, header, text, timeoutMs);
+      // sometimes have multiple sessions
+      embyApi.fetchSessionsMessage(sessionRes.filter(s => s.SupportsRemoteControl)[0].Id, header, text, timeoutMs);
     });
   });
 }
@@ -593,7 +594,7 @@ function redirect(r, uri, isCached) {
     );
   }
   if (config.embyRedirectSendMessage.enable) {
-    sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
+    sendMessage2EmbyDevice(util.getDeviceId(r.args),
       config.embyRedirectSendMessage.header,
       `hit redirectCache: ${!!isCached},redirect: success`,
       config.embyRedirectSendMessage.timeoutMs);
@@ -620,7 +621,7 @@ function internalRedirect(r, uri, isCached) {
     );
   }
   if (config.embyRedirectSendMessage.enable) {
-    sendMessage2EmbyDevice(r.args["X-Emby-Device-Id"], 
+    sendMessage2EmbyDevice(util.getDeviceId(r.args),
       config.embyRedirectSendMessage.header,
       `${msgPrefix}success`,
       config.embyRedirectSendMessage.timeoutMs);
