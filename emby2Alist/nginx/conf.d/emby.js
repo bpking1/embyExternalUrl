@@ -13,14 +13,16 @@ async function redirect2Pan(r) {
   r.warn(`redirect2Pan, UA: ${ua}`);
 
   // check redirect link cache
-  const cachedLink = ngx.shared.redirectDict.get(`${ua}:${r.uri}`);
-  if (!!cachedLink) {
-    r.warn(`hit redirectCache: ${cachedLink}`);
-    if (cachedLink.startsWith("@")) {
-      // use original link
-      return internalRedirect(r, cachedLink, true);
-    } else {
-      return redirect(r, cachedLink, true);
+  if (config.routeCacheEnable) {
+    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
+    if (!!cachedLink) {
+      r.warn(`hit routeCache: ${cachedLink}`);
+      if (cachedLink.startsWith("@")) {
+        // use original link
+        return internalRedirect(r, cachedLink, true);
+      } else {
+        return redirect(r, cachedLink, true);
+      }
     }
   }
 
@@ -254,6 +256,7 @@ async function transferPlaybackInfo(r) {
           continue;
         }
         r.warn(`remove transcode config`);
+        source["X-Modify-Success"] = true; // for debug
         source.SupportsTranscoding = false;
         if (source.TranscodingUrl) {
           delete source.TranscodingUrl;
@@ -583,20 +586,25 @@ function redirect(r, uri, isCached) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
+
   // async
-  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  let cachedMsg = "";
+  if (config.routeCacheEnable) {
+    cachedMsg = `hit routeCache: ${!!isCached}, `;
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  }
   if (config.embyNotificationsAdmin.enable) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
-      `hit redirectCache: ${!!isCached}, original link: ${r.uri}\nredirect to: ${uri}` :
-      `hit redirectCache: ${!!isCached}, redirect: success`
+      `${cachedMsg}original link: ${r.uri}\nredirect to: ${uri}` :
+      `${cachedMsg}redirect: success`
     );
   }
   if (config.embyRedirectSendMessage.enable) {
     sendMessage2EmbyDevice(util.getDeviceId(r.args),
       config.embyRedirectSendMessage.header,
-      `hit redirectCache: ${!!isCached},redirect: success`,
+      `${cachedMsg}redirect: success`,
       config.embyRedirectSendMessage.timeoutMs);
   }
 }
@@ -609,9 +617,14 @@ function internalRedirect(r, uri, isCached) {
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
+
   // async
-  util.dictAdd("redirectDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
-  const msgPrefix = `hit redirectCache: ${!!isCached}, use original link: `;
+  let cachedMsg = "";
+  if (config.routeCacheEnable) {
+    cachedMsg = `hit routeCache: ${!!isCached}, `;
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  }
+  const msgPrefix = `${cachedMsg}use original link: `;
   if (config.embyNotificationsAdmin.enable) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
