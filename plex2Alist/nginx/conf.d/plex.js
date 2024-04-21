@@ -15,14 +15,16 @@ async function redirect2Pan(r) {
   r.warn(`redirect2Pan, UA: ${ua}`);
 
   // check redirect link cache
-  const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
-  if (!!cachedLink) {
-    r.warn(`hit routeDictCache: ${cachedLink}`);
-    if (cachedLink.startsWith("@")) {
-      // use original link
-      return internalRedirect(r, cachedLink, true);
-    } else {
-      return redirect(r, cachedLink, true);
+  if (config.routeCacheEnable) {
+    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
+    if (!!cachedLink) {
+      r.warn(`hit routeCache: ${cachedLink}`);
+      if (cachedLink.startsWith("@")) {
+        // use original link
+        return internalRedirect(r, cachedLink, true);
+      } else {
+        return redirect(r, cachedLink, true);
+      }
     }
   }
 
@@ -571,8 +573,11 @@ function redirect(r, uri, isCached) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);
+
   // async
-  util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  if (config.routeCacheEnable) {
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  }
 }
 
 function internalRedirect(r, uri, isCached) {
@@ -583,8 +588,11 @@ function internalRedirect(r, uri, isCached) {
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
+
   // async
-  util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  if (config.routeCacheEnable) {
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  }
 }
 
 function internalRedirectExpect(r, uri) {

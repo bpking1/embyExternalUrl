@@ -204,6 +204,7 @@ async function transferPlaybackInfo(r) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           if (util.routeEnum.redirect == routeMode) {
             isRedirectWithTransOpt = true;
+            // swich transcode opt, skip modify
             if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks != 0) {
               continue;
             }
@@ -217,7 +218,7 @@ async function transferPlaybackInfo(r) {
         r.warn(`modify direct play info`);
         source.SupportsDirectPlay = true;
         source.SupportsDirectStream = true;
-        source.OriginDirectStreamUrl = source.DirectStreamUrl; // for debug
+        source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
         source.DirectStreamUrl = util.addDefaultApiKey(
           r,
           util
@@ -251,12 +252,12 @@ async function transferPlaybackInfo(r) {
         );
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
+        source.XModifySuccess = true; // for debug
         // routeRule
         if (isRedirectWithTransOpt) {
           continue;
         }
         r.warn(`remove transcode config`);
-        source["X-Modify-Success"] = true; // for debug
         source.SupportsTranscoding = false;
         if (source.TranscodingUrl) {
           delete source.TranscodingUrl;

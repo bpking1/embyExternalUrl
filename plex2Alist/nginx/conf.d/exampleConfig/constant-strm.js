@@ -11,6 +11,8 @@ const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "https://cdnfhnfile.115.com",
 };
+// 是否开启路由缓存,短时间内同客户端访问相同资源不会再做判断和请求alist,有限的防抖措施,出现问题可以关闭此选项
+const routeCacheEnable = true;
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 只是屏蔽播放
@@ -93,6 +95,7 @@ function getPlexHost(r) {
 export default {
   plexHost,
   plexMountPath,
+  routeCacheEnable,
   routeRule,
   alistAddr,
   alistToken,
