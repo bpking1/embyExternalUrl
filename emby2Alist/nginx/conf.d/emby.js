@@ -595,19 +595,23 @@ function redirect(r, uri, isCached) {
     cachedMsg = `hit routeCache: ${!!isCached}, `;
     util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   }
-  if (config.embyNotificationsAdmin.enable) {
+  const deviceId = util.getDeviceId(r.args);
+  const idelVal = ngx.shared.idemDict.get(deviceId);
+  if (config.embyNotificationsAdmin.enable && !idelVal) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       `${cachedMsg}original link: ${r.uri}\nredirect to: ${uri}` :
       `${cachedMsg}redirect: success`
     );
+    util.dictAdd("idemDict", deviceId, "1");
   }
-  if (config.embyRedirectSendMessage.enable) {
-    sendMessage2EmbyDevice(util.getDeviceId(r.args),
+  if (config.embyRedirectSendMessage.enable && !idelVal) {
+    sendMessage2EmbyDevice(deviceId,
       config.embyRedirectSendMessage.header,
       `${cachedMsg}redirect: success`,
       config.embyRedirectSendMessage.timeoutMs);
+    util.dictAdd("idemDict", deviceId, "1");
   }
 }
 
@@ -626,20 +630,24 @@ function internalRedirect(r, uri, isCached) {
     cachedMsg = `hit routeCache: ${!!isCached}, `;
     util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
   }
+  const deviceId = util.getDeviceId(r.args);
+  const idelVal = ngx.shared.idemDict.get(deviceId);
   const msgPrefix = `${cachedMsg}use original link: `;
-  if (config.embyNotificationsAdmin.enable) {
+  if (config.embyNotificationsAdmin.enable && !idelVal) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
       msgPrefix + r.uri :
       `${msgPrefix}success`
     );
+    util.dictAdd("idemDict", deviceId, "1");
   }
-  if (config.embyRedirectSendMessage.enable) {
-    sendMessage2EmbyDevice(util.getDeviceId(r.args),
+  if (config.embyRedirectSendMessage.enable && !idelVal) {
+    sendMessage2EmbyDevice(deviceId,
       config.embyRedirectSendMessage.header,
       `${msgPrefix}success`,
       config.embyRedirectSendMessage.timeoutMs);
+    util.dictAdd("idemDict", deviceId, "1");
   }
 }
 
