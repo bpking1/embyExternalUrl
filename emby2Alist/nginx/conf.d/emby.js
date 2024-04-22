@@ -327,6 +327,7 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
     cilentSelfAlistRule.some(rule => {
       if (util.strMatches(rule[0], rawUrl, rule[1])) {
         rawUrl = `${rule[2]}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
+        ngx.log(ngx.WARN, `hit cilentSelfAlistRule`);
         return true;
       }
     });

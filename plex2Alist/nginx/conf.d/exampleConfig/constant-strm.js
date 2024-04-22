@@ -68,14 +68,6 @@ const redirectStrmLastLinkRule = [
   // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址, 参数暂无作用, sign属于额外验证
   // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
 ];
-// 指定客户端自己请求并获取alist直链的规则,代码优先级在redirectStrmLastLinkRule之后
-// 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
-// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// 参数2: 匹配目标,对象为Alist接口返回的链接raw_url
-// 参数3: 指定转发给客户端的alist的host前缀
-const cilentSelfAlistRule = [
-  // [2, "xxx", alistPublicAddr],
-];
 
 // 留空项,不要更改
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
@@ -87,6 +79,12 @@ const alistAddr = "";
 const alistToken = "";
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "";
+// 指定客户端自己请求并获取alist直链的规则,代码优先级在redirectStrmLastLinkRule之后
+// 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
+// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数2: 匹配目标,对象为Alist接口返回的链接raw_url
+// 参数3: 指定转发给客户端的alist的host前缀,兼容sign参数
+const cilentSelfAlistRule = [];
 
 function getPlexHost(r) {
   return plexHost;

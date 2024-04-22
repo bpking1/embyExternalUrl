@@ -119,7 +119,7 @@ const alistPublicAddr = "";
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为Alist接口返回的链接raw_url
-// 参数3: 指定转发给客户端的alist的host前缀
+// 参数3: 指定转发给客户端的alist的host前缀,兼容sign参数
 const cilentSelfAlistRule = [];
 // !!!实验功能,转码负载均衡,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,与emby配置无关
 // 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]
