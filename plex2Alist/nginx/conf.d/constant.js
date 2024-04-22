@@ -80,9 +80,11 @@ const redirectStrmLastLinkRule = [
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为Alist接口返回的链接raw_url
-// 参数3: 指定转发给客户端的alist的host前缀
+// 参数3: 指定转发给客户端的alist的host前缀,兼容sign参数
 const cilentSelfAlistRule = [
-  // [2, "xxx", alistPublicAddr],
+  // "Emby for iOS"和"Infuse"对于115的进度条拖动依赖于此
+  // 如果nginx为https,则此alist也必须https,浏览器行为客户端会阻止非https请求
+  [0, strHead["115"], alistPublicAddr],
 ];
 
 function getPlexHost(r) {
