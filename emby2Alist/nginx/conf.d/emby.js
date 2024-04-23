@@ -14,7 +14,7 @@ async function redirect2Pan(r) {
 
   // check redirect link cache
   if (config.routeCacheEnable) {
-    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
+    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}:${r.args.MediaSourceId}`);
     if (!!cachedLink) {
       r.warn(`hit routeCache: ${cachedLink}`);
       if (cachedLink.startsWith("@")) {
@@ -190,6 +190,7 @@ async function transferPlaybackInfo(r) {
       r.log(`main request headersOut: ${JSON.stringify(r.headersOut)}`);
       r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
       r.warn(`origin playbackinfo: ${response.responseText}`);
+      const transcodeConfig = config.transcodeConfig; // routeRule
       for (let i = 0; i < body.MediaSources.length; i++) {
         const source = body.MediaSources[i];
         // if (source.IsRemote) {
@@ -199,11 +200,9 @@ async function transferPlaybackInfo(r) {
 
         const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
         // routeRule
-        let isRedirectWithTransOpt = false;
-        if (config.transcodeBalanceConfig.enable) {
+        if (transcodeConfig.enable) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           if (util.routeEnum.redirect == routeMode) {
-            isRedirectWithTransOpt = true;
             // swich transcode opt, skip modify
             if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks != 0) {
               continue;
@@ -254,7 +253,7 @@ async function transferPlaybackInfo(r) {
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
         source.XModifySuccess = true; // for debug
         // routeRule
-        if (isRedirectWithTransOpt) {
+        if (transcodeConfig.redirectTransOptEnable) {
           continue;
         }
         r.warn(`remove transcode config`);
@@ -326,8 +325,12 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   if (cilentSelfAlistRule.length > 0) {
     cilentSelfAlistRule.some(rule => {
       if (util.strMatches(rule[0], rawUrl, rule[1])) {
-        rawUrl = `${rule[2]}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
         ngx.log(ngx.WARN, `hit cilentSelfAlistRule`);
+        if (rule[2]) {
+          ngx.log(ngx.ERR, `alistPublicAddr is required`);
+          return true;
+        }
+        rawUrl = `${rule[2]}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
         return true;
       }
     });
@@ -593,7 +596,7 @@ function redirect(r, uri, isCached) {
   let cachedMsg = "";
   if (config.routeCacheEnable) {
     cachedMsg = `hit routeCache: ${!!isCached}, `;
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}:${r.args.MediaSourceId}`, uri);
   }
   const deviceId = util.getDeviceId(r.args);
   const idelVal = ngx.shared.idemDict.get(deviceId);
@@ -628,7 +631,7 @@ function internalRedirect(r, uri, isCached) {
   let cachedMsg = "";
   if (config.routeCacheEnable) {
     cachedMsg = `hit routeCache: ${!!isCached}, `;
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}:${r.args.MediaSourceId}`, uri);
   }
   const deviceId = util.getDeviceId(r.args);
   const idelVal = ngx.shared.idemDict.get(deviceId);

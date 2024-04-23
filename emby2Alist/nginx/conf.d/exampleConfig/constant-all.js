@@ -98,7 +98,7 @@ const cilentSelfAlistRule = [
 // 且使用条件很苛刻,转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,ApiKey也是一致的
 // type: "distributed-media-server", 分布式媒体服务负载均衡(暂未实现均衡),优先利用302真正实现流量的LB,且灵活,
 // 不区分主从,当前访问服务即为主库,可emby/jellyfin混搭,挂载路径可以不一致,但要求库中的标题和语种一致且原始文件名一致
-const transcodeBalanceConfig = {
+const transcodeConfig = {
   enable: false,
   type: "distributed-media-server", // 可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
@@ -138,7 +138,7 @@ const embyNotificationsAdmin = {
 const embyRedirectSendMessage = {
   enable: false,
   header: "【emby2Alist】",
-  timeoutMs: 0, // 消息通知弹窗持续毫秒值
+  timeoutMs: -1, // 消息通知弹窗持续毫秒值
 };
 
 // 按路径匹配规则隐藏部分接口返回的items
@@ -157,11 +157,11 @@ const itemHiddenRule = [
 function getEmbyHost(r) {
   return embyHost;
 }
-function getTranscodeBalanceEnable(r) {
-  return transcodeBalanceConfig.enable;
+function getTranscodeEnable(r) {
+  return transcodeConfig.enable;
 }
-function getTranscodeBalanceType(r) {
-  return transcodeBalanceConfig.type;
+function getTranscodeType(r) {
+  return transcodeConfig.type;
 }
 function getImageCachePolicy(r) {
   return imageCachePolicy;
@@ -182,9 +182,9 @@ export default {
   embyNotificationsAdmin,
   embyRedirectSendMessage,
   itemHiddenRule,
-  transcodeBalanceConfig,
+  transcodeConfig,
   getEmbyHost,
-  getTranscodeBalanceEnable,
-  getTranscodeBalanceType,
+  getTranscodeEnable,
+  getTranscodeType,
   getImageCachePolicy,
 }
