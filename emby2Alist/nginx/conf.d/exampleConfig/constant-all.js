@@ -102,7 +102,10 @@ const transcodeConfig = {
   enable: false,
   type: "distributed-media-server", // 可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
+  redirectTransOptEnable: true, // 302的直链文件是否保留码率选择,不保留客户端将无法手动切换至转码
+  fallbackRouteMode: "redirect", // 可选值, ["redirect", "proxy"]
   // 注意下列host必须全部为公网地址,会302给客户端访问
+  // 如果为空数组,将使用当前服务,当前服务默认仅作为兜底,若参与负载下边手动添加
   server: [
     {
       type: "emby",

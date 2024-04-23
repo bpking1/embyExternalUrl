@@ -197,6 +197,9 @@ async function transferPlaybackInfo(r) {
         //   // live streams are not blocked
         //   // return r.return(200, response.responseText);
         // }
+        r.warn(`modify direct play supports`);
+        source.SupportsDirectPlay = true;
+        source.SupportsDirectStream = true;
 
         const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
         // routeRule
@@ -215,8 +218,6 @@ async function transferPlaybackInfo(r) {
         }
 
         r.warn(`modify direct play info`);
-        source.SupportsDirectPlay = true;
-        source.SupportsDirectStream = true;
         source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
         source.DirectStreamUrl = util.addDefaultApiKey(
           r,

@@ -4,6 +4,12 @@
 import config from "../constant.js";
 import util from "../common/util.js";
 
+const PlayMethodEnum = {
+  DirectPlay: "DirectPlay",
+  DirectStream: "DirectStream",
+  Transcode: "Transcode"
+};
+
 async function fetchNotificationsAdmin(Name, Description) {
     const body = {
       Name: Name,
@@ -118,11 +124,12 @@ async function fetchVideosActiveEncodingsDelete(host, apiKey, queryParams) {
   });
 }
 
-export default { 
-    fetchNotificationsAdmin,
-    fetchSessionsMessage,
-    fetchSessions,
-    fetchPlaybackInfo,
-    fetchItems,
-    fetchVideosActiveEncodingsDelete,
+export default {
+  PlayMethodEnum,
+  fetchNotificationsAdmin,
+  fetchSessionsMessage,
+  fetchSessions,
+  fetchPlaybackInfo,
+  fetchItems,
+  fetchVideosActiveEncodingsDelete,
 };
