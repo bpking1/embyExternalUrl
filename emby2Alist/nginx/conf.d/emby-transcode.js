@@ -22,7 +22,12 @@ async function transcodeBalance(r) {
   // getCurrentItemInfo
   const currentItem = await getCurrentItemInfo(r);
   if (!currentItem) {
-    return emby.internalRedirectExpect(r);
+    if (util.routeEnum.proxy == getFallbackRouteMode()) {
+      return emby.internalRedirectExpect(r);
+    } else {
+      return r.return(403, "retry playback");
+      // return emby.redirect2Pan(r);
+    }
   }
 
   // swich transcode opt, skip modify
@@ -34,7 +39,7 @@ async function transcodeBalance(r) {
       return emby.internalRedirectExpect(r);
       // not need route, clients will self select
     // } else if (util.routeEnum.redirect == routeMode) {
-    //   // this maybe not support, because player is already init to HSL
+    //   // this maybe not support, because player is already init to HLS
     //   return emby.redirect2Pan(r);
     } else if (util.routeEnum.block == routeMode) {
       return r.return(403, "blocked");
@@ -44,13 +49,23 @@ async function transcodeBalance(r) {
   // check transcode load
   let transServer = await getTransServer(r);
   if (!transServer) {
-    return emby.internalRedirectExpect(r);
+    if (util.routeEnum.proxy == getFallbackRouteMode()) {
+      return emby.internalRedirectExpect(r);
+    } else {
+      return r.return(403, "retry playback");
+      // return emby.redirect2Pan(r);
+    }
   }
 
   // media item match
   const targetItem = await mediaItemMatch(r, currentItem, transServer, keys);
   if (!targetItem) {
-    return emby.internalRedirectExpect(r);
+    if (util.routeEnum.proxy == getFallbackRouteMode()) {
+      return emby.internalRedirectExpect(r);
+    } else {
+      return r.return(403, "retry playback");
+      // return emby.redirect2Pan(r);
+    }
   }
   const targetMediaId = targetItem.source ? targetItem.source[keys.idKey] : targetItem.item[keys.idKey];
   r.warn(`media item match success target server item id: ${targetMediaId}`);
@@ -104,7 +119,7 @@ async function getTransServer(r) {
     r.warn(`fetchSessions res.status: ${transSessions.status}`);
     transSessions = await transSessions.json();
     r.log(`fetchSessions res: ${JSON.stringify(transSessions)}`);
-    transSessions = transSessions.filter(s => s.PlayState.PlayMethod == "Transcode");
+    transSessions = transSessions.filter(s => embyApi.PlayMethodEnum.Transcode == s.PlayState.PlayMethod);
     serverTmp.transcodeNum = transSessions.length;
     if (transSessions.length > maxNum) {
       r.warn(`hit maxNum, skip this server: ${serverTmp.host}`);
@@ -284,6 +299,14 @@ function buildTransServerUrl(r, transServer, targetMediaId) {
   return `${baseUrl}?${args}`;
 }
 
+function getFallbackRouteMode() {
+  const transcodeConfig = config.transcodeConfig;
+  if (!transcodeConfig.enable) {
+    return util.routeEnum.redirect;
+  }
+  return transcodeConfig.fallbackRouteMode;
+}
+
 async function syncDelete(r) {
   events.njsOnExit(r);
   checkEnable(r);
@@ -355,6 +378,7 @@ async function syncPlayState(r) {
   }
   reqBody["ItemId"] = cacheObj.TargetItemId;
   reqBody["MediaSourceId"] = cacheObj.TargetItemSourceId;
+  reqBody["PlayMethod"] = embyApi.PlayMethodEnum.Transcode;
   let rArgs = r.args;
   if (server.type == "jellyfin") {
     delete rArgs["X-Emby-Token"];
