@@ -70,25 +70,25 @@ async function transcodeBalance(r) {
 }
 
 function checkEnable(r) {
-  const transcodeBalanceConfig = config.transcodeBalanceConfig;
-  if (!!transcodeBalanceConfig && transcodeBalanceConfig.enable) {
+  const transcodeConfig = config.transcodeConfig;
+  if (!!transcodeConfig && transcodeConfig.enable) {
     return emby.internalRedirectExpect(r);
   }
-  let serverArr = transcodeBalanceConfig.server;
-  if (transcodeBalanceConfig.type != "distributed-media-server" 
+  let serverArr = transcodeConfig.server;
+  if (transcodeConfig.type != "distributed-media-server" 
     || !serverArr || (!!serverArr && serverArr.length < 1)) {
-    // r.error(`transcodeBalanceConfig type not excepted`);
+    // r.error(`transcodeConfig type not excepted`);
     return emby.internalRedirectExpect(r);
   }
 }
 
 async function getTransServer(r) {
-  const transcodeBalanceConfig = config.transcodeBalanceConfig;
-  let serverArr = transcodeBalanceConfig.server;
+  const transcodeConfig = config.transcodeConfig;
+  let serverArr = transcodeConfig.server;
   if (!serverArr || (!!serverArr && serverArr.length === 0)) {
     return r.warn(`no transServer, will use current server transcode`);
   }
-  const maxNum = transcodeBalanceConfig.maxNum;
+  const maxNum = transcodeConfig.maxNum;
   let target;
   let serverTmp;
   let transSessions;

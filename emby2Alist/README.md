@@ -5,6 +5,14 @@ date: 2021/09/06 22:00:00
 
 ### 文章更新记录 
 
+2024/04/22
+
+1.修复[emby > 4.8.3.0]直链通知的窗口持续时间
+
+2.更改易混淆的变量名,修复多版本媒体的直链缓存key
+
+3.提供参数控制302的直链文件是否保留码率选择,不保留客户端将无法手动切换至转码
+
 2024/04/21
 
 1.还原以兼容115部分客户端拖动进度条bug
@@ -22,7 +30,7 @@ date: 2021/09/06 22:00:00
 
 3.客户端不支持的音频(Web端DTS)也会导致走转码,可以关闭用户的[播放-如有必要，在媒体播放期间允许视频转码]
 
-4.不用转码功能的,保持[transcodeBalanceConfig.enable=false]
+4.不用转码功能的,保持[transcodeConfig.enable=false]
 
 2024/04/19
 
@@ -48,7 +56,7 @@ type: "nginx", // nginx负载均衡
 且使用条件很苛刻,转码服务组中的媒体id需要和主媒体库中id一致,自行寻找实现主从同步,完全同步后,ApiKey也是一致的
 
 1.1 使用教程,遵循上述前置条件,
-更改constant.js中transcodeBalanceConfig的enable属性为true,
+更改constant.js中transcodeConfig的enable属性为true,
 type改为nginx,在nginx的server-group.conf负载均衡中配置转码服务组,
 组内只支持局域网访问,且主从媒体服务类型需一致
 
@@ -64,7 +72,7 @@ type: "distributed-media-server",
 
 2.1 使用教程,前置条件只需要给访问的服务用户开启,目标服务可能不用开,使用的是ApiKey调用,没有用户,
 [播放-如有必要，在媒体播放期间允许视频转码] + [倒数7行-允许媒体转换],
-更改constant.js中transcodeBalanceConfig的enable属性为true,
+更改constant.js中transcodeConfig的enable属性为true,
 type改为distributed-media-server,在下面的server中配置转码服务组,
 组内需要所有服务公网畅通,因为需要客户端302到对应服务
 
