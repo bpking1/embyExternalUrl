@@ -478,6 +478,9 @@ async function itemsFilter(r) {
         if (flag == "searchSuggest" && rule[2] == 2) {
           return false;
         }
+        if (flag == "backdropSuggest" && rule[2] == 3) {
+          return false;
+        }
         if (flag == "itemSimilar" && rule[2] == 1) {
           return false;
         }
