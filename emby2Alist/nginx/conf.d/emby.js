@@ -583,7 +583,12 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
         return;
       }
       // sometimes have multiple sessions
-      embyApi.fetchSessionsMessage(sessionRes.filter(s => s.SupportsRemoteControl)[0].Id, header, text, timeoutMs);
+      const targetSession = sessionRes.filter(s => s.SupportsRemoteControl)[0];
+      if (targetSession) {
+        embyApi.fetchSessionsMessage(targetSession.Id, header, text, timeoutMs);
+      } else {
+        ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: targetSession not found, skip`);
+      }
     });
   });
 }
