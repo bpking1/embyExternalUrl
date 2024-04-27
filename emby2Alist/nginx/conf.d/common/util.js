@@ -479,6 +479,31 @@ function calculateHMAC(data, key) {
       .replaceAll("/", "_");
 }
 
+function addAlistSign(url, alistToken, alistSignExpireTime) {
+  if (url.indexOf("sign=") === -1) {
+    // add sign param for alist
+    if (url.indexOf("?") === -1) {
+      url += "?"
+    } else {
+      url += "&"
+    }
+    const expiredHour = alistSignExpireTime ?? 0
+    let time = 0;
+    if (expiredHour !== 0) {
+      time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
+    }
+    let path = url.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1];
+    if (path.indexOf("/d") === 0) {
+      path = path.substring(2)
+    }
+    const signData = `${path}:${time}`
+    ngx.log(ngx.WARN, `sign data: ${signData}`)
+    const sign = calculateHMAC(signData, alistToken)
+    url = `${url}sign=${sign}:${time}`
+  }
+  return url;
+}
+
 export default {
   args,
   routeEnum,
@@ -504,4 +529,5 @@ export default {
   cost,
   getDeviceId,
   calculateHMAC,
+  addAlistSign,
 };

@@ -374,6 +374,43 @@ async function cost(func) {
   return rvt;
 }
 
+const crypto = require('crypto');
+function calculateHMAC(data, key) {
+  // 创建 HMAC 对象，并指定算法和密钥
+  const hmac = crypto.createHmac('sha256', key);
+  // 更新要计算的数据
+  hmac.update(data);
+  // 计算摘要并以 GoLang 中 URLEncoding 方式返回
+  return hmac.digest('base64')
+      .replaceAll("+", "-")
+      .replaceAll("/", "_");
+}
+
+function addAlistSign(url, alistToken, alistSignExpireTime) {
+  if (url.indexOf("sign=") === -1) {
+    // add sign param for alist
+    if (url.indexOf("?") === -1) {
+      url += "?"
+    } else {
+      url += "&"
+    }
+    const expiredHour = alistSignExpireTime ?? 0
+    let time = 0;
+    if (expiredHour !== 0) {
+      time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
+    }
+    let path = url.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1];
+    if (path.indexOf("/d") === 0) {
+      path = path.substring(2)
+    }
+    const signData = `${path}:${time}`
+    ngx.log(ngx.WARN, `sign data: ${signData}`)
+    const sign = calculateHMAC(signData, alistToken)
+    url = `${url}sign=${sign}:${time}`
+  }
+  return url;
+}
+
 // plex only
 function getFileNameByHead(contentDisposition) {
   if (contentDisposition && contentDisposition.length > 0) {
@@ -398,5 +435,7 @@ export default {
   strmLinkFailback,
   dictAdd,
   cost,
+  calculateHMAC,
+  addAlistSign,
   getFileNameByHead,
 };

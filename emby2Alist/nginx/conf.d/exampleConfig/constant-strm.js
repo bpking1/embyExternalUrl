@@ -65,18 +65,16 @@ const embyPathMapping = [
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
 ];
-// 指定是否转发由njs获取strm重定向后直链地址的规则,例如strm内部为局域网ip或链接或需要请求头验证
+// 指定是否转发由njs获取strm重定向后直链地址的规则,例如strm内部为局域网ip或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为xxxPathMapping映射后的strm内部链接
-// 参数3: 请求验证类型,已为直链的不需要此参数,例如.../d
 const redirectStrmLastLinkRule = [
-  [0, strHead.lanIp.map(s => "http://" + s)], 
-  // [0, alistAddr], 
-  // [0, "http:"], 
-  // // 参数4: 已为直链的不需要此参数, 参数暂无作用, sign属于额外验证
-  // [0, "http://otheralist1.com", "FixedToken", alistToken], 
-  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址, 参数暂无作用, sign属于额外验证
-  // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
+  [0, strHead.lanIp.map(s => "http://" + s)],
+  // [0, alistAddr],
+  // [0, "http:"],
+  // 参数3: 请求验证类型,当前alistAddr不需要此参数
+  // 参数4: 当前alistAddr不需要此参数,alistSignExpireTime
+  // [0, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
 ];
 // 图片缓存策略,包括主页、详情页、图片库的原图,路由器nginx请手动调小conf中proxy_cache_path的max_size
 // 0: 不同尺寸设备共用一份缓存,先访问先缓存,空间占用最小但存在小屏先缓存大屏看的图片模糊问题
@@ -118,6 +116,10 @@ const embyMountPath = [""];
 const alistAddr = "";
 // alist token, 在alist后台查看
 const alistToken = "";
+// alist 是否启用了 sign
+const alistSignEnable = false;
+// alist 中设置的直链过期时间,以小时为单位
+const alistSignExpireTime = 12;
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
 const alistPublicAddr = "";
 // 指定客户端自己请求并获取alist直链的规则,代码优先级在redirectStrmLastLinkRule之后
@@ -158,6 +160,8 @@ export default {
   routeRule,
   alistAddr,
   alistToken,
+  alistSignEnable,
+  alistSignExpireTime,
   alistPublicAddr,
   strHead,
   cilentSelfAlistRule,
