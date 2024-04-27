@@ -2,7 +2,7 @@
 // @date: 2024-04-19
 // NJS events
 
-function njsOnExit(r, callbacks) {
+function njsOnExit(mark, callbacks, r) {
   const eventName = "exit";
   if (callbacks && Array.isArray(callbacks)) {
     callbacks.map(callback => {
@@ -10,7 +10,7 @@ function njsOnExit(r, callbacks) {
     });
   }
   njsOn(eventName, () => {
-    njsOnExitNotice(r);
+    njsOnExitNotice(mark);
   });
 }
 
@@ -18,8 +18,8 @@ function njsOn(eventName, callback) {
   njs.on(eventName, callback);
 }
 
-function njsOnExitNotice(r) {
-  r.warn(`=== ${r.uri}, the NJS VM is destroyed ===`);
+function njsOnExitNotice(mark) {
+  ngx.log(ngx.WARN, `=== ${mark}, the NJS VM is destroyed ===`);
 }
 
 export default {

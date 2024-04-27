@@ -16,7 +16,7 @@ let keys = {
 }
 
 async function transcodeBalance(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
   checkEnable(r);
 
   // getCurrentItemInfo
@@ -308,7 +308,7 @@ function getFallbackRouteMode() {
 }
 
 async function syncDelete(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
   checkEnable(r);
   
   const uri = r.uri;
@@ -349,7 +349,7 @@ async function syncDelete(r) {
 }
 
 async function syncPlayState(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
   checkEnable(r);
 
   const uri = r.uri;

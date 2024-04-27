@@ -13,8 +13,13 @@ const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "https://cdnfhnfile.115.com",
 };
-// 是否开启路由缓存,短时间内同客户端访问相同资源不会再做判断和请求alist,有限的防抖措施,出现问题可以关闭此选项
-const routeCacheEnable = true;
+// 路由缓存配置
+const routeCacheConfig = {
+  // 总开关,是否开启路由缓存,此为一级缓存,添加阶段为redirect和proxy之前
+  enable: false,
+  // 缓存键表达式,默认为请求参数MediaSourceId,好处是命中范围大,但会导致routeRule中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
+  keyExpression: "r.args.MediaSourceId", // "r.args.MediaSourceId:r.args.X-Emby-Device-Id"
+};
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
@@ -149,11 +154,12 @@ export default {
   embyHost,
   embyMountPath,
   embyApiKey,
-  routeCacheEnable,
+  routeCacheConfig,
   routeRule,
   alistAddr,
   alistToken,
   alistPublicAddr,
+  strHead,
   cilentSelfAlistRule,
   embyPathMapping,
   redirectStrmLastLinkRule,

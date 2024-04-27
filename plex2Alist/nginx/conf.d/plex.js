@@ -10,15 +10,30 @@ const xml = require("xml");
 let allData = "";
 
 async function redirect2Pan(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
 
-  // check redirect link cache
-  if (config.routeCacheEnable) {
-    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}`);
+  // check route cache
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
+    const cacheLevle = r.args[util.args.cacheLevleKey];
+    let routeDictKey = "routeL1Dict";
+    // if (util.chcheLevelEnum.L2 === cacheLevle) {
+    //   routeDictKey = "routeL2Dict";
+    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    //   routeDictKey = "routeL3Dict";
+    // }
+    let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
+    if (!cachedLink) {
+      // 115 must use ua
+      cacheKey += `:${ua}`;
+      cachedLink = ngx.shared[routeDictKey].get(cacheKey);
+    }
     if (!!cachedLink) {
-      r.warn(`hit routeCache: ${cachedLink}`);
+      r.warn(`hit routeCache ${cacheLevle}: ${cachedLink}`);
       if (cachedLink.startsWith("@")) {
         // use original link
         return internalRedirect(r, cachedLink, true);
@@ -308,6 +323,35 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
   }
 }
 
+async function cachePreload(r, url, cacheLevel) {
+  url = util.appendUrlArg(url, util.args.cacheLevleKey, cacheLevel);
+  ngx.log(ngx.WARN, `cachePreload Level: ${cacheLevel}`);
+  preload(r, url);
+}
+
+async function preload(r, url) {
+  events.njsOnExit(`preload`);
+
+  url = util.appendUrlArg(url, util.args.internalKey, "1");
+  const ua = r.headersIn["User-Agent"];
+  ngx.fetch(url, {
+    method: "HEAD",
+    headers: {
+      "User-Agent": ua,
+    },
+    max_response_body_size: 1024
+  }).then(res => {
+    ngx.log(ngx.WARN, `preload response.status: ${res.status}`);
+    if ((res.status > 300 && res.status < 309) || res.status == 200) {
+      ngx.log(ngx.WARN, `success: preload used UA: ${ua}, url: ${url}`);
+    } else {
+      ngx.log(ngx.WARN, `error: preload, skip`);
+    }
+  }).catch((error) => {
+    ngx.log(ngx.ERR, `error: preload: ${error}`);
+  });
+}
+
 // plex only
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
@@ -429,7 +473,8 @@ async function fetchStrmInnerText(r) {
 }
 
 function plexApiHandler(r, data, flags) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+  
   const contentType = r.headersOut["Content-Type"];
   //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
   if (contentType.includes("application/json")) {
@@ -580,8 +625,20 @@ function redirect(r, uri, isCached) {
   r.return(302, uri);
 
   // async
-  if (config.routeCacheEnable) {
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    let keyExpression = routeCacheConfig.keyExpression;
+    if (uri.startsWith(config.strHead["115"])) {
+      keyExpression += `:r.headersIn.User-Agent`;
+    }
+    // const cacheLevle = r.args[util.args.cacheLevleKey];
+    let routeDictKey = "routeL1Dict";
+    // if (util.chcheLevelEnum.L2 === cacheLevle) {
+    //   routeDictKey = "routeL2Dict";
+    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    //   routeDictKey = "routeL3Dict";
+    // }
+    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), uri);
   }
 }
 
@@ -595,8 +652,10 @@ function internalRedirect(r, uri, isCached) {
   r.internalRedirect(uri);
 
   // async
-  if (config.routeCacheEnable) {
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}`, uri);
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
   }
 }
 
