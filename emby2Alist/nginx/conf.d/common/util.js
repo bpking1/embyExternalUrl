@@ -6,6 +6,8 @@ const args = {
   skipRouteKey: "skipRoute",
   useProxyKey: "useProxy",
   useRedirectKey: "useRedirect",
+  internalKey: "internal",
+  cacheLevleKey: "cacheLevel",
 }
 
 const routeEnum = {
@@ -13,6 +15,12 @@ const routeEnum = {
   redirect: "redirect",
   transcode: "transcode",
   block: "block",
+};
+
+const chcheLevelEnum = {
+  L1: "L1",
+  L2: "L2",
+  // L3: "L3",
 };
 
 function proxyUri(uri) {
@@ -47,20 +55,23 @@ function generateUrl(r, host, uri) {
 }
 
 function getCurrentRequestUrl(r) {
-  const host = r.headersIn["Host"];
-  return addDefaultApiKey(r, generateUrl(r, "http://" + host, r.uri));
+  return addDefaultApiKey(r, generateUrl(r, getCurrentRequestUrlPrefix(r), r.uri));
 }
 
-function copyHeaders(sourceR, targetR, skipKeys) {
+function getCurrentRequestUrlPrefix(r) {
+  return `${r.variables.scheme}://${r.headersIn["Host"]}`;
+}
+
+function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
   if (!skipKeys) {
     // auto generate content length
     skipKeys = ["Content-Length"];
   }
-  for (const key in sourceR.headersOut) {
+  for (const key in sourceHeaders) {
 	  if (skipKeys.includes(key)) {
 	    continue;
 	  }
-	  targetR.headersOut[key] = sourceR.headersOut[key];
+	  targetHeaders[key] = sourceHeaders[key];
 	}
 }
 
@@ -76,7 +87,12 @@ function groupBy(array, key) {
 };
 
 function getRouteMode(r, filePath, isAlistRes, notLocal) {
-  const cRouteRule = config.routeRule;
+  let cRouteRule = config.routeRule;
+  // skip internal request
+  if (r.args[args.internalKey] === "1") {
+    cRouteRule = cRouteRule.filter(rule => rule[0] != "r.variables.remote_addr" 
+      && rule[1] != "r.variables.remote_addr" && rule[2] != "r.variables.remote_addr");
+  }
   // old proxy
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
   proxyRules = proxyRules.filter(rule => !Object.keys(routeEnum).includes(rule[0]));
@@ -188,7 +204,10 @@ function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
  */
 function getMatchedRule(r, ruleArr3D, filePath) {
   return ruleArr3D.find(rule => {
-    const sourceStr = getSourceStrByType(r, rule[0], filePath);
+    let sourceStr = filePath;
+    if (rule[0] !== "filePath" && rule[0] !== "alistRes") {
+      sourceStr = parseExpression(r, rule[0]);
+    }
     let flag = false;
     ngx.log(ngx.WARN, `sourceStrValue, ${rule[0]} = ${sourceStr}`);
     if (!sourceStr) {
@@ -205,22 +224,68 @@ function getMatchedRule(r, ruleArr3D, filePath) {
   });
 }
 
-function getSourceStrByType(r, type, filePath) {
-  let str = filePath;
-  if (type === "filePath") {
-    return str;
+/**
+ * parseExpression
+ * @param {Object} rootObj like r
+ * @param {String} expression like "r.args.MediaSourceId", notice skipped "r."
+ * @param {String} propertySplit like "."
+ * @param {String} groupSplit like ":"
+ * @param {Boolean} returnGroup like true
+ * @returns expression value
+ */
+function parseExpression(rootObj, expression, propertySplit, groupSplit, returnGroup) {
+  if (arguments.length < 5) {
+    if (arguments.length < 4) {
+      if (arguments.length < 3) {
+        if (arguments.length < 2) {
+          throw new Error("Missing required parameter: rootObj");
+        }
+        propertySplit = ".";
+        groupSplit = ":";
+      } else {
+        groupSplit = propertySplit;
+        propertySplit = ".";
+      }
+    }
+    returnGroup = true;
   }
-  let val;
-  const typeArr = type.split(".");
-  const rootTypeVal = typeArr.shift();
-  if (rootTypeVal === "r") {
-    val = r;
-    typeArr.map(typeVal => {
-      val = val[typeVal];
-    });
-    str = val;
+
+  if (typeof rootObj !== "object" || rootObj === null) {
+    throw new Error("rootObj must be a non-null object");
   }
-  return str;
+  
+  if (typeof expression !== "string" || expression.trim() === "") {
+    return returnGroup ? [] : undefined;
+  }
+
+  if (typeof propertySplit !== "string" || typeof groupSplit !== "string") {
+    throw new Error("Property and group split must be strings");
+  }
+
+  const expGroups = expression.split(groupSplit);
+  const values = [];
+
+  expGroups.forEach(expGroup => {
+    if (!expGroup.trim()) return;
+
+    const expArr = expGroup.split(propertySplit);
+    let val = rootObj;
+
+    // skipped index 0
+    for (var j = 1; j < expArr.length; j++) {
+      var expPart = expArr[j];
+      if (val != null && Object.hasOwnProperty.call(val, expPart)) {
+        val = val[expPart];
+      } else {
+        values.push(`Property "${expPart}" not found in object`);
+        continue;
+      }
+    }
+
+    values.push(val);
+  });
+
+  return returnGroup ? values.join(groupSplit) : values;
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
@@ -405,13 +470,16 @@ function getDeviceId(rArgs) {
 export default {
   args,
   routeEnum,
+  chcheLevelEnum,
   proxyUri,
   appendUrlArg,
   addDefaultApiKey,
   generateUrl,
   getCurrentRequestUrl,
+  getCurrentRequestUrlPrefix,
   copyHeaders,
   getRouteMode,
+  parseExpression,
   strMapping,
   strMatches,
   checkIsStrmByPath,

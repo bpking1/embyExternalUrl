@@ -8,15 +8,30 @@ import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 
 async function redirect2Pan(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
 
-  // check redirect link cache
-  if (config.routeCacheEnable) {
-    const cachedLink = ngx.shared.routeDict.get(`${ua}:${r.uri}:${r.args.MediaSourceId}`);
+  // check route cache
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
+    const cacheLevle = r.args[util.args.cacheLevleKey];
+    let routeDictKey = "routeL1Dict";
+    if (util.chcheLevelEnum.L2 === cacheLevle) {
+      routeDictKey = "routeL2Dict";
+    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    //   routeDictKey = "routeL3Dict";
+    }
+    let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
+    if (!cachedLink) {
+      // 115 must use ua
+      cacheKey += `:${ua}`;
+      cachedLink = ngx.shared[routeDictKey].get(cacheKey);
+    }
     if (!!cachedLink) {
-      r.warn(`hit routeCache: ${cachedLink}`);
+      r.warn(`hit routeCache ${cacheLevle}: ${cachedLink}`);
       if (cachedLink.startsWith("@")) {
         // use original link
         return internalRedirect(r, cachedLink, true);
@@ -173,7 +188,8 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+
   let start = Date.now();
   // replay the request
   const proxyUri = util.proxyUri(r.uri);
@@ -184,6 +200,7 @@ async function transferPlaybackInfo(r) {
     method: r.method,
     args: query
   });
+  const isPlayback = r.args.IsPlayback === "true";
   if (response.status === 200) {
     const body = JSON.parse(response.responseText);
     if (body.MediaSources && body.MediaSources.length > 0) {
@@ -191,6 +208,7 @@ async function transferPlaybackInfo(r) {
       r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
       r.warn(`origin playbackinfo: ${response.responseText}`);
       const transcodeConfig = config.transcodeConfig; // routeRule
+      const routeCacheConfig = config.routeCacheConfig;
       for (let i = 0; i < body.MediaSources.length; i++) {
         const source = body.MediaSources[i];
         // if (source.IsRemote) {
@@ -253,6 +271,13 @@ async function transferPlaybackInfo(r) {
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
         source.XModifySuccess = true; // for debug
+        // async cachePreload
+        if (routeCacheConfig.enable) {
+          const url = `${util.getCurrentRequestUrlPrefix(r)}${source.DirectStreamUrl}`;
+          if (routeCacheConfig.enableL2 && !isPlayback) {
+            cachePreload(r, url, util.chcheLevelEnum.L2);
+          }
+        }
         // routeRule
         if (transcodeConfig.redirectTransOptEnable) {
           continue;
@@ -266,7 +291,7 @@ async function transferPlaybackInfo(r) {
         }
       }
 
-      util.copyHeaders(response, r);
+      util.copyHeaders(response.headersOut, r.headersOut);
       const bodyJson = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       let end = Date.now();
@@ -434,7 +459,8 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
 }
 
 async function itemsFilter(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+
   r.variables.request_uri += "&Fields=Path";
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
@@ -494,12 +520,13 @@ async function itemsFilter(r) {
   totalRecordCount = body.Items.length;
   r.warn(`itemsFilter after: ${totalRecordCount}`);
   body.TotalRecordCount = totalRecordCount;
-  util.copyHeaders(subR, r);
+  util.copyHeaders(subR.headersOut, r.headersOut);
   return r.return(200, JSON.stringify(body));
 }
 
 async function systemInfoHandler(r) {
-  events.njsOnExit(r);
+  events.njsOnExit(r.uri);
+
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
   if (subR.status === 200) {
@@ -529,7 +556,7 @@ async function systemInfoHandler(r) {
   if (!!body.WanAddress) {
     body.WanAddress = body.WanAddress.replace(originPort, currentPort);
   }
-  util.copyHeaders(subR, r);
+  util.copyHeaders(subR.headersOut, r.headersOut);
   return r.return(200, JSON.stringify(body));
 }
 
@@ -596,6 +623,35 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
   });
 }
 
+async function cachePreload(r, url, cacheLevel) {
+  url = util.appendUrlArg(url, util.args.cacheLevleKey, cacheLevel);
+  ngx.log(ngx.WARN, `cachePreload Level: ${cacheLevel}`);
+  preload(r, url);
+}
+
+async function preload(r, url) {
+  events.njsOnExit(`preload`);
+
+  url = util.appendUrlArg(url, util.args.internalKey, "1");
+  const ua = r.headersIn["User-Agent"];
+  ngx.fetch(url, {
+    method: "HEAD",
+    headers: {
+      "User-Agent": ua,
+    },
+    max_response_body_size: 1024
+  }).then(res => {
+    ngx.log(ngx.WARN, `preload response.status: ${res.status}`);
+    if ((res.status > 300 && res.status < 309) || res.status == 200) {
+      ngx.log(ngx.WARN, `success: preload used UA: ${ua}, url: ${url}`);
+    } else {
+      ngx.log(ngx.WARN, `error: preload, skip`);
+    }
+  }).catch((error) => {
+    ngx.log(ngx.ERR, `error: preload: ${error}`);
+  });
+}
+
 function redirect(r, uri, isCached) {
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
@@ -603,13 +659,26 @@ function redirect(r, uri, isCached) {
 
   // async
   let cachedMsg = "";
-  if (config.routeCacheEnable) {
-    cachedMsg = `hit routeCache: ${!!isCached}, `;
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}:${r.args.MediaSourceId}`, uri);
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    let keyExpression = routeCacheConfig.keyExpression;
+    if (uri.startsWith(config.strHead["115"])) {
+      keyExpression += `:r.headersIn.User-Agent`;
+    }
+    const cacheLevle = r.args[util.args.cacheLevleKey];
+    let routeDictKey = "routeL1Dict";
+    if (util.chcheLevelEnum.L2 === cacheLevle) {
+      routeDictKey = "routeL2Dict";
+    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    //   routeDictKey = "routeL3Dict";
+    }
+    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), uri);
+    cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
   }
+
   const deviceId = util.getDeviceId(r.args);
-  const idelVal = ngx.shared.idemDict.get(deviceId);
-  if (config.embyNotificationsAdmin.enable && !idelVal) {
+  const idemVal = ngx.shared.idemDict.get(deviceId);
+  if (config.embyNotificationsAdmin.enable && !idemVal) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
@@ -618,7 +687,8 @@ function redirect(r, uri, isCached) {
     );
     util.dictAdd("idemDict", deviceId, "1");
   }
-  if (config.embyRedirectSendMessage.enable && !idelVal) {
+
+  if (config.embyRedirectSendMessage.enable && !idemVal) {
     sendMessage2EmbyDevice(deviceId,
       config.embyRedirectSendMessage.header,
       `${cachedMsg}redirect: success`,
@@ -638,14 +708,16 @@ function internalRedirect(r, uri, isCached) {
 
   // async
   let cachedMsg = "";
-  if (config.routeCacheEnable) {
-    cachedMsg = `hit routeCache: ${!!isCached}, `;
-    util.dictAdd("routeDict", `${r.headersIn["User-Agent"]}:${r.uri}:${r.args.MediaSourceId}`, uri);
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
   }
+
   const deviceId = util.getDeviceId(r.args);
-  const idelVal = ngx.shared.idemDict.get(deviceId);
+  const idemVal = ngx.shared.idemDict.get(deviceId);
   const msgPrefix = `${cachedMsg}use original link: `;
-  if (config.embyNotificationsAdmin.enable && !idelVal) {
+  if (config.embyNotificationsAdmin.enable && !idemVal) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
@@ -654,7 +726,8 @@ function internalRedirect(r, uri, isCached) {
     );
     util.dictAdd("idemDict", deviceId, "1");
   }
-  if (config.embyRedirectSendMessage.enable && !idelVal) {
+
+  if (config.embyRedirectSendMessage.enable && !idemVal) {
     sendMessage2EmbyDevice(deviceId,
       config.embyRedirectSendMessage.header,
       `${msgPrefix}success`,
