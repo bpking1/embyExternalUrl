@@ -19,7 +19,7 @@ async function redirect2Pan(r) {
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
-    const cacheLevle = r.args[util.args.cacheLevleKey];
+    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
     let routeDictKey = "routeL1Dict";
     // if (util.chcheLevelEnum.L2 === cacheLevle) {
     //   routeDictKey = "routeL2Dict";
@@ -111,12 +111,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], rule[4], ua);
+      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
         mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4], ua);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], ua);
         if (!!directUrl) {
           mediaItemPath = directUrl;
         }
@@ -282,23 +282,16 @@ async function fetchAlistAuthApi(url, username, password) {
   }
 }
 
-async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
-  let token;
-  if (!!authType) {
-    if (authType == "FixedToken" && !!authInfo) {
-      token = authInfo;
-    }
-    if (authType == "TempToken" && !!authInfo && !!authUrl) {
-      const arr = authInfo.split(":");
-      token = await fetchAlistAuthApi(authUrl, arr[0], arr[1]);
-    }
+async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
+  if (authType && authType === "sign" && authInfo) {
+    const arr = authInfo.split(":");
+    strmLink = util.addAlistSign(strmLink, arr[0], parseInt(arr[1]));
   }
   try {
   	// fetch Api ignore nginx locations
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
-        Authorization: token,
         "User-Agent": ua,
       },
       max_response_body_size: 1024
@@ -615,30 +608,34 @@ function fillPartInfo(part, isXmlNode) {
   }
 }
 
-function redirect(r, uri, isCached) {
+function redirect(r, url, isCached) {
   // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
   // add_header Access-Control-Allow-Origin *;
   r.headersOut["Access-Control-Allow-Origin"] = "*";
 
-  r.warn(`redirect to: ${uri}`);
+  if (!!config.alistSignEnable) {
+    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
+  }
+
+  r.warn(`redirect to: ${url}`);
   // need caller: return;
-  r.return(302, uri);
+  r.return(302, url);
 
   // async
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let keyExpression = routeCacheConfig.keyExpression;
-    if (uri.startsWith(config.strHead["115"])) {
+    if (url.startsWith(config.strHead["115"])) {
       keyExpression += `:r.headersIn.User-Agent`;
     }
-    // const cacheLevle = r.args[util.args.cacheLevleKey];
+    // const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
     let routeDictKey = "routeL1Dict";
     // if (util.chcheLevelEnum.L2 === cacheLevle) {
     //   routeDictKey = "routeL2Dict";
     // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
     //   routeDictKey = "routeL3Dict";
     // }
-    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), uri);
+    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
   }
 }
 

@@ -15,7 +15,7 @@ const alistAddr = "http://172.17.0.1:5244";
 const alistToken = "alsit-123456";
 // alist 是否启用了 sign
 const alistSignEnable = false;
-// alist 中设置的直链过期时间，以小时为单位
+// alist 中设置的直链过期时间,以小时为单位
 const alistSignExpireTime = 12;
 
 // 选填项,用不到保持默认即可
@@ -81,18 +81,16 @@ const embyPathMapping = [
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
 ];
-// 指定是否转发由njs获取strm重定向后直链地址的规则,例如strm内部为局域网ip或链接或需要请求头验证
+// 指定是否转发由njs获取strm重定向后直链地址的规则,例如strm内部为局域网ip或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为xxxPathMapping映射后的strm内部链接
-// 参数3: 请求验证类型,已为直链的不需要此参数,例如.../d
 const redirectStrmLastLinkRule = [
-  [0, strHead.lanIp.map(s => "http://" + s)], 
-  // [0, alistAddr], 
-  // [0, "http:"], 
-  // // 参数4: 已为直链的不需要此参数, 参数暂无作用, sign属于额外验证
-  // [0, "http://otheralist1.com", "FixedToken", alistToken], 
-  // // arg4: 已为直链的不需要此参数,额外指定调用登录接口的api地址, 参数暂无作用, sign属于额外验证
-  // [0, "http://otheralist2.com", "TempToken", `read:123456`, `http://otheralist2.com:5244/api/auth/login`], 
+  [0, strHead.lanIp.map(s => "http://" + s)],
+  // [0, alistAddr],
+  // [0, "http:"],
+  // 参数3: 请求验证类型,当前alistAddr不需要此参数
+  // 参数4: 当前alistAddr不需要此参数,alistSignExpireTime
+  // [0, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
 ];
 // 指定客户端自己请求并获取alist直链的规则,代码优先级在redirectStrmLastLinkRule之后
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认

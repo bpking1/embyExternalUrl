@@ -17,7 +17,7 @@ async function redirect2Pan(r) {
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
-    const cacheLevle = r.args[util.args.cacheLevleKey];
+    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
     let routeDictKey = "routeL1Dict";
     if (util.chcheLevelEnum.L2 === cacheLevle) {
       routeDictKey = "routeL2Dict";
@@ -105,12 +105,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], rule[4], ua);
+      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
         embyItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], rule[4], ua);
+        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], ua);
         if (!!directUrl) {
           embyItemPath = directUrl;
         }
@@ -560,23 +560,16 @@ async function systemInfoHandler(r) {
   return r.return(200, JSON.stringify(body));
 }
 
-async function fetchStrmLastLink(strmLink, authType, authInfo, authUrl, ua) {
-  let token;
-  if (!!authType) {
-    if (authType == "FixedToken" && !!authInfo) {
-      token = authInfo;
-    }
-    if (authType == "TempToken" && !!authInfo && !!authUrl) {
-      const arr = authInfo.split(":");
-      token = await fetchAlistAuthApi(authUrl, arr[0], arr[1]);
-    }
+async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
+  if (authType && authType === "sign" && authInfo) {
+    const arr = authInfo.split(":");
+    strmLink = util.addAlistSign(strmLink, arr[0], parseInt(arr[1]));
   }
   try {
   	// fetch Api ignore nginx locations
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
-        Authorization: token,
         "User-Agent": ua,
       },
       max_response_body_size: 1024
@@ -652,49 +645,31 @@ async function preload(r, url) {
   });
 }
 
-function redirect(r, uri, isCached) {
-  if (!!config.alistSignEnable && uri.indexOf("sign=") === -1) {
-    // add sign param for alist
-    if (uri.indexOf("?") === -1) {
-      uri += "?"
-    } else {
-      uri += "&"
-    }
-    const expiredHour = config.alistSignExpireTime ?? 0
-    let time = 0;
-    if (expiredHour !== 0) {
-      time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
-    }
-    let path = uri.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1];
-    if (path.indexOf("/d") === 0) {
-      path = path.substring(2)
-    }
-    const signData = `${path}:${time}`
-    r.warn(`sign data: ${signData}`)
-    const sign = util.calculateHMAC(signData, config.alistToken)
-    uri = `${uri}sign=${sign}:${time}`
+function redirect(r, url, isCached) {
+  if (!!config.alistSignEnable) {
+    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
   }
 
-  r.warn(`redirect to: ${uri}`);
+  r.warn(`redirect to: ${url}`);
   // need caller: return;
-  r.return(302, uri);
+  r.return(302, url);
 
   // async
   let cachedMsg = "";
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let keyExpression = routeCacheConfig.keyExpression;
-    if (uri.startsWith(config.strHead["115"])) {
+    if (url.startsWith(config.strHead["115"])) {
       keyExpression += `:r.headersIn.User-Agent`;
     }
-    const cacheLevle = r.args[util.args.cacheLevleKey];
+    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
     let routeDictKey = "routeL1Dict";
     if (util.chcheLevelEnum.L2 === cacheLevle) {
       routeDictKey = "routeL2Dict";
     // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
     //   routeDictKey = "routeL3Dict";
     }
-    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), uri);
+    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
     cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
   }
 
@@ -704,7 +679,7 @@ function redirect(r, uri, isCached) {
     embyApi.fetchNotificationsAdmin(
       config.embyNotificationsAdmin.name,
       config.embyNotificationsAdmin.includeUrl ? 
-      `${cachedMsg}original link: ${r.uri}\nredirect to: ${uri}` :
+      `${cachedMsg}original link: ${r.uri}\nredirect to: ${url}` :
       `${cachedMsg}redirect: success`
     );
     util.dictAdd("idemDict", deviceId, "1");
