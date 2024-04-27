@@ -597,6 +597,28 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
 }
 
 function redirect(r, uri, isCached) {
+  if (!!config.alistSignEnable && uri.indexOf("sign=") === -1) {
+    // add sign param for alist
+    if (uri.indexOf("?") === -1) {
+      uri += "?"
+    } else {
+      uri += "&"
+    }
+    const expiredHour = config.alistSignExpireTime ?? 0
+    let time = 0;
+    if (expiredHour !== 0) {
+      time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
+    }
+    let path = uri.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1];
+    if (path.indexOf("/d") === 0) {
+      path = path.substring(2)
+    }
+    const signData = `${path}:${time}`
+    r.warn(`sign data: ${signData}`)
+    const sign = util.calculateHMAC(signData, config.alistToken)
+    uri = `${uri}sign=${sign}:${time}`
+  }
+
   r.warn(`redirect to: ${uri}`);
   // need caller: return;
   r.return(302, uri);

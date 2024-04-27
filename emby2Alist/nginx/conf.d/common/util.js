@@ -402,6 +402,18 @@ function getDeviceId(rArgs) {
   return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId;
 }
 
+const crypto = require('crypto');
+function calculateHMAC(data, key) {
+  // 创建 HMAC 对象，并指定算法和密钥
+  const hmac = crypto.createHmac('sha256', key);
+  // 更新要计算的数据
+  hmac.update(data);
+  // 计算摘要并以 GoLang 中 URLEncoding 方式返回
+  return hmac.digest('base64')
+      .replaceAll("+", "-")
+      .replaceAll("/", "_");
+}
+
 export default {
   args,
   routeEnum,
@@ -423,4 +435,5 @@ export default {
   dictAdd,
   cost,
   getDeviceId,
+  calculateHMAC,
 };

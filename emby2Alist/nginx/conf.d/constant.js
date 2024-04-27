@@ -13,6 +13,10 @@ const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 const alistAddr = "http://172.17.0.1:5244";
 // alist token, 在alist后台查看
 const alistToken = "alsit-123456";
+// alist 是否启用了 sign
+const alistSignEnable = false;
+// alist 中设置的直链过期时间，以小时为单位
+const alistSignExpireTime = 12;
 
 // 选填项,用不到保持默认即可
 // alist公网地址, 用于需要alist server代理流量的情况, 按需填写
@@ -177,6 +181,8 @@ export default {
   routeRule,
   alistAddr,
   alistToken,
+  alistSignEnable,
+  alistSignExpireTime,
   alistPublicAddr,
   cilentSelfAlistRule,
   embyPathMapping,
