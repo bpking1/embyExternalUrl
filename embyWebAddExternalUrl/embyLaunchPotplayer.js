@@ -181,11 +181,11 @@
     async function getEmbyMediaInfo() {
         let itemInfo = await getItemInfo();
         let mediaSourceId = itemInfo.MediaSources[0].Id;
-        let selectSource = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectSource");
+        let selectSource = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectSource:not([disabled])");
         if (selectSource && selectSource.value.length > 0) {
             mediaSourceId = selectSource.value;
         }
-        //let selectAudio = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectAudio");
+        //let selectAudio = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectAudio:not([disabled])");
         let mediaSource = itemInfo.MediaSources.find(m => m.Id == mediaSourceId);
         let uri = isEmby ? "/emby/videos" : "/Items";
         let domain = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
