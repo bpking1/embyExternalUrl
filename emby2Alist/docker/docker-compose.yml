@@ -12,10 +12,10 @@ services:
       # ports:
       #   - 8091:8091
       volumes:
-        - ./nginx-emby/nginx.conf:/etc/nginx/nginx.conf
-        - ./nginx-emby/conf.d:/etc/nginx/conf.d
-        - ./nginx-emby/embyCache:/var/cache/nginx/emby
-        - ./nginx-emby/log:/var/log/nginx
+        - ../nginx/nginx.conf:/etc/nginx/nginx.conf
+        - ../nginx/conf.d:/etc/nginx/conf.d
+        - ../nginx/embyCache:/var/cache/nginx/emby
+        - ../nginx/log:/var/log/nginx
       restart: always
       # depends_on:
       #   - service.ali
@@ -26,7 +26,7 @@ services:
       ports:
         - 5244:5244
       volumes:
-        - ./alist:/opt/alist/data
+        - ../alist:/opt/alist/data
       restart: always
 
     # service.ali-webdav:

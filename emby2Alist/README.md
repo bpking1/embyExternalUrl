@@ -431,15 +431,13 @@ wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Al
 ### docker部署的任选以下一种
 xxx为示例目录名,请根据自身情况修改
 
-前置条件1: 需要手动创建目录
+~~前置条件1: 需要手动创建目录~~
 ````
 /xxx/nginx-emby/log
 /xxx/nginx-emby/embyCache
 ````
-前置条件2: 需要手动移动项目配置文件
-````
-将本项目xxx2Alist/nginx/下所有文件移动到/xxx/nginx-emby/config/下面
-````
+~~前置条件2: 需要手动移动项目配置文件~~
+~~将本项目xxx2Alist/nginx/下所有文件移动到/xxx/nginx-emby/config/下面~~
 
 ### 4.1 - docker-compose
 启动服务: 在 ~/emby2Alist/docker 目录下执行
