@@ -348,6 +348,20 @@ function checkIsRemoteByPath(filePath) {
   return false;
 }
 
+function getFileNameByPath(filePath) {
+  if (typeof filePath !== "string") {
+    throw new TypeError("Expected a string as the file path");
+  }
+  if (!filePath.trim()) {
+    throw new Error("The file path cannot be empty");
+  }
+  const parts = filePath.split(/[\\/]/);
+  if (parts.length <= 1) {
+    throw new Error("The file path is not valid");
+  }
+  return parts[parts.length - 1];
+}
+
 function redirectStrmLastLinkRuleFilter(filePath) {
   return config.redirectStrmLastLinkRule.filter(rule => {
     const matcher = rule[1];
@@ -464,7 +478,7 @@ async function cost(func) {
 
 function getDeviceId(rArgs) {
   // jellyfin and old emby tv clients use DeviceId
-  return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId;
+  return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId ?? rArgs.deviceId;
 }
 
 const crypto = require('crypto');
@@ -480,7 +494,7 @@ function calculateHMAC(data, key) {
 }
 
 function addAlistSign(url, alistToken, alistSignExpireTime) {
-  if (url.indexOf("sign=") === -1) {
+  if (url.indexOf("sign=") === -1 && url.includes("/d/")) {
     // add sign param for alist
     if (url.indexOf("?") === -1) {
       url += "?"
@@ -522,6 +536,7 @@ export default {
   checkIsStrmByPath,
   checkNotLocal,
   checkIsRemoteByPath,
+  getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
   getItemInfo,

@@ -201,6 +201,7 @@ async function transferPlaybackInfo(r) {
     args: query
   });
   const isPlayback = r.args.IsPlayback === "true";
+  // const deviceId = util.getDeviceId(r.args);
   if (response.status === 200) {
     const body = JSON.parse(response.responseText);
     if (body.MediaSources && body.MediaSources.length > 0) {
@@ -215,20 +216,35 @@ async function transferPlaybackInfo(r) {
         //   // live streams are not blocked
         //   // return r.return(200, response.responseText);
         // }
-        r.warn(`modify direct play supports`);
+        r.warn(`default modify direct play supports all true`);
         source.SupportsDirectPlay = true;
         source.SupportsDirectStream = true;
+
+        source.SupportsTranscoding = transcodeConfig.enable;
+        if (!source.SupportsTranscoding && !transcodeConfig.redirectTransOptEnable && source.TranscodingUrl) {
+          r.warn(`remove transcode config`);
+          delete source.TranscodingUrl;
+          delete source.TranscodingSubProtocol;
+          delete source.TranscodingContainer;
+        }
 
         const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
         // routeRule
         if (transcodeConfig.enable) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
+          r.warn(`playbackinfo routeMode: ${routeMode}`);
           if (util.routeEnum.redirect == routeMode) {
-            // swich transcode opt, skip modify
-            if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks != 0) {
-              continue;
+            const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
+            if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks !== "0" 
+              && maxStreamingBitrate < source.Bitrate) {
+              r.warn(`swich transcode opt, modify direct play supports all false`);
+              source.SupportsDirectPlay = false;
+              source.SupportsDirectStream = false;
             }
           } else if (util.routeEnum.transcode == routeMode) {
+            r.warn(`routeMode modify direct play supports all false`);
+            source.SupportsDirectPlay = false;
+            source.SupportsDirectStream = false;
             continue;
           } else if (util.routeEnum.block == routeMode) {
             return r.return(403, "blocked");
@@ -244,7 +260,8 @@ async function transferPlaybackInfo(r) {
             .replace("/emby/Items", "/videos")
             // origin link: /emby/videos/401929/stream.xxx?xxx
             // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-            .replace("PlaybackInfo", `stream/${source.Name}.${source.Container}`)
+            // this is not important, hit "/emby/videos/401929/" path level still worked
+            .replace("PlaybackInfo", `stream/${util.getFileNameByPath(source.Path)}`)
         );
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
@@ -260,7 +277,7 @@ async function transferPlaybackInfo(r) {
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
           util.args.filePathKey,
-          // r.args default remove special character
+          // r.args default removed special character
           encodeURIComponent(source.Path)
         );
         source.DirectStreamUrl = util.appendUrlArg(
@@ -271,23 +288,11 @@ async function transferPlaybackInfo(r) {
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
         source.XModifySuccess = true; // for debug
+
         // async cachePreload
-        if (routeCacheConfig.enable) {
-          const url = `${util.getCurrentRequestUrlPrefix(r)}${source.DirectStreamUrl}`;
-          if (routeCacheConfig.enableL2 && !isPlayback) {
-            cachePreload(r, url, util.chcheLevelEnum.L2);
-          }
-        }
-        // routeRule
-        if (transcodeConfig.redirectTransOptEnable) {
-          continue;
-        }
-        r.warn(`remove transcode config`);
-        source.SupportsTranscoding = false;
-        if (source.TranscodingUrl) {
-          delete source.TranscodingUrl;
-          delete source.TranscodingSubProtocol;
-          delete source.TranscodingContainer;
+        if (routeCacheConfig.enable && routeCacheConfig.enableL2 
+          && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
+          cachePreload(r, util.getCurrentRequestUrlPrefix(r) + source.DirectStreamUrl, util.chcheLevelEnum.L2);
         }
       }
 
@@ -470,56 +475,59 @@ async function itemsFilter(r) {
   	r.warn("itemsFilter subrequest failed");
 	  return internalRedirect(r);
   }
-  let totalRecordCount = body.Items.length;
-  r.warn(`itemsFilter before: ${totalRecordCount}`);
-
-  const flag = r.variables.flag;
-  r.warn(`itemsFilter flag: ${flag}`);
-  let mainItemPath;
-  if (flag == "itemSimilar") {
-    // fetch mount emby/jellyfin file path
-    const itemInfo = util.getItemInfo(r);
-    r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
-    const embyRes = await util.cost(fetchEmbyFilePath,
-      itemInfo.itemInfoUri, 
-      itemInfo.itemId, 
-      itemInfo.Etag, 
-      itemInfo.mediaSourceId
-    );
-    mainItemPath = embyRes.path;
-    r.warn(`mainItemPath: ${mainItemPath}`);
-  }
-
   const itemHiddenRule = config.itemHiddenRule;
-  if (!!body.Items && itemHiddenRule.length > 0) {
-    body.Items = body.Items.filter(item => {
-      if (!item.Path) {
-        return true;
-      }
-      return !itemHiddenRule.some(rule => {
-        if ((!rule[2] || rule[2] == 0 || rule[2] == 2) && !!mainItemPath 
-          && util.strMatches(rule[0], mainItemPath, rule[1])) {
-          return false;
-        }
-        if (flag == "searchSuggest" && rule[2] == 2) {
-          return false;
-        }
-        if (flag == "backdropSuggest" && rule[2] == 3) {
-          return false;
-        }
-        if (flag == "itemSimilar" && rule[2] == 1) {
-          return false;
-        }
-        if (util.strMatches(rule[0], item.Path, rule[1])) {
-          r.warn(`itemPath hit itemHiddenRule: ${item.Path}`);
+  if (itemHiddenRule && itemHiddenRule.length > 0) {
+    let totalRecordCount = body.Items.length;
+    r.warn(`itemsFilter before: ${totalRecordCount}`);
+
+    const flag = r.variables.flag;
+    r.warn(`itemsFilter flag: ${flag}`);
+    let mainItemPath;
+    if (flag == "itemSimilar") {
+      // fetch mount emby/jellyfin file path
+      const itemInfo = util.getItemInfo(r);
+      r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
+      const embyRes = await util.cost(fetchEmbyFilePath,
+        itemInfo.itemInfoUri, 
+        itemInfo.itemId, 
+        itemInfo.Etag, 
+        itemInfo.mediaSourceId
+      );
+      mainItemPath = embyRes.path;
+      r.warn(`mainItemPath: ${mainItemPath}`);
+    }
+
+    if (!!body.Items) {
+      body.Items = body.Items.filter(item => {
+        if (!item.Path) {
           return true;
         }
+        return !itemHiddenRule.some(rule => {
+          if ((!rule[2] || rule[2] == 0 || rule[2] == 2) && !!mainItemPath 
+            && util.strMatches(rule[0], mainItemPath, rule[1])) {
+            return false;
+          }
+          if (flag == "searchSuggest" && rule[2] == 2) {
+            return false;
+          }
+          if (flag == "backdropSuggest" && rule[2] == 3) {
+            return false;
+          }
+          if (flag == "itemSimilar" && rule[2] == 1) {
+            return false;
+          }
+          if (util.strMatches(rule[0], item.Path, rule[1])) {
+            r.warn(`itemPath hit itemHiddenRule: ${item.Path}`);
+            return true;
+          }
+        });
       });
-    });
+    }
+    totalRecordCount = body.Items.length;
+    r.warn(`itemsFilter after: ${totalRecordCount}`);
+    body.TotalRecordCount = totalRecordCount;
   }
-  totalRecordCount = body.Items.length;
-  r.warn(`itemsFilter after: ${totalRecordCount}`);
-  body.TotalRecordCount = totalRecordCount;
+
   util.copyHeaders(subR.headersOut, r.headersOut);
   return r.return(200, JSON.stringify(body));
 }
@@ -646,7 +654,7 @@ async function preload(r, url) {
 }
 
 function redirect(r, url, isCached) {
-  if (!!config.alistSignEnable) {
+  if (!!config.alistSignEnable && url.includes("/d/")) {
     url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
   }
 

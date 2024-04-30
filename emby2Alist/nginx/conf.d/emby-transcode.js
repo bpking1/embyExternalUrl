@@ -19,29 +19,27 @@ async function transcodeBalance(r) {
   events.njsOnExit(r.uri);
   checkEnable(r);
 
+  const routeEnum = util.routeEnum;
+  // const routeInternalDictKey = `${r.args.MediaSourceId}:${util.getDeviceId(r.args)}`;
+
   // getCurrentItemInfo
   const currentItem = await getCurrentItemInfo(r);
   if (!currentItem) {
-    if (util.routeEnum.proxy == getFallbackRouteMode()) {
-      return emby.internalRedirectExpect(r);
-    } else {
-      return r.return(403, "retry playback");
-      // return emby.redirect2Pan(r);
-    }
+    return emby.internalRedirectExpect(r);
   }
 
   // swich transcode opt, skip modify
-  if (r.args.StartTimeTicks == 0) {
+  if (r.args.StartTimeTicks === "0") {
     // routeRule
     const notLocal = util.checkIsStrmByPath(currentItem.path);
     const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
-    if (util.routeEnum.proxy == routeMode) {
+    if (routeEnum.proxy == routeMode) {
       return emby.internalRedirectExpect(r);
       // not need route, clients will self select
-    // } else if (util.routeEnum.redirect == routeMode) {
+    // } else if (routeEnum.redirect == routeMode) {
     //   // this maybe not support, because player is already init to HLS
     //   return emby.redirect2Pan(r);
-    } else if (util.routeEnum.block == routeMode) {
+    } else if (routeEnum.block == routeMode) {
       return r.return(403, "blocked");
     }
   }
@@ -49,21 +47,19 @@ async function transcodeBalance(r) {
   // check transcode load
   let transServer = await getTransServer(r);
   if (!transServer) {
-    if (util.routeEnum.proxy == getFallbackRouteMode()) {
-      return emby.internalRedirectExpect(r);
-    } else {
-      return r.return(403, "retry playback");
-      // return emby.redirect2Pan(r);
-    }
+    return emby.internalRedirectExpect(r);
   }
 
   // media item match
   const targetItem = await mediaItemMatch(r, currentItem, transServer, keys);
   if (!targetItem) {
-    if (util.routeEnum.proxy == getFallbackRouteMode()) {
+    const targetItemMatchFallback = config.transcodeConfig.targetItemMatchFallback;
+    r.warn(`targetItemMatchFallback: ${targetItemMatchFallback}`);
+    if (routeEnum.proxy == targetItemMatchFallback) {
       return emby.internalRedirectExpect(r);
     } else {
-      return r.return(403, "retry playback");
+      // util.dictAdd("routeInternalDict", routeInternalDictKey, routeEnum.redirect);
+      return r.return(449, "need retry playback");
       // return emby.redirect2Pan(r);
     }
   }
@@ -150,14 +146,16 @@ async function getCurrentItemInfo(r) {
     notLocal: false,
     itemName: "",
     path: "",
+    itemId: "",
+    mediaSourceId: "",
   }
   let mediaServerRes;
   if (isEmby) {
     const itemInfo = util.getItemInfo(r);
     mediaServerRes = await util.cost(emby.fetchEmbyFilePath,
-      itemInfo.itemInfoUri, 
-      itemInfo.itemId, 
-      itemInfo.Etag, 
+      itemInfo.itemInfoUri,
+      itemInfo.itemId,
+      itemInfo.Etag,
       itemInfo.mediaSourceId
     );
     r.warn(`fetchEmbyFilePath mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
@@ -167,6 +165,8 @@ async function getCurrentItemInfo(r) {
     rvt.notLocal = mediaServerRes.notLocal;
     rvt.itemName = mediaServerRes.itemName;
     rvt.path = mediaServerRes.path;
+    rvt.itemId = itemInfo.itemId;
+    rvt.mediaSourceId = itemInfo.mediaSourceId;
   } else {}
   r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
   r.warn(`getCurrentItemInfo: ${JSON.stringify(rvt)}`);
@@ -297,14 +297,6 @@ function buildTransServerUrl(r, transServer, targetMediaId) {
   r.warn(`modify args: ${args}`);
 
   return `${baseUrl}?${args}`;
-}
-
-function getFallbackRouteMode() {
-  const transcodeConfig = config.transcodeConfig;
-  if (!transcodeConfig.enable) {
-    return util.routeEnum.redirect;
-  }
-  return transcodeConfig.fallbackRouteMode;
 }
 
 async function syncDelete(r) {
