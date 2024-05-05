@@ -653,16 +653,7 @@ async function preload(r, url) {
   });
 }
 
-function redirect(r, url, isCached) {
-  if (!!config.alistSignEnable && url.includes("/d/")) {
-    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
-  }
-
-  r.warn(`redirect to: ${url}`);
-  // need caller: return;
-  r.return(302, url);
-
-  // async
+async function redirectAfter(r, url, isCached) {
   let cachedMsg = "";
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
@@ -702,16 +693,7 @@ function redirect(r, url, isCached) {
   }
 }
 
-function internalRedirect(r, uri, isCached) {
-  if (!uri) {
-    uri = "@root";
-    r.warn(`use original link`);
-  }
-  r.log(`internalRedirect to: ${uri}`);
-  // need caller: return;
-  r.internalRedirect(uri);
-
-  // async
+async function internalRedirectAfter(r, uri, isCached) {
   let cachedMsg = "";
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
@@ -739,6 +721,32 @@ function internalRedirect(r, uri, isCached) {
       config.embyRedirectSendMessage.timeoutMs);
     util.dictAdd("idemDict", deviceId, "1");
   }
+}
+
+function redirect(r, url, isCached) {
+  if (!!config.alistSignEnable && url.includes("/d/")) {
+    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
+  }
+
+  r.warn(`redirect to: ${url}`);
+  // need caller: return;
+  r.return(302, url);
+
+  // async
+  redirectAfter(r, url, isCached);
+}
+
+function internalRedirect(r, uri, isCached) {
+  if (!uri) {
+    uri = "@root";
+    r.warn(`use original link`);
+  }
+  r.log(`internalRedirect to: ${uri}`);
+  // need caller: return;
+  r.internalRedirect(uri);
+
+  // async
+  internalRedirectAfter(r, uri, isCached);
 }
 
 function internalRedirectExpect(r, uri) {

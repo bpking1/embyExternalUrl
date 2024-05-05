@@ -608,20 +608,7 @@ function fillPartInfo(part, isXmlNode) {
   }
 }
 
-function redirect(r, url, isCached) {
-  // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
-  // add_header Access-Control-Allow-Origin *;
-  r.headersOut["Access-Control-Allow-Origin"] = "*";
-
-  if (!!config.alistSignEnable) {
-    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
-  }
-
-  r.warn(`redirect to: ${url}`);
-  // need caller: return;
-  r.return(302, url);
-
-  // async
+async function redirectAfter(r, url, isCached) {
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let keyExpression = routeCacheConfig.keyExpression;
@@ -639,6 +626,31 @@ function redirect(r, url, isCached) {
   }
 }
 
+async function internalRedirectAfter(r, uri, isCached) {
+  const routeCacheConfig = config.routeCacheConfig;
+  if (routeCacheConfig.enable) {
+    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+  }
+}
+
+function redirect(r, url, isCached) {
+  // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
+  // add_header Access-Control-Allow-Origin *;
+  r.headersOut["Access-Control-Allow-Origin"] = "*";
+
+  if (!!config.alistSignEnable) {
+    url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
+  }
+
+  r.warn(`redirect to: ${url}`);
+  // need caller: return;
+  r.return(302, url);
+
+  // async
+  redirectAfter(r, url, isCached);
+}
+
 function internalRedirect(r, uri, isCached) {
   if (!uri) {
     uri = "@root";
@@ -649,11 +661,7 @@ function internalRedirect(r, uri, isCached) {
   r.internalRedirect(uri);
 
   // async
-  const routeCacheConfig = config.routeCacheConfig;
-  if (routeCacheConfig.enable) {
-    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
-    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
-  }
+  internalRedirectAfter(r, uri, isCached);
 }
 
 function internalRedirectExpect(r, uri) {

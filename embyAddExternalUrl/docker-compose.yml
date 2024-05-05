@@ -3,8 +3,8 @@ version: '3.5'
 services:
 
     service.nginx:
-      image: nginx:alpine
-      container_name: embyUrl-nginx
+      image: nginx:latest
+      container_name: nginx-embyUrl
       ports:
         - 8097:80
       volumes:
