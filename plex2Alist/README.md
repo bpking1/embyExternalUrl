@@ -10,6 +10,8 @@ date: 2023/11/04 22:00:00
 1.还原 115 的链接判断为二级域名,三级域名为 CDN 负载均衡会动态变化,
 最好也不要用 alist get 接口中的 provider 字段,使用了 alias 情况下,provider 为 alias 而非 115 Cloud
 
+2.拆分 conf 配置,http 和 https 不要共用相同端口,恢复 plex 默认为 http 配置,IOS 客户端依赖 https,自行配置端口和证书
+
 2024/04/27
 
 1.升级路由缓存配置,缓存的key值可自定义表达式
