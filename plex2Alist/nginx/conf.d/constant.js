@@ -21,7 +21,7 @@ const alistPublicAddr = "http://youralist.com:5244";
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
-  "115": "https://cdnfhnfile.115.com",
+  "115": "115.com",
 };
 // 路由缓存配置
 const routeCacheConfig = {
@@ -92,7 +92,7 @@ const redirectStrmLastLinkRule = [
 const cilentSelfAlistRule = [
   // "Emby for iOS"和"Infuse"对于115的进度条拖动依赖于此
   // 如果nginx为https,则此alist也必须https,浏览器行为客户端会阻止非https请求
-  [0, strHead["115"], alistPublicAddr],
+  [2, strHead["115"], alistPublicAddr],
 ];
 
 function getPlexHost(r) {

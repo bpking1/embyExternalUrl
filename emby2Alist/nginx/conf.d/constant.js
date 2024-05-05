@@ -24,7 +24,7 @@ const alistPublicAddr = "http://youralist.com:5244";
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
-  "115": "https://cdnfhnfile.115.com",
+  "115": "115.com",
 };
 // 路由缓存配置
 const routeCacheConfig = {
@@ -100,7 +100,7 @@ const redirectStrmLastLinkRule = [
 const cilentSelfAlistRule = [
   // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
-  [0, strHead["115"], alistPublicAddr],
+  [2, strHead["115"], alistPublicAddr],
 ];
 // !!!实验功能,转码配置,默认 false,将按之前逻辑禁止转码处理并移除转码选项参数,与 emby 配置无关
 // 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]

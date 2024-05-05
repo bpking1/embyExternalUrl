@@ -9,7 +9,7 @@ const plexHost = "http://172.17.0.1:32400";
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
-  "115": "https://cdnfhnfile.115.com",
+  "115": "115.com",
 };
 // 路由缓存配置
 const routeCacheConfig = {
