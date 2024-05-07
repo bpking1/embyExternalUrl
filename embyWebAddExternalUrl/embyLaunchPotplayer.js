@@ -249,7 +249,7 @@
         let intent = mediaInfo.intent;
         //android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
         let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
-        if (getOS() == "windows") {
+        if (getOS() == 'windows') {
             //桌面端需要额外设置,参考这个项目: https://github.com/stefansundin/vlc-protocol 
             vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
         }
