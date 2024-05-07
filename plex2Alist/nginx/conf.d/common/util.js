@@ -387,7 +387,8 @@ function calculateHMAC(data, key) {
 }
 
 function addAlistSign(url, alistToken, alistSignExpireTime) {
-  if (url.indexOf("sign=") === -1) {
+  const startIndex = url.indexOf("/d/")
+  if (url.indexOf("sign=") === -1 && startIndex !== -1) {
     // add sign param for alist
     if (url.indexOf("?") === -1) {
       url += "?"
@@ -399,10 +400,7 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
     }
-    let path = url.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1];
-    if (path.indexOf("/d") === 0) {
-      path = path.substring(2)
-    }
+    const path = url.substring(startIndex + 2)
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
     const sign = calculateHMAC(signData, alistToken)

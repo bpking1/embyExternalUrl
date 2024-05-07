@@ -1,5 +1,6 @@
 // author: @bpking  https://github.com/bpking1/embyExternalUrl
-// 查看日志: "docker logs -f -n 10 emby-nginx 2>&1  | grep js:"
+// 查看日志: "docker logs -f -n 10 nginx-emby 2>&1 | grep js:"
+// docker logs -f -n 10 自己的容器名称 2>&1 | grep js:
 // 正常情况下此文件所有内容不需要更改
 
 import config from "./constant.js";
@@ -357,7 +358,7 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   if (cilentSelfAlistRule.length > 0) {
     cilentSelfAlistRule.some(rule => {
       if (util.strMatches(rule[0], rawUrl, rule[1])) {
-        ngx.log(ngx.WARN, `hit cilentSelfAlistRule`);
+        ngx.log(ngx.WARN, `hit cilentSelfAlistRule: ${JSON.stringify(rule)}`);
         if (!rule[2]) {
           ngx.log(ngx.ERR, `alistPublicAddr is required`);
           return true;
@@ -733,7 +734,7 @@ async function internalRedirectAfter(r, uri, isCached) {
 }
 
 function redirect(r, url, isCached) {
-  if (!!config.alistSignEnable && url.includes("/d/")) {
+  if (!!config.alistSignEnable) {
     url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
   }
 
