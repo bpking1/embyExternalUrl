@@ -183,7 +183,8 @@ async function redirect2Pan(r) {
     return r.return(404);
   }
   r.error(alistRes);
-  return r.return(500, alistRes);
+  // use original link
+  return internalRedirect(r);
 }
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
@@ -654,72 +655,80 @@ async function preload(r, url) {
 }
 
 async function redirectAfter(r, url, isCached) {
-  let cachedMsg = "";
-  const routeCacheConfig = config.routeCacheConfig;
-  if (routeCacheConfig.enable) {
-    let keyExpression = routeCacheConfig.keyExpression;
-    if (url.startsWith(config.strHead["115"])) {
-      keyExpression += `:r.headersIn.User-Agent`;
+  try {
+    let cachedMsg = "";
+    const routeCacheConfig = config.routeCacheConfig;
+    if (routeCacheConfig.enable) {
+      let keyExpression = routeCacheConfig.keyExpression;
+      if (url.startsWith(config.strHead["115"])) {
+        keyExpression += `:r.headersIn.User-Agent`;
+      }
+      const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+      let routeDictKey = "routeL1Dict";
+      if (util.chcheLevelEnum.L2 === cacheLevle) {
+        routeDictKey = "routeL2Dict";
+      // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+      //   routeDictKey = "routeL3Dict";
+      }
+      util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
+      cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
     }
-    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
-    let routeDictKey = "routeL1Dict";
-    if (util.chcheLevelEnum.L2 === cacheLevle) {
-      routeDictKey = "routeL2Dict";
-    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
-    //   routeDictKey = "routeL3Dict";
+
+    const deviceId = util.getDeviceId(r.args);
+    const idemVal = ngx.shared.idemDict.get(deviceId);
+    if (config.embyNotificationsAdmin.enable && !idemVal) {
+      embyApi.fetchNotificationsAdmin(
+        config.embyNotificationsAdmin.name,
+        config.embyNotificationsAdmin.includeUrl ? 
+        `${cachedMsg}original link: ${r.uri}\nredirect to: ${url}` :
+        `${cachedMsg}redirect: success`
+      );
+      util.dictAdd("idemDict", deviceId, "1");
     }
-    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
-    cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
-  }
 
-  const deviceId = util.getDeviceId(r.args);
-  const idemVal = ngx.shared.idemDict.get(deviceId);
-  if (config.embyNotificationsAdmin.enable && !idemVal) {
-    embyApi.fetchNotificationsAdmin(
-      config.embyNotificationsAdmin.name,
-      config.embyNotificationsAdmin.includeUrl ? 
-      `${cachedMsg}original link: ${r.uri}\nredirect to: ${url}` :
-      `${cachedMsg}redirect: success`
-    );
-    util.dictAdd("idemDict", deviceId, "1");
-  }
-
-  if (config.embyRedirectSendMessage.enable && !idemVal) {
-    sendMessage2EmbyDevice(deviceId,
-      config.embyRedirectSendMessage.header,
-      `${cachedMsg}redirect: success`,
-      config.embyRedirectSendMessage.timeoutMs);
-    util.dictAdd("idemDict", deviceId, "1");
+    if (config.embyRedirectSendMessage.enable && !idemVal) {
+      sendMessage2EmbyDevice(deviceId,
+        config.embyRedirectSendMessage.header,
+        `${cachedMsg}redirect: success`,
+        config.embyRedirectSendMessage.timeoutMs);
+      util.dictAdd("idemDict", deviceId, "1");
+    }
+  } catch (error) {
+    r.error(`error: redirectAfter: ${error}`);
   }
 }
 
 async function internalRedirectAfter(r, uri, isCached) {
-  let cachedMsg = "";
-  const routeCacheConfig = config.routeCacheConfig;
-  if (routeCacheConfig.enable) {
-    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
-    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
-  }
+  try {
+    let cachedMsg = "";
+    const routeCacheConfig = config.routeCacheConfig;
+    if (routeCacheConfig.enable) {
+      cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+      util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+    }
 
-  const deviceId = util.getDeviceId(r.args);
-  const idemVal = ngx.shared.idemDict.get(deviceId);
-  const msgPrefix = `${cachedMsg}use original link: `;
-  if (config.embyNotificationsAdmin.enable && !idemVal) {
-    embyApi.fetchNotificationsAdmin(
-      config.embyNotificationsAdmin.name,
-      config.embyNotificationsAdmin.includeUrl ? 
-      msgPrefix + r.uri :
-      `${msgPrefix}success`
-    );
-    util.dictAdd("idemDict", deviceId, "1");
-  }
+    const deviceId = util.getDeviceId(r.args);
+    const idemVal = ngx.shared.idemDict.get(deviceId);
+    const msgPrefix = `${cachedMsg}use original link: `;
+    if (config.embyNotificationsAdmin.enable && !idemVal) {
+      embyApi.fetchNotificationsAdmin(
+        config.embyNotificationsAdmin.name,
+        config.embyNotificationsAdmin.includeUrl ? 
+        msgPrefix + r.uri :
+        `${msgPrefix}success`
+      );
+      util.dictAdd("idemDict", deviceId, "1");
+    }
 
-  if (config.embyRedirectSendMessage.enable && !idemVal) {
-    sendMessage2EmbyDevice(deviceId,
-      config.embyRedirectSendMessage.header,
-      `${msgPrefix}success`,
-      config.embyRedirectSendMessage.timeoutMs);
-    util.dictAdd("idemDict", deviceId, "1");
+    if (config.embyRedirectSendMessage.enable && !idemVal) {
+      sendMessage2EmbyDevice(deviceId,
+        config.embyRedirectSendMessage.header,
+        `${msgPrefix}success`,
+        config.embyRedirectSendMessage.timeoutMs);
+      util.dictAdd("idemDict", deviceId, "1");
+    }
+  } catch (error) {
+    r.error(`error: internalRedirectAfter: ${error}`);
   }
 }
 

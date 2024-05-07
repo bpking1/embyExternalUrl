@@ -189,7 +189,8 @@ async function redirect2Pan(r) {
     return r.return(404);
   }
   r.error(alistRes);
-  return r.return(500, alistRes);
+  // use original link
+  return internalRedirect(r);
 }
 
 // copy from emby2Alist/nginx/conf.d/emby.js
@@ -609,33 +610,41 @@ function fillPartInfo(part, isXmlNode) {
 }
 
 async function redirectAfter(r, url, isCached) {
-  const routeCacheConfig = config.routeCacheConfig;
-  if (routeCacheConfig.enable) {
-    let keyExpression = routeCacheConfig.keyExpression;
-    if (url.startsWith(config.strHead["115"])) {
-      keyExpression += `:r.headersIn.User-Agent`;
+  try {
+    const routeCacheConfig = config.routeCacheConfig;
+    if (routeCacheConfig.enable) {
+      let keyExpression = routeCacheConfig.keyExpression;
+      if (url.startsWith(config.strHead["115"])) {
+        keyExpression += `:r.headersIn.User-Agent`;
+      }
+      // const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+      let routeDictKey = "routeL1Dict";
+      // if (util.chcheLevelEnum.L2 === cacheLevle) {
+      //   routeDictKey = "routeL2Dict";
+      // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+      //   routeDictKey = "routeL3Dict";
+      // }
+      util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
     }
-    // const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
-    let routeDictKey = "routeL1Dict";
-    // if (util.chcheLevelEnum.L2 === cacheLevle) {
-    //   routeDictKey = "routeL2Dict";
-    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
-    //   routeDictKey = "routeL3Dict";
-    // }
-    util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
+  } catch (error) {
+    r.error(`error: redirectAfter: ${error}`);
   }
 }
 
 async function internalRedirectAfter(r, uri, isCached) {
-  const routeCacheConfig = config.routeCacheConfig;
-  if (routeCacheConfig.enable) {
-    cachedMsg = `hit routeCache L1: ${!!isCached}, `;
-    util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+  try {
+    const routeCacheConfig = config.routeCacheConfig;
+    if (routeCacheConfig.enable) {
+      cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+      util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+    }
+  } catch (error) {
+    r.error(`error: internalRedirectAfter: ${error}`);
   }
 }
 
 function redirect(r, url, isCached) {
-  // only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
+  // for strm, only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
   // add_header Access-Control-Allow-Origin *;
   r.headersOut["Access-Control-Allow-Origin"] = "*";
 
