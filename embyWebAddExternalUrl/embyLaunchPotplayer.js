@@ -55,10 +55,10 @@
         // add event
         document.querySelector("#embyPot").onclick = embyPot;
         document.querySelector("#embyIINA").onclick = embyIINA;
-        document.querySelector("#embyNPlayer").onclick = embyNPlayer;
         document.querySelector("#embyMX").onclick = embyMX;
-        document.querySelector("#embyVlc").onclick = embyVlc;
         document.querySelector("#embyInfuse").onclick = embyInfuse;
+        document.querySelector("#embyVlc").onclick = embyVlc;
+        document.querySelector("#embyNPlayer").onclick = embyNPlayer;
         document.querySelector("#embyStellarPlayer").onclick = embyStellarPlayer;
         document.querySelector("#embyMPV").onclick = embyMPV;
         document.querySelector("#embyDDPlay").onclick = embyDDPlay;
@@ -76,6 +76,8 @@
         document.querySelector("#icon-DDPlay").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons/icon-DDPlay.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
         document.querySelector("#icon-Copy").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-Copy.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
     
+        // add icons from Base64, local, this script size 22.5KB to 74KB, if use, self copy from ext.js
+
     }
 
     function showFlag() {
@@ -247,7 +249,7 @@
         let intent = mediaInfo.intent;
         //android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
         let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
-        if (getOS() == "windows") {
+        if (getOS() == 'windows') {
             //桌面端需要额外设置,参考这个项目: https://github.com/stefansundin/vlc-protocol 
             vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
         }
@@ -368,16 +370,16 @@
     }
 
     function getOS() {
-        let u = navigator.userAgent
-        if (!!u.match(/compatible/i) || u.match(/Windows/i)) {
+        let ua = navigator.userAgent
+        if (!!ua.match(/compatible/i) || ua.match(/Windows/i)) {
             return 'windows'
-        } else if (!!u.match(/Macintosh/i) || u.match(/MacIntel/i)) {
+        } else if (!!ua.match(/Macintosh/i) || ua.match(/MacIntel/i)) {
             return 'macOS'
-        } else if (!!u.match(/iphone/i) || u.match(/Ipad/i)) {
+        } else if (!!ua.match(/iphone/i) || ua.match(/Ipad/i)) {
             return 'ios'
-        } else if (u.match(/android/i)) {
+        } else if (ua.match(/android/i)) {
             return 'android'
-        } else if (u.match(/Ubuntu/i)) {
+        } else if (ua.match(/Ubuntu/i)) {
             return 'Ubuntu'
         } else {
             return 'other'
