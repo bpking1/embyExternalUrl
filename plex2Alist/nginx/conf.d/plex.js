@@ -242,7 +242,7 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
   if (cilentSelfAlistRule.length > 0) {
     cilentSelfAlistRule.some(rule => {
       if (util.strMatches(rule[0], rawUrl, rule[1])) {
-        ngx.log(ngx.WARN, `hit cilentSelfAlistRule`);
+        ngx.log(ngx.WARN, `hit cilentSelfAlistRule: ${JSON.stringify(rule)}`);
         if (!rule[2]) {
           ngx.log(ngx.ERR, `alistPublicAddr is required`);
           return true;
