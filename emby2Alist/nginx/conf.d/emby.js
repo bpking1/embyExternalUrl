@@ -42,29 +42,20 @@ async function redirect2Pan(r) {
     }
   }
 
-  let embyRes = {
-    path: r.args[util.ARGS.filePathKey],
-    notLocal: r.args[util.ARGS.notLocalKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
-  };
-  if (!embyRes.path) {
-    // fetch mount emby/jellyfin file path
-    const itemInfo = util.getItemInfo(r);
-    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-    // start = Date.now();
-    embyRes = await util.cost(fetchEmbyFilePath,
-      itemInfo.itemInfoUri, 
-      itemInfo.itemId, 
-      itemInfo.Etag, 
-      itemInfo.mediaSourceId);
-    r.log(`embyRes: ${JSON.stringify(embyRes)}`);
-    if (embyRes.message.startsWith("error")) {
-      r.error(embyRes.message);
-      return r.return(500, embyRes.message);
-    }
-  } else {
-    embyRes.path = decodeURIComponent(embyRes.path);
-    r.warn(`cached PlaybackInfo path, will skip excess fetchEmbyFilePath`);
+  // fetch mount emby/jellyfin file path
+  const itemInfo = util.getItemInfo(r);
+  r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+  let embyRes = await util.cost(fetchEmbyFilePath,
+    itemInfo.itemInfoUri, 
+    itemInfo.itemId, 
+    itemInfo.Etag, 
+    itemInfo.mediaSourceId);
+  r.log(`embyRes: ${JSON.stringify(embyRes)}`);
+  if (embyRes.message.startsWith("error")) {
+    r.error(embyRes.message);
+    return r.return(500, embyRes.message);
   }
+
   // strm file internal text maybe encode
   r.warn(`notLocal: ${embyRes.notLocal}`);
   if (embyRes.notLocal) {
@@ -99,10 +90,10 @@ async function redirect2Pan(r) {
     }
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
-  isRemote = util.checkIsRemoteByPath(embyItemPath)
   r.warn(`mapped emby file path: ${embyItemPath}`);
-
+  
   // strm file inner remote link redirect,like: http,rtsp
+  isRemote = util.checkIsRemoteByPath(embyItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
     if (!!rule && rule.length > 0) {
@@ -204,7 +195,6 @@ async function transferPlaybackInfo(r) {
     args: query
   });
   const isPlayback = r.args.IsPlayback === "true";
-  // const deviceId = util.getDeviceId(r.args);
   if (response.status === 200) {
     const body = JSON.parse(response.responseText);
     if (body.MediaSources && body.MediaSources.length > 0) {
@@ -231,10 +221,9 @@ async function transferPlaybackInfo(r) {
           delete source.TranscodingContainer;
         }
 
-        const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length);
         // routeRule
         if (transcodeConfig.enable) {
-          const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
+          const routeMode = util.getRouteMode(r, source.Path, false);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
           if (util.ROUTE_ENUM.redirect == routeMode) {
             const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
@@ -275,18 +264,6 @@ async function transferPlaybackInfo(r) {
           source.DirectStreamUrl,
           "Static",
           "true"
-        );
-        // addFilePath and strmInfo cache to clients
-        source.DirectStreamUrl = util.appendUrlArg(
-          source.DirectStreamUrl,
-          util.ARGS.filePathKey,
-          // r.args default removed special character
-          encodeURIComponent(source.Path)
-        );
-        source.DirectStreamUrl = util.appendUrlArg(
-          source.DirectStreamUrl,
-          util.ARGS.notLocalKey,
-          notLocal ? "1" : "0"
         );
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);

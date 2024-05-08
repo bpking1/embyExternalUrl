@@ -104,10 +104,10 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
+  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
@@ -405,6 +405,7 @@ async function getPlexItemInfo(r) {
     filePath = ngx.shared.partInfoDict.get(r.uri);
     r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
     if (!filePath) {
+      r.warn(`!!! not expect, will fallback search`);
       const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${util.ARGS.plexTokenKey}=${api_key}`);
       if (!plexRes.startsWith("error")) {
         const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
