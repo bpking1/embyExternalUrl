@@ -18,11 +18,11 @@ async function redirect2Pan(r) {
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
-    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+    const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
     let routeDictKey = "routeL1Dict";
-    if (util.chcheLevelEnum.L2 === cacheLevle) {
+    if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
       routeDictKey = "routeL2Dict";
-    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
     //   routeDictKey = "routeL3Dict";
     }
     let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
@@ -43,8 +43,8 @@ async function redirect2Pan(r) {
   }
 
   let embyRes = {
-    path: r.args[util.args.filePathKey],
-    notLocal: r.args[util.args.notLocalKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
+    path: r.args[util.ARGS.filePathKey],
+    notLocal: r.args[util.ARGS.notLocalKey] === "1", // fuck js Boolean("false") === true, !!"0" === true
   };
   if (!embyRes.path) {
     // fetch mount emby/jellyfin file path
@@ -66,6 +66,7 @@ async function redirect2Pan(r) {
     r.warn(`cached PlaybackInfo path, will skip excess fetchEmbyFilePath`);
   }
   // strm file internal text maybe encode
+  r.warn(`notLocal: ${embyRes.notLocal}`);
   if (embyRes.notLocal) {
     embyRes.path = decodeURIComponent(embyRes.path);
   }
@@ -73,10 +74,10 @@ async function redirect2Pan(r) {
 
   // routeRule
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
-  if (util.routeEnum.proxy == routeMode) {
+  if (util.ROUTE_ENUM.proxy == routeMode) {
     // use original link
     return internalRedirect(r);
-  } else if (util.routeEnum.block == routeMode) {
+  } else if (util.ROUTE_ENUM.block == routeMode) {
     return r.return(403, "blocked");
   }
 
@@ -136,10 +137,10 @@ async function redirect2Pan(r) {
   if (!alistRes.startsWith("error")) {
     // routeRule
     const routeMode = util.getRouteMode(r, alistRes, true, embyRes.notLocal);
-    if (util.routeEnum.proxy == routeMode) {
+    if (util.ROUTE_ENUM.proxy == routeMode) {
       // use original link
       return internalRedirect(r);
-    } else if (util.routeEnum.block == routeMode) {
+    } else if (util.ROUTE_ENUM.block == routeMode) {
       return r.return(403, "blocked");
     }
     return redirect(r, alistRes);
@@ -230,12 +231,12 @@ async function transferPlaybackInfo(r) {
           delete source.TranscodingContainer;
         }
 
-        const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length) ? "1" : "0";
+        const notLocal = util.checkNotLocal(source.Protocol, source.MediaStreams.length);
         // routeRule
         if (transcodeConfig.enable) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
-          if (util.routeEnum.redirect == routeMode) {
+          if (util.ROUTE_ENUM.redirect == routeMode) {
             const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
             if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks !== "0" 
               && maxStreamingBitrate < source.Bitrate) {
@@ -243,12 +244,12 @@ async function transferPlaybackInfo(r) {
               source.SupportsDirectPlay = false;
               source.SupportsDirectStream = false;
             }
-          } else if (util.routeEnum.transcode == routeMode) {
+          } else if (util.ROUTE_ENUM.transcode == routeMode) {
             r.warn(`routeMode modify direct play supports all false`);
             source.SupportsDirectPlay = false;
             source.SupportsDirectStream = false;
             continue;
-          } else if (util.routeEnum.block == routeMode) {
+          } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
           }
         }
@@ -278,14 +279,14 @@ async function transferPlaybackInfo(r) {
         // addFilePath and strmInfo cache to clients
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
-          util.args.filePathKey,
+          util.ARGS.filePathKey,
           // r.args default removed special character
           encodeURIComponent(source.Path)
         );
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
-          util.args.notLocalKey,
-          notLocal
+          util.ARGS.notLocalKey,
+          notLocal ? "1" : "0"
         );
         // a few players not support special character
         source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
@@ -294,7 +295,7 @@ async function transferPlaybackInfo(r) {
         // async cachePreload
         if (routeCacheConfig.enable && routeCacheConfig.enableL2 
           && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
-          cachePreload(r, util.getCurrentRequestUrlPrefix(r) + source.DirectStreamUrl, util.chcheLevelEnum.L2);
+          cachePreload(r, util.getCurrentRequestUrlPrefix(r) + source.DirectStreamUrl, util.CHCHE_LEVEL_ENUM.L2);
         }
       }
 
@@ -627,7 +628,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
 }
 
 async function cachePreload(r, url, cacheLevel) {
-  url = util.appendUrlArg(url, util.args.cacheLevleKey, cacheLevel);
+  url = util.appendUrlArg(url, util.ARGS.cacheLevleKey, cacheLevel);
   ngx.log(ngx.WARN, `cachePreload Level: ${cacheLevel}`);
   preload(r, url);
 }
@@ -635,7 +636,7 @@ async function cachePreload(r, url, cacheLevel) {
 async function preload(r, url) {
   events.njsOnExit(`preload`);
 
-  url = util.appendUrlArg(url, util.args.internalKey, "1");
+  url = util.appendUrlArg(url, util.ARGS.internalKey, "1");
   const ua = r.headersIn["User-Agent"];
   ngx.fetch(url, {
     method: "HEAD",
@@ -664,11 +665,11 @@ async function redirectAfter(r, url, isCached) {
       if (url.startsWith(config.strHead["115"])) {
         keyExpression += `:r.headersIn.User-Agent`;
       }
-      const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+      const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let routeDictKey = "routeL1Dict";
-      if (util.chcheLevelEnum.L2 === cacheLevle) {
+      if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
         routeDictKey = "routeL2Dict";
-      // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+      // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
       //   routeDictKey = "routeL3Dict";
       }
       util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);

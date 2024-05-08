@@ -1,18 +1,18 @@
 import config from "../constant.js";
 
-const args = {
+const ARGS = {
   plexTokenKey: "X-Plex-Token",
   internalKey: "internal",
   cacheLevleKey: "cacheLevel",
 }
 
-const routeEnum = {
+const ROUTE_ENUM = {
   proxy: "proxy",
   redirect: "redirect",
   block: "block",
 };
 
-const chcheLevelEnum = {
+const CHCHE_LEVEL_ENUM = {
   L1: "L1",
   // L2: "L2",
   // L3: "L3",
@@ -38,32 +38,32 @@ function groupBy(array, key) {
 function getRouteMode(r, filePath, isAlistRes, notLocal) {
   let cRouteRule = config.routeRule;
   // skip internal request
-  if (r.args[args.internalKey] === "1") {
+  if (r.args[ARGS.internalKey] === "1") {
     cRouteRule = cRouteRule.filter(rule => rule[0] != "r.variables.remote_addr" 
       && rule[1] != "r.variables.remote_addr" && rule[2] != "r.variables.remote_addr");
   }
   // old proxy
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
-  proxyRules = proxyRules.filter(rule => !Object.keys(routeEnum).includes(rule[0]));
+  proxyRules = proxyRules.filter(rule => !Object.keys(ROUTE_ENUM).includes(rule[0]));
   proxyRules = proxyRules.concat(cRouteRule
-    .filter(rule => rule[0] === routeEnum.proxy)
+    .filter(rule => rule[0] === ROUTE_ENUM.proxy)
     // new proxy, remove routeMode
     .map(rule => rule.slice(1)));
   ngx.log(ngx.INFO, `getRouteMode proxyRules: ${JSON.stringify(proxyRules)}`);
   if (isProxy(r, proxyRules, filePath, isAlistRes, notLocal)) {
-    return routeEnum.proxy;
+    return ROUTE_ENUM.proxy;
   }
   // new routeRules and not new proxy
   let routeRules = cRouteRule.filter(rule => {
-    for (const rKey in routeEnum) {
-      if (routeEnum[rKey] === rule[0] && rule[0] != routeEnum.proxy) {
+    for (const rKey in ROUTE_ENUM) {
+      if (ROUTE_ENUM[rKey] === rule[0] && rule[0] != ROUTE_ENUM.proxy) {
         return rule;
       }
     }
   });
   if (routeRules.length === 0 && isAlistRes) {
     // default value
-    return routeEnum.redirect;
+    return ROUTE_ENUM.redirect;
   }
   const routeRulesObjArr = groupBy(routeRules, 0);
   for (const rKey in routeRulesObjArr) {
@@ -84,7 +84,7 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
       }
     }
   }
-  return routeEnum.redirect;
+  return ROUTE_ENUM.redirect;
 }
 
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
@@ -419,9 +419,9 @@ function getFileNameByHead(contentDisposition) {
 }
 
 export default {
-  args,
-  routeEnum,
-  chcheLevelEnum,
+  ARGS,
+  ROUTE_ENUM,
+  CHCHE_LEVEL_ENUM,
   proxyUri,
   strMapping,
   strMatches,
