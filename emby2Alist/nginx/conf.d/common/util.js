@@ -1,8 +1,8 @@
 import config from "../constant.js";
 
-const args = {
-  filePathKey: "filePath",
-  notLocalKey: "notLocal",
+const ARGS = {
+  // filePathKey: "filePath",
+  // notLocalKey: "notLocal",
   skipRouteKey: "skipRoute",
   useProxyKey: "useProxy",
   useRedirectKey: "useRedirect",
@@ -10,14 +10,14 @@ const args = {
   cacheLevleKey: "cacheLevel",
 }
 
-const routeEnum = {
+const ROUTE_ENUM = {
   proxy: "proxy",
   redirect: "redirect",
   transcode: "transcode",
   block: "block",
 };
 
-const chcheLevelEnum = {
+const CHCHE_LEVEL_ENUM = {
   L1: "L1",
   L2: "L2",
   // L3: "L3",
@@ -86,35 +86,43 @@ function groupBy(array, key) {
   }, {});
 };
 
+/**
+ * getRouteMode
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {String} filePath mediaFilePath or alistRes link
+ * @param {Boolean} isAlistRes alistRes link
+ * @param {Boolean} notLocal if not need proxy route can be undefined
+ * @returns ROUTE_ENUM.xxx
+ */
 function getRouteMode(r, filePath, isAlistRes, notLocal) {
   let cRouteRule = config.routeRule;
   // skip internal request
-  if (r.args[args.internalKey] === "1") {
+  if (r.args[ARGS.internalKey] === "1") {
     cRouteRule = cRouteRule.filter(rule => rule[0] != "r.variables.remote_addr" 
       && rule[1] != "r.variables.remote_addr" && rule[2] != "r.variables.remote_addr");
   }
   // old proxy
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
-  proxyRules = proxyRules.filter(rule => !Object.keys(routeEnum).includes(rule[0]));
+  proxyRules = proxyRules.filter(rule => !Object.keys(ROUTE_ENUM).includes(rule[0]));
   proxyRules = proxyRules.concat(cRouteRule
-    .filter(rule => rule[0] === routeEnum.proxy)
+    .filter(rule => rule[0] === ROUTE_ENUM.proxy)
     // new proxy, remove routeMode
     .map(rule => rule.slice(1)));
   ngx.log(ngx.INFO, `getRouteMode proxyRules: ${JSON.stringify(proxyRules)}`);
   if (isProxy(r, proxyRules, filePath, isAlistRes, notLocal)) {
-    return routeEnum.proxy;
+    return ROUTE_ENUM.proxy;
   }
   // new routeRules and not new proxy
   let routeRules = cRouteRule.filter(rule => {
-    for (const rKey in routeEnum) {
-      if (routeEnum[rKey] === rule[0] && rule[0] != routeEnum.proxy) {
+    for (const rKey in ROUTE_ENUM) {
+      if (ROUTE_ENUM[rKey] === rule[0] && rule[0] != ROUTE_ENUM.proxy) {
         return rule;
       }
     }
   });
   if (routeRules.length === 0 && isAlistRes) {
     // default value
-    return routeEnum.redirect;
+    return ROUTE_ENUM.redirect;
   }
   const routeRulesObjArr = groupBy(routeRules, 0);
   for (const rKey in routeRulesObjArr) {
@@ -135,18 +143,16 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
       }
     }
   }
-  return routeEnum.redirect;
+  return ROUTE_ENUM.redirect;
 }
 
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
-  const embyMountPath = config.embyMountPath;
+  const mountPath = config.embyMountPath;
   if (!isAlistRes) {
-    // this var isAlistRes = false
     // local file not xxxMountPath first
-    if (embyMountPath.every(path => 
-      !!path && !filePath.startsWith(path) && !notLocal)) {
-      ngx.log(ngx.WARN, `hit proxy, not xxxMountPath first: ${JSON.stringify(embyMountPath)}`);
+    if (mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
+      ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
       return true;
     }
   }
@@ -321,22 +327,13 @@ function strMatches(type, searchValue, matcher) {
   return false;
 }
 
+// MediaSourceInfo{ Protocol }, String ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+// live stream "IsInfiniteStream": true
+
 function checkIsStrmByPath(filePath) {
   if (!!filePath) {
     // strm: filePath1-itemPath like: /xxx/xxx.strm
     return filePath.toLowerCase().endsWith(".strm");
-  }
-  return false;
-}
-
-function checkNotLocal(protocol, mediaStreamsLength) {
-  // MediaSourceInfo{ Protocol }, string ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-  // live stream "IsInfiniteStream": true
-  if (!!protocol) {
-    if (protocol != "File") {
-      return true;
-    }
-    return mediaStreamsLength == 0;
   }
   return false;
 }
@@ -494,7 +491,8 @@ function calculateHMAC(data, key) {
 }
 
 function addAlistSign(url, alistToken, alistSignExpireTime) {
-  const startIndex = url.indexOf("/d/")
+  let path = url.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1]
+  const startIndex = path.indexOf("/d/")
   if (url.indexOf("sign=") === -1 && startIndex !== -1) {
     // add sign param for alist
     if (url.indexOf("?") === -1) {
@@ -507,7 +505,7 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
     }
-    const path = url.substring(startIndex + 2)
+    path = path.substring(startIndex + 2)
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
     const sign = calculateHMAC(signData, alistToken)
@@ -517,9 +515,9 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
 }
 
 export default {
-  args,
-  routeEnum,
-  chcheLevelEnum,
+  ARGS,
+  ROUTE_ENUM,
+  CHCHE_LEVEL_ENUM,
   proxyUri,
   appendUrlArg,
   addDefaultApiKey,
@@ -532,7 +530,6 @@ export default {
   strMapping,
   strMatches,
   checkIsStrmByPath,
-  checkNotLocal,
   checkIsRemoteByPath,
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,

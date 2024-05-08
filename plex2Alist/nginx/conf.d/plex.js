@@ -19,11 +19,11 @@ async function redirect2Pan(r) {
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
-    const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+    const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
     let routeDictKey = "routeL1Dict";
-    // if (util.chcheLevelEnum.L2 === cacheLevle) {
+    // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
     //   routeDictKey = "routeL2Dict";
-    // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+    // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
     //   routeDictKey = "routeL3Dict";
     // }
     let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
@@ -64,6 +64,7 @@ async function redirect2Pan(r) {
   }
   // strm file internal text maybe encode
   const notLocal = util.checkIsStrmByPath(mediaServerRes.path);
+  r.warn(`notLocal: ${notLocal}`);
   if (notLocal) {
       mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
   }
@@ -71,10 +72,10 @@ async function redirect2Pan(r) {
 
   // routeRule
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
-  if (util.routeEnum.proxy == routeMode) {
+  if (util.ROUTE_ENUM.proxy == routeMode) {
     // use original link
     return internalRedirect(r);
-  } else if (util.routeEnum.block == routeMode) {
+  } else if (util.ROUTE_ENUM.block == routeMode) {
     return r.return(403, "blocked");
   }
 
@@ -103,10 +104,10 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
+  isRemote = util.checkIsRemoteByPath(mediaItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
@@ -141,10 +142,10 @@ async function redirect2Pan(r) {
   if (!alistRes.startsWith("error")) {
     // routeRule
     const routeMode = util.getRouteMode(r, alistRes, true, notLocal);
-    if (util.routeEnum.proxy == routeMode) {
+    if (util.ROUTE_ENUM.proxy == routeMode) {
       // use original link
       return internalRedirect(r);
-    } else if (util.routeEnum.block == routeMode) {
+    } else if (util.ROUTE_ENUM.block == routeMode) {
       return r.return(403, "blocked");
     }
     return redirect(r, alistRes);
@@ -318,7 +319,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
 }
 
 async function cachePreload(r, url, cacheLevel) {
-  url = util.appendUrlArg(url, util.args.cacheLevleKey, cacheLevel);
+  url = util.appendUrlArg(url, util.ARGS.cacheLevleKey, cacheLevel);
   ngx.log(ngx.WARN, `cachePreload Level: ${cacheLevel}`);
   preload(r, url);
 }
@@ -326,7 +327,7 @@ async function cachePreload(r, url, cacheLevel) {
 async function preload(r, url) {
   events.njsOnExit(`preload`);
 
-  url = util.appendUrlArg(url, util.args.internalKey, "1");
+  url = util.appendUrlArg(url, util.ARGS.internalKey, "1");
   const ua = r.headersIn["User-Agent"];
   ngx.fetch(url, {
     method: "HEAD",
@@ -393,21 +394,22 @@ async function getPlexItemInfo(r) {
   const path = r.args.path;
   const mediaIndex = r.args.mediaIndex;
   const partIndex = r.args.partIndex;
-  const api_key = r.args[util.args.plexTokenKey];
+  const api_key = r.args[util.ARGS.plexTokenKey];
   let filePath;
   let itemInfoUri = "";
   if (path) {
 	  // see: location ~* /video/:/transcode/universal/start
-  	itemInfoUri = `${plexHost}${path}?${util.args.plexTokenKey}=${api_key}`;
+  	itemInfoUri = `${plexHost}${path}?${util.ARGS.plexTokenKey}=${api_key}`;
   } else {
   	// see: location ~* /library/parts/(\d+)/(\d+)/file
     filePath = ngx.shared.partInfoDict.get(r.uri);
     r.warn(`getPlexItemInfo r.uri: ${r.uri}`);
     if (!filePath) {
-      const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${util.args.plexTokenKey}=${api_key}`);
+      r.warn(`!!! not expect, will fallback search`);
+      const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${util.ARGS.plexTokenKey}=${api_key}`);
       if (!plexRes.startsWith("error")) {
         const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
-        itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${util.args.plexTokenKey}=${api_key}`;
+        itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${util.ARGS.plexTokenKey}=${api_key}`;
       } else {
         r.warn(plexRes);
       }
@@ -434,8 +436,8 @@ async function fetchPlexFileFullName(downloadApiPath) {
 
 async function fetchStrmInnerText(r) {
   const plexHost = config.plexHost;
-  const api_key = r.args[util.args.plexTokenKey];
-  const downloadApiPath = `${plexHost}${r.uri}?download=1&${util.args.plexTokenKey}=${api_key}`;
+  const api_key = r.args[util.ARGS.plexTokenKey];
+  const downloadApiPath = `${plexHost}${r.uri}?download=1&${util.ARGS.plexTokenKey}=${api_key}`;
   try {
   	// fetch Api ignore nginx locations
     const response = await ngx.fetch(downloadApiPath, {
@@ -617,11 +619,11 @@ async function redirectAfter(r, url, isCached) {
       if (url.startsWith(config.strHead["115"])) {
         keyExpression += `:r.headersIn.User-Agent`;
       }
-      // const cacheLevle = r.args[util.args.cacheLevleKey] ?? util.chcheLevelEnum.L1;
+      // const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let routeDictKey = "routeL1Dict";
-      // if (util.chcheLevelEnum.L2 === cacheLevle) {
+      // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
       //   routeDictKey = "routeL2Dict";
-      // } else if (util.chcheLevelEnum.L3 === cacheLevle) {
+      // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
       //   routeDictKey = "routeL3Dict";
       // }
       util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);

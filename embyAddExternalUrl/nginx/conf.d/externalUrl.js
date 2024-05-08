@@ -187,18 +187,18 @@ const getStellarPlayerUrl = (mediaInfo) => {
 
 const getMPVUrl = (mediaInfo) => {
     //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-    const streamUrl64 = Buffer.from(mediaInfo.streamUrl, 'utf8').toString('base64');
-    let url = `mpv://play/${streamUrl64}`;
+    const streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+    let MPVUrl = `mpv://play/${streamUrl64}`;
     if (mediaInfo.subUrl.length > 0) {
-        let subUrl64 = Buffer.from(mediaInfo.subUrl, 'utf8').toString('base64');
-        url = `mpv://play/${streamUrl64}/?subfile=${subUrl64}`;
+        let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+        MPVUrl = `mpv://play/${streamUrl64}/?subfile=${subUrl64}`;
     }
 
     if (clientType == "ios" || clientType == "android") {
         MPVUrl = `mpv://${encodeURI(mediaInfo.streamUrl)}`;
     }
 
-    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    const url64 = Buffer.from(MPVUrl, 'utf8').toString('base64');
     return {
         Name: `MPV-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/${redirectKey}?link=${url64}`
