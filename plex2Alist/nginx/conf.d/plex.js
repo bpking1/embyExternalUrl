@@ -18,7 +18,7 @@ async function redirect2Pan(r) {
   // check route cache
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
-    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
+    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
     const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
     let routeDictKey = "routeL1Dict";
     // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
@@ -625,7 +625,11 @@ async function redirectAfter(r, url, isCached) {
       // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
       //   routeDictKey = "routeL3Dict";
       // }
-      util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
+      const ua = r.headersIn["User-Agent"];
+      // webClient download only have itemId on pathParam
+      let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
+      cacheKey = url.startsWith(config.strHead["115"]) ? cacheKey : `${cacheKey}:${ua}`;
+      util.dictAdd(routeDictKey, cacheKey, url);
     }
   } catch (error) {
     r.error(`error: redirectAfter: ${error}`);
@@ -636,8 +640,8 @@ async function internalRedirectAfter(r, uri, isCached) {
   try {
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      cachedMsg = `hit routeCache L1: ${!!isCached}, `;
-      util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+      const cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
+      util.dictAdd("routeL1Dict", cacheKey, uri);
     }
   } catch (error) {
     r.error(`error: internalRedirectAfter: ${error}`);

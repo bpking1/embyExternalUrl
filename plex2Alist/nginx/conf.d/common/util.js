@@ -185,24 +185,20 @@ function getMatchedRule(r, ruleArr3D, filePath) {
  * @param {String} expression like "r.args.MediaSourceId", notice skipped "r."
  * @param {String} propertySplit like "."
  * @param {String} groupSplit like ":"
- * @param {Boolean} returnGroup like true
- * @returns expression value
+ * @returns parsed string
  */
-function parseExpression(rootObj, expression, propertySplit, groupSplit, returnGroup) {
-  if (arguments.length < 5) {
-    if (arguments.length < 4) {
-      if (arguments.length < 3) {
-        if (arguments.length < 2) {
-          throw new Error("Missing required parameter: rootObj");
-        }
-        propertySplit = ".";
-        groupSplit = ":";
-      } else {
-        groupSplit = propertySplit;
-        propertySplit = ".";
+function parseExpression(rootObj, expression, propertySplit, groupSplit) {
+  if (arguments.length < 4) {
+    if (arguments.length < 3) {
+      if (arguments.length < 2) {
+        throw new Error("Missing required parameter: rootObj");
       }
+      propertySplit = ".";
+      groupSplit = ":";
+    } else {
+      groupSplit = propertySplit;
+      propertySplit = ".";
     }
-    returnGroup = true;
   }
 
   if (typeof rootObj !== "object" || rootObj === null) {
@@ -210,7 +206,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
   }
   
   if (typeof expression !== "string" || expression.trim() === "") {
-    return returnGroup ? [] : undefined;
+    return undefined;
   }
 
   if (typeof propertySplit !== "string" || typeof groupSplit !== "string") {
@@ -218,7 +214,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
   }
 
   const expGroups = expression.split(groupSplit);
-  const values = [];
+  let values = [];
 
   expGroups.forEach(expGroup => {
     if (!expGroup.trim()) return;
@@ -232,15 +228,15 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
       if (val != null && Object.hasOwnProperty.call(val, expPart)) {
         val = val[expPart];
       } else {
-        values.push(`Property "${expPart}" not found in object`);
-        continue;
+        val = "";
+        ngx.log(ngx.ERR, `Property "${expPart}" not found in object`);
       }
     }
 
     values.push(val);
   });
 
-  return returnGroup ? values.join(groupSplit) : values;
+  return values.join(groupSplit);
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
