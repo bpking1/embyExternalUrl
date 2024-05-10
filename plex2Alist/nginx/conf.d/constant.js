@@ -33,7 +33,8 @@ const routeCacheConfig = {
 };
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
-// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
+// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 只是屏蔽播放
+// pelx 不需要 "transcode", 可用 "proxy" 代替,稍微有些歧义,这里只是不做修改,交给原始服务中转处理,具体是否转码由 plex 客户端自己判断上报的
 // 参数2: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数3: 匹配类型或来源(字符串参数类型) "filePath": 文件路径(Item.Path), "alistRes": alist返回的链接
 // 参数4: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
@@ -94,9 +95,18 @@ const cilentSelfAlistRule = [
   // 如果nginx为https,则此alist也必须https,浏览器行为客户端会阻止非https请求
   [2, strHead["115"], alistPublicAddr],
 ];
+// 转码配置,默认 false,将按之前逻辑强制直接播放
+// plex 只能用自身服务转码,只有下面一个参数,多填写没用
+const transcodeConfig = {
+  enable: false, // 此为允许转码的总开关
+};
 
+// for js_set
 function getPlexHost(r) {
   return plexHost;
+}
+function getTranscodeEnable(r) {
+  return transcodeConfig.enable;
 }
 
 export default {
@@ -113,5 +123,7 @@ export default {
   cilentSelfAlistRule,
   plexPathMapping,
   redirectStrmLastLinkRule,
+  transcodeConfig,
   getPlexHost,
+  getTranscodeEnable,
 }

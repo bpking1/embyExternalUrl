@@ -1,6 +1,6 @@
 // author: @bpking  https://github.com/bpking1/embyExternalUrl
 // 选填项
-// 外网emby地址,如果上层无反代或传递了 Host 标头或 docker 为 host 网络,此处可为空
+// 外网 emby 地址,如果上层无反代或传递了 Host 标头或 docker 为 host 网络,此处可为空
 let serverAddr = 'https://bpking.top';
 const tags = ['BluRay', 'REMUX', 'WEB-DL']; // 添加视频tag
 const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF']; // 添加制作组
@@ -309,7 +309,7 @@ function HeaderFilter(r) {
 
 const redirectUrl = (r) => {
     const baseLink = r.args.link;
-    r.error(`baseLink:  ${baseLink}`);
+    r.warn(`baseLink:  ${baseLink}`);
     const link = Buffer.from(baseLink, 'base64').toString('utf8');
     r.return(302, link);
 }

@@ -236,24 +236,20 @@ function getMatchedRule(r, ruleArr3D, filePath) {
  * @param {String} expression like "r.args.MediaSourceId", notice skipped "r."
  * @param {String} propertySplit like "."
  * @param {String} groupSplit like ":"
- * @param {Boolean} returnGroup like true
- * @returns expression value
+ * @returns parsed string
  */
-function parseExpression(rootObj, expression, propertySplit, groupSplit, returnGroup) {
-  if (arguments.length < 5) {
-    if (arguments.length < 4) {
-      if (arguments.length < 3) {
-        if (arguments.length < 2) {
-          throw new Error("Missing required parameter: rootObj");
-        }
-        propertySplit = ".";
-        groupSplit = ":";
-      } else {
-        groupSplit = propertySplit;
-        propertySplit = ".";
+function parseExpression(rootObj, expression, propertySplit, groupSplit) {
+  if (arguments.length < 4) {
+    if (arguments.length < 3) {
+      if (arguments.length < 2) {
+        throw new Error("Missing required parameter: rootObj");
       }
+      propertySplit = ".";
+      groupSplit = ":";
+    } else {
+      groupSplit = propertySplit;
+      propertySplit = ".";
     }
-    returnGroup = true;
   }
 
   if (typeof rootObj !== "object" || rootObj === null) {
@@ -261,7 +257,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
   }
   
   if (typeof expression !== "string" || expression.trim() === "") {
-    return returnGroup ? [] : undefined;
+    return undefined;
   }
 
   if (typeof propertySplit !== "string" || typeof groupSplit !== "string") {
@@ -269,7 +265,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
   }
 
   const expGroups = expression.split(groupSplit);
-  const values = [];
+  let values = [];
 
   expGroups.forEach(expGroup => {
     if (!expGroup.trim()) return;
@@ -283,15 +279,15 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit, returnG
       if (val != null && Object.hasOwnProperty.call(val, expPart)) {
         val = val[expPart];
       } else {
-        values.push(`Property "${expPart}" not found in object`);
-        continue;
+        val = "";
+        ngx.log(ngx.ERR, `Property "${expPart}" not found in object`);
       }
     }
 
     values.push(val);
   });
 
-  return returnGroup ? values.join(groupSplit) : values;
+  return values.join(groupSplit);
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
@@ -400,11 +396,15 @@ function alistLinkFailback(url) {
   return rvt;
 }
 
+function getItemIdByUri(uri) {
+  const regex = /[A-Za-z0-9]+/g;
+  return uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
+}
+
 function getItemInfo(r) {
   const embyHost = config.embyHost;
   const embyApiKey = config.embyApiKey;
-  const regex = /[A-Za-z0-9]+/g;
-  const itemId = r.uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
+  const itemId = getItemIdByUri(r.uri);
   const mediaSourceId = r.args.MediaSourceId
     ? r.args.MediaSourceId
     : r.args.mediaSourceId;
@@ -505,7 +505,7 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
     }
-    path = path.substring(startIndex + 2)
+    path = path.substring(startIndex + 2).replaceAll('//','/')
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
     const sign = calculateHMAC(signData, alistToken)
@@ -534,6 +534,7 @@ export default {
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
+  getItemIdByUri,
   getItemInfo,
   dictAdd,
   cost,

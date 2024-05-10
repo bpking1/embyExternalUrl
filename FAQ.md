@@ -128,6 +128,40 @@ const transcodeConfig = {
 这是因为 nginx 官方的指令就是这个名称,猜测最初是做错误日志使用的,但是添加了 NJS 实现后功能以及指令遗留已经无法更改了,所以还是沿用这个名称,
 日志中已经有错误等级实现了,所以忽略 error 这个名称,视作普通业务日志就行了
 
+#### 13.为什么 strm 内部文本中文没有 encodeURIComponent 的情况下显示会乱码?
+二选一,确保文件编码是 utf-8,或使用 encodeURIComponent 编码后填写,请注意路径乱码将导致 sign 计算错误
+
+#### 14.哪些地方配置需要注意的?
+总的来说,只用关注,
+````
+/conf.d/constant.js
+/conf.d/emby.conf
+/conf.d/includes/http.conf
+/conf.d/includes/https.conf
+````
+1.挂载文件直链的,
+````
+/conf.d/constant.js 中的必填项和 alistPublicAddr
+````
+2.只用 strm 文件的,
+````
+/conf.d/constant.js 中的 embyHost,embyApiKey
+````
+3.只用 http 的,
+````
+/conf.d/includes/http.conf 中 listen
+````
+4.需要 https 的,
+````
+/conf.d/emby.conf 中 # include /etc/nginx/conf.d/includes/https.conf; # 去掉 # 注释
+/conf.d/includes/https.conf 中 listen 和 ssl_certificate 的两个
+````
+5.有转码需求的,
+````
+/conf.d/constant.js 中 transcodeConfig,routeRule
+````
+6.其余均为选填,参照文件内注释
+
 # embyAddExternalUrl
 
 #### 1.支持 plex 吗?

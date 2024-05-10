@@ -17,7 +17,8 @@ async function redirect2Pan(r) {
   // check route cache
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
-    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression);
+    // webClient download only have itemId on pathParam
+    let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
     const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
     let routeDictKey = "routeL1Dict";
     if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
@@ -52,8 +53,8 @@ async function redirect2Pan(r) {
     itemInfo.mediaSourceId);
   r.log(`embyRes: ${JSON.stringify(embyRes)}`);
   if (embyRes.message.startsWith("error")) {
-    r.error(embyRes.message);
-    return r.return(500, embyRes.message);
+    r.error(`fail to fetch fetchEmbyFilePath: ${embyRes.message},fallback use original link`);
+    return internalRedirect(r);
   }
 
   // strm file internal text maybe encode
@@ -138,8 +139,8 @@ async function redirect2Pan(r) {
   }
   r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {
-    r.error(alistRes);
-    return r.return(403, alistRes);
+    r.error(`fail to fetch fetchAlistPathApi: ${alistRes},fallback use original link`);
+    return internalRedirect(r);
   }
   if (alistRes.startsWith("error500")) {
     r.warn(`will req alist /api/fs/list to rerty`);
@@ -153,8 +154,8 @@ async function redirect2Pan(r) {
       ua,
     );
     if (foldersRes.startsWith("error")) {
-      r.error(foldersRes);
-      return r.return(500, foldersRes);
+      r.error(`fail to fetch /api/fs/list: ${foldersRes},fallback use original link`);
+      return internalRedirect(r);
     }
     const folders = foldersRes.split(",").sort();
     for (let i = 0; i < folders.length; i++) {
@@ -172,11 +173,10 @@ async function redirect2Pan(r) {
         return redirect(r, driverRes);
       }
     }
-    r.warn(`fail to fetch alist resource: not found`);
-    return r.return(404);
+    r.error(`fail to fetch alist resource: not found,fallback use original link`);
+    return internalRedirect(r);
   }
-  r.error(alistRes);
-  // use original link
+  r.error(`fail to fetch fetchAlistPathApi: ${alistRes},fallback use original link`);
   return internalRedirect(r);
 }
 
@@ -638,10 +638,6 @@ async function redirectAfter(r, url, isCached) {
     let cachedMsg = "";
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      let keyExpression = routeCacheConfig.keyExpression;
-      if (url.startsWith(config.strHead["115"])) {
-        keyExpression += `:r.headersIn.User-Agent`;
-      }
       const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let routeDictKey = "routeL1Dict";
       if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
@@ -649,7 +645,11 @@ async function redirectAfter(r, url, isCached) {
       // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
       //   routeDictKey = "routeL3Dict";
       }
-      util.dictAdd(routeDictKey, util.parseExpression(r, keyExpression), url);
+      const ua = r.headersIn["User-Agent"];
+      // webClient download only have itemId on pathParam
+      let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
+      cacheKey = url.startsWith(config.strHead["115"]) ? cacheKey : `${cacheKey}:${ua}`;
+      util.dictAdd(routeDictKey, cacheKey, url);
       cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
     }
 
@@ -683,7 +683,9 @@ async function internalRedirectAfter(r, uri, isCached) {
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
       cachedMsg = `hit routeCache L1: ${!!isCached}, `;
-      util.dictAdd("routeL1Dict", util.parseExpression(r, routeCacheConfig.keyExpression), uri);
+      // webClient download only have itemId on pathParam
+      const cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
+      util.dictAdd("routeL1Dict", cacheKey, uri);
     }
 
     const deviceId = util.getDeviceId(r.args);
