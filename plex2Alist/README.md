@@ -5,6 +5,10 @@ date: 2023/11/04 22:00:00
 
 ### 文章更新记录 
 
+2024/05/10
+
+1.放开 plex 的原始转码功能
+
 2024/05/05
 
 1.还原 115 的链接判断为二级域名,三级域名为 CDN 负载均衡会动态变化,
@@ -224,12 +228,80 @@ Web端可以直链下载,从之前issus的反馈推断第三方客户端播放�
 
 2023/11/04
 
-1.参考博客(https://blog.738888.xyz/posts/plex_to_alist_directlink)中的plex直链功能并参考之前的njs实现,实验性(bug)性质支持了直链播放,因为只找到社区维护的简易API(https://plex-docs.vercel.app),~~所以实现方式比较别扭,目前存在多版本视频不能直链下载的bug。~~
+1.参考博客(https://blog.738888.xyz/posts/plex_to_alist_directlink)中的plex直链功能并参考之前的njs实现,
+~~实验性(bug)性质支持了直链播放,~~
+因为只找到社区维护的简易API(https://plex-docs.vercel.app),
+~~所以实现方式比较别扭,目前存在多版本视频不能直链下载的bug。~~
 
 ~~2.Plex要直链播放只需要设置远程访问-手动设置公开端口为nginx监听端口,避免客户端优先直连32400,如果路由器做了32400端口转发,不影响外部访问。~~
 
-2.Plex要直链播放需要避免客户端优先直连32400,去掉路由器的32400端口转发,添加nginx的端口转发即可
+2.Plex要直链播放需要避免客户端优先直连 32400,
+~~去掉路由器的 32400 端口转发~~,
+添加 nginx 的端口转发即可
 ![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/9abc036a-72db-4434-9be7-1f31c2686bb2)
+
+## 步骤:
+
+### 1.先将配置文件下载到本地
+
+此时大致文件结构如下:
+~/plex2Alist
+├── docker // 创建容器脚本文件夹
+|   ├── docker-compose.yml // docker-compose 脚本,根据自身情况修改
+|   ├── nginx-plex.syno.json // 群晖 docker 脚本,根据自身情况修改
+└── nginx // nginx 配置文件夹
+    ├── conf.d // nginx 配置文件夹
+    |   ├── api // JS 脚本文件夹,完全不用改
+    |   ├── cert // SSL 证书文件夹,根据自身情况修改
+    |   ├── common // 通用工具类文件夹,完全不用改
+    |   ├── exampleConfig // 示例 constant 配置文件夹
+    |   ├── includes // 拆分的 conf 文件夹,http 和 https 端口在这改
+    |   ├── constant.js // 常量主配置文件,根据自身情况修改
+    │   ├── plex.conf // plex 配置文件,根据自身情况修改,注意 https 默认被注释掉了
+    │   └── plex.js // 主脚本,完全不用改
+    └── nginx.conf // nginx 配置文件,一般不用改
+
+### 2. 
+看情况修改 constant.js 中的设置项目,通常来说只需要改 alist 密码
+这里默认 plex 在同一台机器并且使用 32400 端口,
+
+### 3. docker部署的任选以下一种
+### 3.1 - docker-compose
+启动服务: 在 ~/plex2Alist/docker 目录下执行
+```bash
+docker-compose up -d
+```
+查看启动log:
+```bash
+docker-compose logs -f
+```
+如果log有报错,请按照提示信息修改 ,常见错误可能为
+1. docker 端口占用冲突: 修改 docker-comopse 映射端口
+
+### 3.2 - 群晖docker
+容器=>设置=>导入=>选择json配置文件=>确认
+
+### 4. 
+防火墙放行 8095 端口为 plex 转直链端口与默认的 32400 互不影响
+访问 alist,查看 token,管理=>设置=>其他=>令牌,根据项目文档 https://github.com/Xhofe/alist 在Alist项目后台添加网盘
+
+### 5. plex 服务端控制台设置
+1.设置远程访问-手动设置公开端口为 nginx 的 8095 端口,避免客户端优先直连 32400,如果路由器做了 32400 端口转发,不影响外部访问
+2.plex情况特殊,服务端必须设置-网络-自定义服务器访问 URL: [https://自己的域名:自己的端口号],以发布到 plex.tv 发现服务器,
+客户端保持默认设置,不用更改高级设置-自定义ip和端口,高级设置-允许非加密连接-永不,如果plex源服务器没有配证书(也不用配),同时不要更改nginx的proxy_pass 值,也就是 constant.js 中的 plexHost 值,保持[http://]开头
+
+### 6. plex 客户端设置
+关闭自动质量调节,所有串流改为最高质量或原始,根据自身流量套餐情况选择关闭数据流量下的带宽限制,如限制为 WIFI 网络或关闭允许低码率质量
+
+### 7. 测试是否成功
+访问 8095 端口打开 plex 测试直链是否生效,查看执行 log
+```bash
+docker logs -f -n 10 nginx-plex 2>&1 | grep js:
+```
+或者直接查看 ../nginx/log 容器映射出来的原始 nginx error.log 业务日志
+8095 端口为走直链端口  , 原本的 32400 端口 走 plex server 不变
+最好在 plex 设置中将所有 互联网质量 设置为最高,
+web 端各大浏览器对音频和视频编码支持情况不一,碰到不支持的情况 plex 会强制走转码而不会走直链
 
 ## 已知问题:
 1.PlexWeb自身存在很多问题,不支持DTS的直接播放,不支持所有非内嵌字幕的直接播放,使用起来就是已经直连云盘在接收数据了,但是Web播放器卡住不动,页签内存过载就直接白屏了,Web只支持简单格式的内嵌字幕视频,解决方案为使用对应平台的客户端,经测试,安卓客户端是没问题的。
@@ -238,8 +310,8 @@ Web端可以直链下载,从之前issus的反馈推断第三方客户端播放�
 ![cf1b5edc12c2fd2b52eed17ab3afc85](https://github.com/bpking1/embyExternalUrl/assets/42368856/8bd44d0e-3761-4dc8-b86e-fa3baf8163b6)
 
 2.各客户端对非默认端口的支持不同
-- 例如安卓客户端只需要填写nginx端口并且打开客户端高级设置-允许非加密连接-始终,不用填写服务器ip
-- IOS客户端强制禁止非https连接,只能给nginx配域名和证书,conf示例里有配置注释
+- 例如安卓客户端只需要填写 nginx 端口并且打开客户端高级设置-允许非加密连接-始终,不用填写服务器ip
+- IOS 客户端强制禁止非 https 连接,只能给 nginx 配域名和证书,conf示例里有配置注释
 
 ~~3.经测试plex对strm文件仅限于显示元信息,不具备播放条件~~
 
