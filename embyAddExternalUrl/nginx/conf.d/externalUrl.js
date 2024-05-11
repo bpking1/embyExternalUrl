@@ -52,7 +52,11 @@ const addUrl = (r, data) => {
 	const itemId = data.Id;
 	const serverId = data.ServerId;
     data.MediaSources.map(mediaSource => {
-        const streamUrl = `${domain}/stream.${mediaSource.Container}?api_key=${api_key}&Static=true&MediaSourceId=${mediaSource.Id}`;
+        const fileName = encodeURIComponent(mediaSource.Path.replace(/.*[\\/]/, ""));
+        // origin link: /emby/videos/401929/stream.xxx?xxx
+        // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+        // this is not important, hit "/emby/videos/401929/" path level still worked
+        const streamUrl = `${domain}/stream/${fileName}?api_key=${api_key}&Static=true&MediaSourceId=${mediaSource.Id}`;
         //get subtitle
         let subUrl = '';
         try {
@@ -95,11 +99,11 @@ const addUrl = (r, data) => {
             mediaSourceName: (tagName + groupName).length > 1 ? `${tagName}-${groupName}` : mediaSource.Name
         }
         data.ExternalUrls.push(getPotUrl(mediaInfo));
+        data.ExternalUrls.push(getVlcUrl(mediaInfo));
         data.ExternalUrls.push(getIinaUrl(mediaInfo));
+        data.ExternalUrls.push(getNPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getMXUrl(mediaInfo));
         data.ExternalUrls.push(getInfuseUrl(mediaInfo));
-        data.ExternalUrls.push(getVlcUrl(mediaInfo));
-        data.ExternalUrls.push(getNPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getStellarPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getMPVUrl(mediaInfo));
         data.ExternalUrls.push(getDDPlayUrl(mediaInfo));
@@ -107,6 +111,17 @@ const addUrl = (r, data) => {
     });
     return data;
 }
+
+// URL with "intent" scheme 只支持
+// String => 'S'
+// Boolean =>'B'
+// Byte => 'b'
+// Character => 'c'
+// Double => 'd'
+// Float => 'f'
+// Integer => 'i'
+// Long => 'l'
+// Short => 's'
 
 const getPotUrl = (mediaInfo) => {
     return {
@@ -117,7 +132,7 @@ const getPotUrl = (mediaInfo) => {
     }
 }
 
-//https://wiki.videolan.org/Android_Player_Intents/
+// https://wiki.videolan.org/Android_Player_Intents/
 const getVlcUrl = (mediaInfo) => {
     // android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
     let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
@@ -136,7 +151,7 @@ const getVlcUrl = (mediaInfo) => {
     }
 }
 
-//https://github.com/iina/iina/issues/1991
+// https://github.com/iina/iina/issues/1991
 const getIinaUrl = (mediaInfo) => {
     return {
         Name: `IINA-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
@@ -144,9 +159,10 @@ const getIinaUrl = (mediaInfo) => {
     }
 }
 
-//infuse
 const getInfuseUrl = (mediaInfo) => {
-    const infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+    // sub 参数限制: 播放带有外挂字幕的单个视频文件（Infuse 7.6.2 及以上版本）
+    // see: https://support.firecore.com/hc/zh-cn/articles/215090997
+    const infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
     const infuseUrl64 = Buffer.from(infuseUrl, 'utf8').toString('base64');
     return {
         Name: `Infuse-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
@@ -154,13 +170,15 @@ const getInfuseUrl = (mediaInfo) => {
     }
 }
 
-//https://sites.google.com/site/mxvpen/api
+// https://sites.google.com/site/mxvpen/api
+// https://mx.j2inter.com/api
+// https://support.mxplayer.in/support/solutions/folders/43000574903
 const getMXUrl = (mediaInfo) => {
-    //mxPlayer free
+    // mxPlayer free
     const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.ad;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
     const mxUrl64 = Buffer.from(mxUrl, 'utf8').toString('base64');
-    //mxPlayer Pro
-    //const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
+    // mxPlayer Pro
+    // const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
     return {
         Name: `mxPlayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/${redirectKey}?link=${mxUrl64}`
@@ -186,7 +204,7 @@ const getStellarPlayerUrl = (mediaInfo) => {
 }
 
 const getMPVUrl = (mediaInfo) => {
-    //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
+    // 桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
     const streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
     let MPVUrl = `mpv://play/${streamUrl64}`;
     if (mediaInfo.subUrl.length > 0) {

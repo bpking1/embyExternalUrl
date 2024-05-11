@@ -342,17 +342,7 @@ function checkIsRemoteByPath(filePath) {
 }
 
 function getFileNameByPath(filePath) {
-  if (typeof filePath !== "string") {
-    throw new TypeError("Expected a string as the file path");
-  }
-  if (!filePath.trim()) {
-    throw new Error("The file path cannot be empty");
-  }
-  const parts = filePath.split(/[\\/]/);
-  if (parts.length <= 1) {
-    throw new Error("The file path is not valid");
-  }
-  return parts[parts.length - 1];
+  return filePath ? filePath.replace(/.*[\\/]/, "") : "";
 }
 
 function redirectStrmLastLinkRuleFilter(filePath) {
