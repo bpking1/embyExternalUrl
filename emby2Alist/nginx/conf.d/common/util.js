@@ -43,10 +43,14 @@ function addDefaultApiKey(r, u) {
   return url;
 }
 
-function generateUrl(r, host, uri) {
+function generateUrl(r, host, uri, skipKeys) {
+  skipKeys = skipKeys ?? [];
   let url = host + uri;
   let isFirst = true;
   for (const key in r.args) {
+    if (skipKeys.includes(key)) {
+      continue;
+    }
     url += isFirst ? "?" : "&";
     url += `${key}=${r.args[key]}`;
     isFirst = false;
