@@ -4,9 +4,9 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.1.3
 // @description  emby/jellfin launch extetnal player
-// @description:zh-cn emby/jellfin调用外部播放器
+// @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
 // @license      MIT
 // @author       @bpking
@@ -54,11 +54,11 @@
 
         // add event
         document.querySelector("#embyPot").onclick = embyPot;
+        document.querySelector("#embyVlc").onclick = embyVlc;
         document.querySelector("#embyIINA").onclick = embyIINA;
+        document.querySelector("#embyNPlayer").onclick = embyNPlayer;
         document.querySelector("#embyMX").onclick = embyMX;
         document.querySelector("#embyInfuse").onclick = embyInfuse;
-        document.querySelector("#embyVlc").onclick = embyVlc;
-        document.querySelector("#embyNPlayer").onclick = embyNPlayer;
         document.querySelector("#embyStellarPlayer").onclick = embyStellarPlayer;
         document.querySelector("#embyMPV").onclick = embyMPV;
         document.querySelector("#embyDDPlay").onclick = embyDDPlay;
@@ -66,11 +66,11 @@
 
         // add icons from jsdelivr, network
         document.querySelector("#icon-PotPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-PotPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("#icon-VLC").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-VLC.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
         document.querySelector("#icon-IINA").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-IINA.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
+        document.querySelector("#icon-NPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-NPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
         document.querySelector("#icon-MXPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MXPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
         document.querySelector("#icon-infuse").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-infuse.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-VLC").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-VLC.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
-        document.querySelector("#icon-NPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-NPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
         document.querySelector("#icon-StellarPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-StellarPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
         document.querySelector("#icon-MPV").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MPV.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
         document.querySelector("#icon-DDPlay").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons/icon-DDPlay.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
@@ -187,19 +187,22 @@
         if (selectSource && selectSource.value.length > 0) {
             mediaSourceId = selectSource.value;
         }
-        //let selectAudio = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectAudio:not([disabled])");
+        // let selectAudio = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectAudio:not([disabled])");
         let mediaSource = itemInfo.MediaSources.find(m => m.Id == mediaSourceId);
         let uri = isEmby ? "/emby/videos" : "/Items";
         let domain = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
         let subPath = getSubPath(mediaSource);
         let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
         let streamUrl;
+        // origin link: /emby/videos/401929/stream.xxx?xxx
+        // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+        // this is not important, hit "/emby/videos/401929/" path level still worked
+        let fileName = encodeURIComponent(mediaSource.Path.replace(/.*[\\/]/, ""));
         if (isEmby) {
-            let streamName = mediaSource.IsInfiniteStream ? "master" : "stream";
-            let streamExt = mediaSource.IsInfiniteStream && !mediaSource.Container ? "m3u8" : mediaSource.Container;
-            streamUrl = `${domain}/${streamName}.${streamExt}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            fileName = mediaSource.IsInfiniteStream ? "master.m3u8" : fileName;
+            streamUrl = `${domain}/stream/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
         } else {
-            streamUrl = `${domain}/Download?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            streamUrl = `${domain}/Download/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
         }
         let position = parseInt(itemInfo.UserData.PlaybackPositionTicks / 10000);
         let intent = await getIntent(mediaSource, position);
@@ -235,6 +238,17 @@
         };
     }
 
+    // URL with "intent" scheme 只支持
+    // String => 'S'
+    // Boolean =>'B'
+    // Byte => 'b'
+    // Character => 'c'
+    // Double => 'd'
+    // Float => 'f'
+    // Integer => 'i'
+    // Long => 'l'
+    // Short => 's'
+
     async function embyPot() {
         let mediaInfo = await getEmbyMediaInfo();
         let intent = mediaInfo.intent;
@@ -243,25 +257,25 @@
         window.open(poturl, "_self");
     }
 
-    //https://wiki.videolan.org/Android_Player_Intents/
+    // https://wiki.videolan.org/Android_Player_Intents/
     async function embyVlc() {
         let mediaInfo = await getEmbyMediaInfo();
         let intent = mediaInfo.intent;
-        //android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
+        // android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
         let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
         if (getOS() == 'windows') {
-            //桌面端需要额外设置,参考这个项目: https://github.com/stefansundin/vlc-protocol 
+            // 桌面端需要额外设置,参考这个项目: https://github.com/stefansundin/vlc-protocol 
             vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
         }
         if (getOS() == 'ios') {
-            //https://code.videolan.org/videolan/vlc-ios/-/commit/55e27ed69e2fce7d87c47c9342f8889fda356aa9
+            // https://code.videolan.org/videolan/vlc-ios/-/commit/55e27ed69e2fce7d87c47c9342f8889fda356aa9
             vlcUrl = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
         }
         console.log(vlcUrl);
         window.open(vlcUrl, "_self");
     }
 
-    //https://github.com/iina/iina/issues/1991
+    // https://github.com/iina/iina/issues/1991
     async function embyIINA() {
         let mediaInfo = await getEmbyMediaInfo();
         let iinaUrl = `iina://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1`;
@@ -269,14 +283,16 @@
         window.open(iinaUrl, "_self");
     }
 
-    //https://sites.google.com/site/mxvpen/api
+    // https://sites.google.com/site/mxvpen/api
+    // https://mx.j2inter.com/api
+    // https://support.mxplayer.in/support/solutions/folders/43000574903
     async function embyMX() {
         let mediaInfo = await getEmbyMediaInfo();
         let intent = mediaInfo.intent;
-        //mxPlayer free
+        // mxPlayer free
         let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.ad;S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
-        //mxPlayer Pro
-        //let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
+        // mxPlayer Pro
+        // let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
         console.log(mxUrl);
         window.open(mxUrl, "_self");
     }
@@ -288,15 +304,16 @@
         window.open(nUrl, "_self");
     }
 
-    //infuse
     async function embyInfuse() {
         let mediaInfo = await getEmbyMediaInfo();
-        let infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+        // sub 参数限制: 播放带有外挂字幕的单个视频文件（Infuse 7.6.2 及以上版本）
+        // see: https://support.firecore.com/hc/zh-cn/articles/215090997
+        let infuseUrl = `infuse://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
         console.log(`infuseUrl= ${infuseUrl}`);
         window.open(infuseUrl, "_self");
     }
 
-    //StellarPlayer
+    // StellarPlayer
     async function embyStellarPlayer() {
         let mediaInfo = await getEmbyMediaInfo();
         let stellarPlayerUrl = `stellar://play/${encodeURI(mediaInfo.streamUrl)}`;
@@ -304,7 +321,7 @@
         window.open(stellarPlayerUrl, "_self");
     }
 
-    //MPV
+    // MPV
     async function embyMPV() {
         let mediaInfo = await getEmbyMediaInfo();
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
