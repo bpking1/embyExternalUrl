@@ -248,7 +248,7 @@ async function transferPlaybackInfo(r) {
         source.DirectStreamUrl = util.addDefaultApiKey(
           r,
           util
-            .generateUrl(r, "", r.uri)
+            .generateUrl(r, "", r.uri, ["StartTimeTicks"])
             .replace("/emby/Items", "/videos")
             // origin link: /emby/videos/401929/stream.xxx?xxx
             // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
@@ -259,6 +259,11 @@ async function transferPlaybackInfo(r) {
           source.DirectStreamUrl,
           "MediaSourceId",
           source.Id
+        );
+        source.DirectStreamUrl = util.appendUrlArg(
+          source.DirectStreamUrl,
+          "PlaySessionId",
+          body.PlaySessionId
         );
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
