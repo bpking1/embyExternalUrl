@@ -327,9 +327,6 @@ function strMatches(type, searchValue, matcher) {
   return false;
 }
 
-// MediaSourceInfo{ Protocol }, String ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
-// live stream "IsInfiniteStream": true
-
 function checkIsStrmByPath(filePath) {
   if (!!filePath) {
     // strm: filePath1-itemPath like: /xxx/xxx.strm

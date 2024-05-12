@@ -245,6 +245,7 @@ async function transferPlaybackInfo(r) {
 
         r.warn(`modify direct play info`);
         source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
+        let localtionPath = source.IsInfiniteStream ? "live" : "stream";
         source.DirectStreamUrl = util.addDefaultApiKey(
           r,
           util
@@ -253,7 +254,7 @@ async function transferPlaybackInfo(r) {
             // origin link: /emby/videos/401929/stream.xxx?xxx
             // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
             // this is not important, hit "/emby/videos/401929/" path level still worked
-            .replace("PlaybackInfo", `stream/${util.getFileNameByPath(source.Path)}`)
+            .replace("PlaybackInfo", `${localtionPath}/${util.getFileNameByPath(source.Path)}`)
         );
         source.DirectStreamUrl = util.appendUrlArg(
           source.DirectStreamUrl,
@@ -408,6 +409,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
         const jobItem = result.Items.find(o => o.Id == itemId);
         if (jobItem) {
           rvt.path = jobItem.MediaSource.Path;
+          // live stream not support download, can ignore it
           rvt.notLocal = util.checkIsStrmByPath(jobItem.OutputPath);
         } else {
           rvt.message = `error: emby_api /Sync/JobItems response is null`;
@@ -431,7 +433,15 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           }
           rvt.path = mediaSource.Path;
           rvt.itemName = item.Name;
-          rvt.notLocal = util.checkIsStrmByPath(item.Path);
+          /**
+           * note1: MediaSourceInfo{ Protocol }, String ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
+           * note2: live stream "IsInfiniteStream": true
+           * eg1: MediaSourceInfo{ IsRemote }: true
+           * eg1: MediaSourceInfo{ IsRemote }: false, but MediaSourceInfo{ Protocol }: File, this is scraped
+           */
+          rvt.notLocal = mediaSource.IsInfiniteStream
+            || mediaSource.IsRemote
+            || util.checkIsStrmByPath(item.Path);
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
           rvt.path = item.Path;
