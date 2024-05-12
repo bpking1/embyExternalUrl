@@ -141,6 +141,7 @@ const getVlcUrl = (mediaInfo) => {
         vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
     }
     if (clientType == 'ios') {
+        // https://wiki.videolan.org/Documentation:IOS/#x-callback-url
         // ios: https://code.videolan.org/videolan/vlc-ios/-/commit/55e27ed69e2fce7d87c47c9342f8889fda356aa9
         vlcUrl = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
     }
@@ -186,7 +187,9 @@ const getMXUrl = (mediaInfo) => {
 }
 
 const getNPlayerUrl = (mediaInfo) => {
-    const nplayerUrl = `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
+    let nplayerUrl = clientType == "macOS" 
+            ? `nplayer-mac://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1` 
+            : `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
     const nplayerUrl64 = Buffer.from(nplayerUrl, 'utf8').toString('base64');
     return {
         Name: `nplayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
