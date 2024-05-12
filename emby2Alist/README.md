@@ -423,6 +423,7 @@ wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Al
 ```
 
 此时大致文件结构如下:
+````
 ~/emby2Alist
 ├── docker // 创建容器脚本文件夹
 |   ├── docker-compose.yml // docker-compose 脚本,根据自身情况修改
@@ -441,6 +442,7 @@ wget https://github.com/bpking1/embyExternalUrl/releases/download/v0.0.1/emby2Al
     │   ├── emby.conf // emby 配置文件,根据自身情况修改,注意 https 默认被注释掉了
     │   └── emby.js // 主脚本,完全不用改
     └── nginx.conf // nginx 配置文件,一般不用改
+````
 
 ### 2. 
 看情况修改 constant.js 中的设置项目,通常来说只需要改 alist 密码

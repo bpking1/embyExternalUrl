@@ -249,6 +249,7 @@ Web端可以直链下载,从之前issus的反馈推断第三方客户端播放�
 ### 1.先将配置文件下载到本地
 
 此时大致文件结构如下:
+````
 ~/plex2Alist
 ├── docker // 创建容器脚本文件夹
 |   ├── docker-compose.yml // docker-compose 脚本,根据自身情况修改
@@ -264,6 +265,7 @@ Web端可以直链下载,从之前issus的反馈推断第三方客户端播放�
     │   ├── plex.conf // plex 配置文件,根据自身情况修改,注意 https 默认被注释掉了
     │   └── plex.js // 主脚本,完全不用改
     └── nginx.conf // nginx 配置文件,一般不用改
+````
 
 ### 2. 
 看情况修改 constant.js 中的设置项目,通常来说只需要改 alist 密码

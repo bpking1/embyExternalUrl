@@ -25,6 +25,7 @@ const alistPublicAddr = "http://youralist.com:5244";
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "115.com",
+  ali: "aliyundrive.net",
 };
 // 路由缓存配置
 const routeCacheConfig = {
@@ -33,8 +34,8 @@ const routeCacheConfig = {
   enable: true,
   // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,cilentSelfAlistRule 中的和首页直接播放的不生效
   enableL2: false,
-  // 缓存键表达式,默认为请求参数 MediaSourceId,好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
-  keyExpression: "r.args.MediaSourceId", // "r.args.MediaSourceId:r.args.X-Emby-Device-Id"
+  // 缓存键表达式,默认值好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
+  keyExpression: "r.uri:r.args.MediaSourceId", // "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id"
 };
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
@@ -102,6 +103,7 @@ const cilentSelfAlistRule = [
   // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
+  // [2, strHead.ali, alistPublicAddr],
 ];
 // !!!实验功能,转码配置,默认 false,将按之前逻辑禁止转码处理并移除转码选项参数,与 emby 配置无关
 // 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换]

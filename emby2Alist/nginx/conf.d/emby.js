@@ -653,7 +653,7 @@ async function redirectAfter(r, url, isCached) {
       const ua = r.headersIn["User-Agent"];
       // webClient download only have itemId on pathParam
       let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
-      cacheKey = url.startsWith(config.strHead["115"]) ? cacheKey : `${cacheKey}:${ua}`;
+      cacheKey = url.includes(config.strHead["115"]) ? `${cacheKey}:${ua}` : cacheKey;
       util.dictAdd(routeDictKey, cacheKey, url);
       cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
     }

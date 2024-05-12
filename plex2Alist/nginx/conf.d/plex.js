@@ -614,10 +614,6 @@ async function redirectAfter(r, url, isCached) {
   try {
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      let keyExpression = routeCacheConfig.keyExpression;
-      if (url.startsWith(config.strHead["115"])) {
-        keyExpression += `:r.headersIn.User-Agent`;
-      }
       // const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let routeDictKey = "routeL1Dict";
       // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
@@ -628,7 +624,7 @@ async function redirectAfter(r, url, isCached) {
       const ua = r.headersIn["User-Agent"];
       // webClient download only have itemId on pathParam
       let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
-      cacheKey = url.startsWith(config.strHead["115"]) ? cacheKey : `${cacheKey}:${ua}`;
+      cacheKey = url.includes(config.strHead["115"]) ? `${cacheKey}:${ua}` : cacheKey;
       util.dictAdd(routeDictKey, cacheKey, url);
     }
   } catch (error) {
