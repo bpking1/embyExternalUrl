@@ -12,11 +12,12 @@ const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "115.com",
+  ali: "aliyundrive.net",
 };
 // 路由缓存配置
 const routeCacheConfig = {
   enable: false,
-  keyExpression: "r.args.MediaSourceId", // "r.args.MediaSourceId:r.args.X-Emby-Device-Id"
+  keyExpression: "r.uri:r.args.MediaSourceId", // "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id"
 };
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1

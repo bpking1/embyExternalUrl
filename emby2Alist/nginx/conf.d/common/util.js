@@ -284,7 +284,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
         val = val[expPart];
       } else {
         val = "";
-        ngx.log(ngx.ERR, `Property "${expPart}" not found in object`);
+        ngx.log(ngx.WARN, `Property "${expPart}" not found in object,will ignore`);
       }
     }
 
