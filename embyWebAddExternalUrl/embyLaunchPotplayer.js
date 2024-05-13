@@ -343,6 +343,7 @@
         window.open(MPVUrl, "_self");
     }
 
+    // see https://greasyfork.org/zh-CN/scripts/443916
     async function embyDDPlay() {
         // 检查是否windows本地路径
         const fullPathEle = document.querySelector(".mediaSources .mediaSource .sectionTitle");
@@ -400,7 +401,7 @@
         } else if (ua.match(/android/i)) {
             return 'android'
         } else if (ua.match(/Ubuntu/i)) {
-            return 'Ubuntu'
+            return 'ubuntu'
         } else {
             return 'other'
         }
