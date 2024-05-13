@@ -9,13 +9,13 @@ const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF
 let api_key = '';
 let domain = '';
 let oriData = '';
-let clientType = '';
+let osType = '';
 let serverType = 'emby';
 const redirectKey = 'redirect2external';
 
 const addExternalUrl = async (r, data, flags) => {
     fillApiKeyAndServerType(r);
-    clientType = getOS(r);
+    osType = getOS(r);
 
     // 外链地址协议默认从调用者取,如果上级还有反代服务器且上级配置了 https 而此服务是 http,需要自行将 ${r.variables.scheme} 改为 https
     // 如果是反代服务器两种都有,可以将这一行注释掉,统一使用第一行填写的地址
@@ -35,7 +35,7 @@ const addExternalUrl = async (r, data, flags) => {
         r.warn(`data.length: ${JSON.stringify(data).length}`);
     }
 
-    r.warn(`clientType: ${clientType}`);
+    r.warn(`osType: ${osType}`);
     if (data.MediaSources && data.MediaSources.length > 0) {
         try {
             data = addUrl(r, data);
@@ -136,11 +136,11 @@ const getPotUrl = (mediaInfo) => {
 const getVlcUrl = (mediaInfo) => {
     // android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
     let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
-    if (clientType == 'windows') {
+    if (osType == 'windows') {
         // PC端需要额外设置,参考这个项目,MPV也是类似的方法:  https://github.com/stefansundin/vlc-protocol
         vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
     }
-    if (clientType == 'ios') {
+    if (osType == 'ios') {
         // https://wiki.videolan.org/Documentation:IOS/#x-callback-url
         // ios: https://code.videolan.org/videolan/vlc-ios/-/commit/55e27ed69e2fce7d87c47c9342f8889fda356aa9
         vlcUrl = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaInfo.streamUrl)}&sub=${encodeURIComponent(mediaInfo.subUrl)}`;
@@ -187,7 +187,7 @@ const getMXUrl = (mediaInfo) => {
 }
 
 const getNPlayerUrl = (mediaInfo) => {
-    let nplayerUrl = clientType == "macOS" 
+    let nplayerUrl = osType == "macOS" 
             ? `nplayer-mac://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1` 
             : `nplayer-${encodeURI(mediaInfo.streamUrl)}`;
     const nplayerUrl64 = Buffer.from(nplayerUrl, 'utf8').toString('base64');
@@ -215,7 +215,7 @@ const getMPVUrl = (mediaInfo) => {
         MPVUrl = `mpv://play/${streamUrl64}/?subfile=${subUrl64}`;
     }
 
-    if (clientType == "ios" || clientType == "android") {
+    if (osType == "ios" || osType == "android") {
         MPVUrl = `mpv://${encodeURI(mediaInfo.streamUrl)}`;
     }
 
@@ -226,11 +226,12 @@ const getMPVUrl = (mediaInfo) => {
     }
 }
 
+// see: https://greasyfork.org/zh-CN/scripts/443916
 const getDDPlayUrl = (mediaInfo) => {
 	// Subtitles Not Supported: https://github.com/kaedei/dandanplay-libraryindex/blob/master/api/ClientProtocol.md
     const urlPart = mediaInfo.streamUrl + `|filePath=${mediaInfo.title}`;
     let url = `ddplay:${encodeURIComponent(urlPart)}`;
-    if (clientType == 'android') {
+    if (osType == 'android') {
     	url = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.xyoye.dandanplay;type=video/*;end`;
     }
     const url64 = Buffer.from(url, 'utf8').toString('base64');
@@ -300,7 +301,7 @@ const getOS = (r) => {
     } else if (ua.match(/android/i)) {
         return 'android'
     } else if (ua.match(/Ubuntu/i)) {
-        return 'Ubuntu'
+        return 'ubuntu'
     } else {
         return 'other'
     }
