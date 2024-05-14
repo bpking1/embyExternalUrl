@@ -11,6 +11,11 @@ services:
       # 端口映射规则为,宿主机端口:容器内部端口
       # ports:
       #   - 8091:8091
+      # 如果遇到海报全部裂开或日志中 permission denied,以下二选一
+      # 还不行的话,自己给宿主机 embyCache 读写权限
+      # privileged: true
+      # entrypoint: |
+      #   /bin/sh -c "chmod -R 777 /var/cache/nginx/emby"
       volumes:
         - ../nginx/nginx.conf:/etc/nginx/nginx.conf
         - ../nginx/conf.d:/etc/nginx/conf.d

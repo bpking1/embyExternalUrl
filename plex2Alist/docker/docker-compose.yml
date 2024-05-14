@@ -11,6 +11,7 @@ services:
       # 端口映射规则为,宿主机端口:容器内部端口
       # ports:
       #   - 8095:8095
+      # privileged: true
       volumes:
         - ../nginx/nginx.conf:/etc/nginx/nginx.conf
         - ../nginx/conf.d:/etc/nginx/conf.d

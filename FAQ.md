@@ -131,6 +131,10 @@ const transcodeConfig = {
 #### 13.为什么 strm 内部文本中文没有 encodeURIComponent 的情况下显示会乱码?
 二选一,确保文件编码是 utf-8,或使用 encodeURIComponent 编码后填写,请注意路径乱码将导致 sign 计算错误
 
+#### 13.为什么海报全部裂开?
+因为走了 nginx 缓存,但是容器对映射的宿主机缓存目录没有权限,error.log 日志中会有 permission denied 关键字,
+图形化目录映射上不要勾选只读,或在宿主机上手动给缓存目录读写权限, chmod -R 777 ../nginx/embyCache
+
 #### 14.哪些地方配置需要注意的?
 总的来说,只用关注,
 ````
