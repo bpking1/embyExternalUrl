@@ -15,6 +15,14 @@ async function redirect2Pan(r) {
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
 
+  // check transcode
+  if (config.transcodeConfig.enable
+    && r.uri.toLowerCase().includes("/transcode/universal/start")
+    && r.args.directPlay === "0") {
+    r.warn(`required plex clients self report, skip modify`);
+    return internalRedirect(r);
+  }
+  
   // check route cache
   const routeCacheConfig = config.routeCacheConfig;
   if (routeCacheConfig.enable) {
