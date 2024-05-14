@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
 
-    service.nginx:
+    service.nginx-emby:
       image: nginx:latest
       container_name: nginx-emby
       # 更改为默认host网络,纠正流量标识,直接占用宿主机端口,docker层会禁用端口映射
