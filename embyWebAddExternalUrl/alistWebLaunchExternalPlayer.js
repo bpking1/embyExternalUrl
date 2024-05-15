@@ -4,10 +4,10 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
+// @version      1.0.1
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
-// @description:en  alist Web Launc hExternal Player
+// @description:en  alist Web Launch External Player
 // @license      MIT
 // @author       @Chen3861229
 // @github       https://github.com/bpking1/embyExternalUrl
@@ -56,6 +56,7 @@
         } else {
             insertLinks(diffLinks, playLinksWrapperEle);
         }
+        playLinksWrapperEle.setAttribute("inited", "true");
 
         // fill original links properties
         for (let i = 0; i < linksEle.length; i++) {
@@ -66,7 +67,8 @@
         }
         
         // get mediaInfo from original a tag href
-        const urlObj = new URL(oriLinkEle.href.match(/\?(.*)$/)[1].replace("url=", ""));
+        const streamUrl = decodeURIComponent(oriLinkEle.href.match(/\?(.*)$/)[1].replace("url=", ""));
+        const urlObj = new URL(streamUrl);
         const filePath = decodeURIComponent(urlObj.pathname.substring(urlObj.pathname.indexOf("/d/") + 2));
         const token = localStorage.getItem("token");
         const alistRes = await fetchAlistApi(`${urlObj.origin}/api/fs/get`, filePath, token);
@@ -74,16 +76,18 @@
         let subUrl = "";
         if (alistRes.related) {
             const subFileName = findSubFileName(alistRes.related);
-            subUrl = !!subFileName ? `${encodeURI(decodeURI(urlObj.href).replace(alistRes.name, subFileName))}` : "";
+            subUrl = !!subFileName
+            ? `${urlObj.protocol}//${urlObj.host}${encodeURIComponent(streamUrl.replace(alistRes.name, subFileName))}` : "";
         }
     
         const mediaInfo = {
             title: alistRes.name,
-            streamUrl: urlObj.href,
+            streamUrl,
             subUrl,
             position: 0,
         }
 
+        console.log(`mediaInfo:`, mediaInfo);
         osType = getOS();
         console.log(`getOS type: ${osType}`);
 
@@ -227,7 +231,8 @@
     // MPV
     function getMPVUrl(mediaInfo) {
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-        let streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+        let streamUrl64 = btoa(encodeURIComponent(mediaInfo.streamUrl))
+            .replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
         let MPVUrl = `mpv://play/${streamUrl64}`;
         if (mediaInfo.subUrl.length > 0) {
             let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
@@ -271,21 +276,23 @@
     // monitor dom changements
     const mutation = new MutationObserver(mutationsList => {
         console.log("Detected DOM change (Child List)");
-        if (!!getShowEle()) {
+        const showEle = getShowEle();
+        if (!!showEle && showEle.getAttribute("inited") !== "true") {
             init();
-            mutation.disconnect();
+            // 切换链接类型依赖监视器
+            // mutation.disconnect();
         }
     });
     mutation.observe(document.body, {
         childList: true,
         subtree: true
     });
-    window.addEventListener("popstate", function() {
-        console.log("Detected page navigation (forward or back button)");
-        mutation.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
+    // window.addEventListener("popstate", function() {
+    //     console.log("Detected page navigation (forward or back button)");
+    //     mutation.observe(document.body, {
+    //         childList: true,
+    //         subtree: true
+    //     });
+    // });
 
 })();

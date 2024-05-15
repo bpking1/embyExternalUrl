@@ -52,7 +52,7 @@ const addUrl = (r, data) => {
 	const itemId = data.Id;
 	const serverId = data.ServerId;
     data.MediaSources.map(mediaSource => {
-        const fileName = encodeURIComponent(mediaSource.Path.replace(/.*[\\/]/, ""));
+        const fileName = mediaSource.Path.replace(/.*[\\/]/, "");
         // origin link: /emby/videos/401929/stream.xxx?xxx
         // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
         // this is not important, hit "/emby/videos/401929/" path level still worked
@@ -208,7 +208,8 @@ const getStellarPlayerUrl = (mediaInfo) => {
 
 const getMPVUrl = (mediaInfo) => {
     // 桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-    const streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+    const streamUrl64 = btoa(encodeURIComponent(mediaInfo.streamUrl))
+            .replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
     let MPVUrl = `mpv://play/${streamUrl64}`;
     if (mediaInfo.subUrl.length > 0) {
         let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
