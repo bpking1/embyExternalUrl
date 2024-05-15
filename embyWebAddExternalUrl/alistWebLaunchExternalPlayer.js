@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -25,7 +25,7 @@
         const linksEle = playLinksWrapperEle.getElementsByTagName("a");
         const oriLinkEle = linksEle[0];
         if (!oriLinkEle) {
-            console.log(`not have oriLinkEle, skip`);
+            console.warn(`not have oriLinkEle, skip`);
             return;
         }
 
@@ -70,18 +70,22 @@
         const streamUrl = decodeURIComponent(oriLinkEle.href.match(/\?(.*)$/)[1].replace("url=", ""));
         const urlObj = new URL(streamUrl);
         const filePath = decodeURIComponent(urlObj.pathname.substring(urlObj.pathname.indexOf("/d/") + 2));
-        const token = localStorage.getItem("token");
-        const alistRes = await fetchAlistApi(`${urlObj.origin}/api/fs/get`, filePath, token);
-
+        const fileName = filePath.replace(/.*[\\/]/, "");
         let subUrl = "";
-        if (alistRes.related) {
-            const subFileName = findSubFileName(alistRes.related);
-            subUrl = !!subFileName
-            ? `${urlObj.protocol}//${urlObj.host}${encodeURIComponent(streamUrl.replace(alistRes.name, subFileName))}` : "";
+        const token = localStorage.getItem("token");
+        if (!!token) {
+            const alistRes = await fetchAlistApi(`${urlObj.origin}/api/fs/get`, filePath, token);
+            if (alistRes.related) {
+                const subFileName = findSubFileName(alistRes.related);
+                subUrl = !!subFileName
+                ? `${urlObj.protocol}//${urlObj.host}${encodeURIComponent(streamUrl.replace(alistRes.name, subFileName))}` : "";
+            }
+        } else {
+            console.warn(`localStorage not have token, maybe is not this site owner, skip subtitles process`);
         }
-    
+
         const mediaInfo = {
-            title: alistRes.name,
+            title: fileName,
             streamUrl,
             subUrl,
             position: 0,
