@@ -197,7 +197,7 @@
         // origin link: /emby/videos/401929/stream.xxx?xxx
         // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
         // this is not important, hit "/emby/videos/401929/" path level still worked
-        let fileName = encodeURIComponent(mediaSource.Path.replace(/.*[\\/]/, ""));
+        let fileName = mediaSource.Path.replace(/.*[\\/]/, "");
         if (isEmby) {
             fileName = mediaSource.IsInfiniteStream ? "master.m3u8" : fileName;
             streamUrl = `${domain}/stream/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
@@ -328,7 +328,8 @@
     async function embyMPV() {
         let mediaInfo = await getEmbyMediaInfo();
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-        let streamUrl64 = btoa(mediaInfo.streamUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
+        let streamUrl64 = btoa(encodeURIComponent(mediaInfo.streamUrl))
+            .replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
         let MPVUrl = `mpv://play/${streamUrl64}`;
         if (mediaInfo.subUrl.length > 0) {
             let subUrl64 = btoa(mediaInfo.subUrl).replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
