@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
+// @version      1.0.3
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -63,7 +63,12 @@
             // a tag element
             linksEle[i].className = oriLinkEle.className;
             // img tag element
-            linksEle[i].children[0].className = oriLinkEle.children[0].className;
+            const oriImgEle = oriLinkEle.children[0];
+            if (!!oriImgEle) {
+                linksEle[i].children[0].className = oriImgEle.className;
+            } else {
+                linksEle[i].children[0].style = "height: inherit";
+            }
         }
         
         // get mediaInfo from original a tag href
@@ -117,7 +122,8 @@
     }
 
     function getShowEle() {
-        return document.querySelector("div.obj-box .hope-flex");
+        return document.querySelector("div.obj-box .hope-flex") // AList V3
+            ?? document.querySelector(".chakra-wrap__list"); // AList V2
     }
 
     async function fetchAlistApi(alistApiPath, alistFilePath, alistToken, ua) {
