@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.3
+// @version      1.0.4
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -284,19 +284,22 @@
     }
 
     // monitor dom changements
-    const mutation = new MutationObserver(mutationsList => {
+    const domChangeObserver = new MutationObserver((mutationsList) => {
         console.log("Detected DOM change (Child List)");
-        const showEle = getShowEle();
-        if (!!showEle && showEle.getAttribute("inited") !== "true") {
+        const showElement = getShowEle();
+        if (showElement && showElement.getAttribute("inited") !== "true") {
             init();
             // 切换链接类型依赖监视器
-            // mutation.disconnect();
+            // domChangeObserver.disconnect();
         }
     });
-    mutation.observe(document.body, {
-        childList: true,
-        subtree: true
+    window.addEventListener("load", () => {
+        domChangeObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
     });
+
     // window.addEventListener("popstate", function() {
     //     console.log("Detected page navigation (forward or back button)");
     //     mutation.observe(document.body, {
