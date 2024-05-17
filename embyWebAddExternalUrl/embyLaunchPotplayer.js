@@ -409,6 +409,8 @@
         }
     }
 
+    // emby/jellyfin CustomEvent
+    // see: https://github.com/MediaBrowser/emby-web-defaultskin/blob/822273018b82a4c63c2df7618020fb837656868d/nowplaying/videoosd.js#L691
     // monitor dom changements
     document.addEventListener("viewbeforeshow", function (e) {
         console.log("viewbeforeshow", e);
