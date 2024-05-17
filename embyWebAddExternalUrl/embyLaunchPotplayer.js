@@ -16,6 +16,7 @@
 
 (function () {
     'use strict';
+    // 以下为内部使用变量,请勿更改
     let isEmby = "";
     function init() {
         let playBtns = document.getElementById("ExternalPlayersBtns");
