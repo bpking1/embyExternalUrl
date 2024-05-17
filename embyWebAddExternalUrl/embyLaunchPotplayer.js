@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.3
+// @version      1.1.4
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -38,7 +38,7 @@
             </div>`;
         if (!isEmby) {
             // jellfin
-            mainDetailButtons = document.querySelector("div.detailPagePrimaryContainer");
+            mainDetailButtons = document.querySelector("div.itemDetailPage:not(.hide) div.detailPagePrimaryContainer");
         }
 
         mainDetailButtons.insertAdjacentHTML('afterend', buttonhtml);
