@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.4
+// @version      1.0.5
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -38,12 +38,12 @@
             {id: "DDPlay", imgSrc: `${iconBaseUrl}/icon-DDPlay.webp`},
         ];
         const sameLinks = [
-            {id: "Pot", imgSrc: `${iconBaseUrl}/icon-PotPlayer.webp`},
-            {id: "Vlc", imgSrc: `${iconBaseUrl}/icon-VLC.webp`},
             {id: "IINA", imgSrc: `${iconBaseUrl}/icon-IINA.webp`},
+            {id: "Pot", imgSrc: `${iconBaseUrl}/icon-PotPlayer.webp`},
+            {id: "VLC", imgSrc: `${iconBaseUrl}/icon-VLC.webp`},
             {id: "NPlayer", imgSrc: `${iconBaseUrl}/icon-NPlayer.webp`},
-            {id: "MX", imgSrc: `${iconBaseUrl}/icon-MXPlayer.webp`},
             {id: "Infuse", imgSrc: `${iconBaseUrl}/icon-infuse.webp`},
+            {id: "MXPlayer", imgSrc: `${iconBaseUrl}/icon-MXPlayer.webp`},
         ];
         const insertLinks = (links, container) => {
             let htmlStr = links.map(link => htmlTemplate(link.id, link.imgSrc)).join("");
@@ -102,12 +102,12 @@
 
         // add link href
         const linkIdsMap = {
-            Pot: getPotUrl,
-            Vlc: getVlcUrl,
             IINA: getIINAUrl,
+            Pot: getPotUrl,
+            VLC: getVlcUrl,
             NPlayer: getNPlayerUrl,
-            MX: getMXUrl,
             Infuse: getInfuseUrl,
+            MXPlayer: getMXUrl,
             // diff
             StellarPlayer: getStellarPlayerUrl,
             MPV: getMPVUrl,
@@ -184,6 +184,11 @@
     // Long => 'l'
     // Short => 's'
 
+    // https://github.com/iina/iina/issues/1991
+    function getIINAUrl(mediaInfo) {
+        return `iina://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1`;
+    }
+
     function getPotUrl(mediaInfo) {
         return `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /title="${mediaInfo.title}"}`;
     }
@@ -204,19 +209,14 @@
         return vlcUrl;
     }
 
-    // https://github.com/iina/iina/issues/1991
-    function getIINAUrl(mediaInfo) {
-        return `iina://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}&new_window=1`;
-    }
-
     // https://sites.google.com/site/mxvpen/api
     // https://mx.j2inter.com/api
     // https://support.mxplayer.in/support/solutions/folders/43000574903
-    async function getMXUrl(mediaInfo) {
+    function getMXUrl(mediaInfo) {
         // mxPlayer free
         let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.ad;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
         // mxPlayer Pro
-        // let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
+        // let mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
         return mxUrl;
     }
 
