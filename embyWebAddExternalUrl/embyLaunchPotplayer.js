@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.5
+// @version      1.1.6
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -22,29 +22,52 @@
     // 以下为内部使用变量,请勿更改
     let isEmby = "";
     function init() {
-        let playBtns = document.getElementById("ExternalPlayersBtns");
+        const playBtnsId = "ExternalPlayersBtns";
+        let playBtns = document.getElementById(playBtnsId);
         if (playBtns) {
             playBtns.remove();
         }
         let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        let buttonhtml = `<div id="ExternalPlayersBtns" class ="detailButtons flex align-items-flex-start flex-wrap-wrap">
-            <button id="embyPot" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="Potplayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-PotPlayer">　</i>  <span class="button-text">Pot</span> </div> </button>
-            <button id="embyVlc" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="VLC"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-VLC">　</i>  <span class="button-text">VLC</span>  </div> </button>
-            <button id="embyIINA" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="IINA"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-IINA">　</i>  <span class="button-text">IINA</span> </div> </button>
-            <button id="embyNPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="NPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-NPlayer">　</i>  <span class="button-text">NPlayer</span> </div> </button>
-            <button id="embyMX" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MXPlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-MXPlayer">　</i>  <span class="button-text">MX</span> </div> </button>
-            <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-infuse">　</i>  <span class="button-text">Infuse</span> </div> </button>
-            <button id="embyStellarPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="恒星播放器"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-StellarPlayer">　</i>  <span class="button-text">恒星</span> </div> </button>
-            <button id="embyMPV" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-MPV">　</i>  <span class="button-text">MPV</span> </div> </button>
-            <button id="embyDDPlay" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="弹弹Play"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-DDPlay">　</i>  <span class="button-text">DDPlay</span> </div> </button>
-            <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-Copy">　</i>  <span class="button-text">复制链接</span> </div> </button>
-            </div>`;
+        const buttons = [
+            { id: "embyPot", title: "Potplayer", iconId: "icon-PotPlayer" },
+            { id: "embyVlc", title: "VLC", iconId: "icon-VLC" },
+            { id: "embyIINA", title: "IINA", iconId: "icon-IINA", },
+            { id: "embyNPlayer", title: "NPlayer", iconId: "icon-NPlayer" },
+            { id: "embyMX", title: "MXPlayer", iconId: "icon-MXPlayer", },
+            { id: "embyInfuse", title: "Infuse", iconId: "icon-infuse", },
+            { id: "embyStellarPlayer", title: "恒星播放器", iconId: "icon-StellarPlayer", },
+            { id: "embyMPV", title: "MPV", iconId: "icon-MPV", },
+            { id: "embyDDPlay", title: "弹弹Play", iconId: "icon-DDPlay", },
+            { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", }
+        ];
+        function generateButtonHTML({ id, title, iconId }) {
+            return `
+                <button
+                    id="${id}"
+                    type="button"
+                    class="detailButton emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary"
+                    title="${title}"
+                >
+                    <div class="detailButton-content">
+                        <i class="md-icon detailButton-icon button-icon button-icon-left"
+                            id="${iconId}">　</i>
+                        <span class="button-text">${title}</span>
+                    </div>
+                </button>
+            `;
+        }
+        let buttonHtml = `
+            <div id="${playBtnsId}" class="detailButtons flex align-items-flex-start flex-wrap-wrap">
+                ${buttons.map(button => generateButtonHTML(button)).join('')}
+            </div>
+        `;
+
         if (!isEmby) {
             // jellfin
             mainDetailButtons = document.querySelector("div.itemDetailPage:not(.hide) div.detailPagePrimaryContainer");
         }
 
-        mainDetailButtons.insertAdjacentHTML('afterend', buttonhtml);
+        mainDetailButtons.insertAdjacentHTML('afterend', buttonHtml);
 
         if (!isEmby) {
             // jellfin add class, detailPagePrimaryContainer、button-flat
@@ -67,21 +90,42 @@
         document.querySelector("#embyMPV").onclick = embyMPV;
         document.querySelector("#embyDDPlay").onclick = embyDDPlay;
         document.querySelector("#embyCopyUrl").onclick = embyCopyUrl;
+        // no code highlight
+        // buttons.forEach(button => {
+        //     document.querySelector(`#${button.id}`).onclick = eval(button.id);
+        // });
 
         // add icons from jsdelivr, network
-        document.querySelector("#icon-PotPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-PotPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-VLC").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-VLC.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
-        document.querySelector("#icon-IINA").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-IINA.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-NPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-NPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.3em';
-        document.querySelector("#icon-MXPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MXPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-infuse").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-infuse.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-StellarPlayer").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-StellarPlayer.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-MPV").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-MPV.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-DDPlay").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons/icon-DDPlay.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-        document.querySelector("#icon-Copy").style.cssText += 'background: url(https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@0.0.5/embyWebAddExternalUrl/icons/icon-Copy.webp)no-repeat;background-size: 100% 100%;font-size: 1.4em';
-    
-        // add icons from Base64, local, this script size 22.5KB to 74KB, if use, self copy from ext.js
-
+        const iconBaseUrl = "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons";
+        // const iconBaseUrl = "icons"; // server local icons
+        const icons = [
+            // if url exists, use url property, if id diff icon name, use name property
+            { id: "icon-PotPlayer", name: "icon-PotPlayer.webp", fontSize: "1.4em" },
+            { id: "icon-VLC", fontSize: "1.3em" },
+            { id: "icon-IINA", fontSize: "1.4em" },
+            { id: "icon-NPlayer", fontSize: "1.3em" },
+            { id: "icon-MXPlayer", fontSize: "1.4em" },
+            { id: "icon-infuse", fontSize: "1.4em" },
+            { id: "icon-StellarPlayer", fontSize: "1.4em" },
+            { id: "icon-MPV", fontSize: "1.4em" },
+            { id: "icon-DDPlay", fontSize: "1.4em" },
+            { id: "icon-Copy", fontSize: "1.4em" },
+        ];
+        // add icons from Base64, script inner, this script size 22.5KB to 74KB, if use, self copy iconsExt from iconsExt.js
+        // const iconsExt = [];
+        icons.forEach((icon, index) => {
+            const element = document.querySelector(`#${icon.id}`);
+            if (element) {
+                icon.url = iconsExt && iconsExt[index] ? iconsExt[index].url : undefined;
+                const url = icon.url || `${iconBaseUrl}/${icon.name || `${icon.id}.webp`}`;
+                element.style.cssText += `
+                    background-image: url(${url});
+                    background-repeat: no-repeat;
+                    background-size: 100% 100%;
+                    font-size: ${icon.fontSize};
+                `;
+            }
+        });
     }
 
     function showFlag() {
