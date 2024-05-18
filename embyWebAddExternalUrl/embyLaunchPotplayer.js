@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.4
+// @version      1.1.5
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -36,7 +36,7 @@
             <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-infuse">　</i>  <span class="button-text">Infuse</span> </div> </button>
             <button id="embyStellarPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="恒星播放器"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-StellarPlayer">　</i>  <span class="button-text">恒星</span> </div> </button>
             <button id="embyMPV" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-MPV">　</i>  <span class="button-text">MPV</span> </div> </button>
-            <button id="embyDDPlay" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-DDPlay">　</i>  <span class="button-text">DDPlay</span> </div> </button>
+            <button id="embyDDPlay" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="弹弹Play"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-DDPlay">　</i>  <span class="button-text">DDPlay</span> </div> </button>
             <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-Copy">　</i>  <span class="button-text">复制链接</span> </div> </button>
             </div>`;
         if (!isEmby) {
@@ -380,21 +380,22 @@
     }
 
     async function embyCopyUrl() {
-        let mediaInfo = await getEmbyMediaInfo();
+        const mediaInfo = await getEmbyMediaInfo();
         let textarea = document.createElement('textarea');
         document.body.appendChild(textarea);
         textarea.style.position = 'absolute';
         textarea.style.clip = 'rect(0 0 0 0)';
-        textarea.value = mediaInfo.streamUrl;
+        const streamUrl = encodeURI(mediaInfo.streamUrl);
+        textarea.value = streamUrl;
         textarea.select();
         if (document.execCommand('copy', true)) {
-            console.log(`copyUrl = ${mediaInfo.streamUrl}`);
+            console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
             this.innerText = '复制成功';
         }
         //need https
         // if (navigator.clipboard) {
-        //     navigator.clipboard.writeText(mediaInfo.streamUrl).then(() => {
-        //          console.log(`copyUrl = ${mediaInfo.streamUrl}`);
+        //     navigator.clipboard.writeText(streamUrl).then(() => {
+        //          console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
         //          this.innerText = '复制成功';
         //     })
         // }
