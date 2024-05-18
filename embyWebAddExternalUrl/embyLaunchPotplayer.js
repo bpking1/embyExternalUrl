@@ -16,6 +16,9 @@
 
 (function () {
     'use strict';
+    // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
+    // 默认不启用,可能存在兼容问题,如发现原始链接播放失败,请关闭此选项
+    const useRealFileName = false;
     // 以下为内部使用变量,请勿更改
     let isEmby = "";
     function init() {
@@ -194,17 +197,22 @@
         let domain = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
         let subPath = getSubPath(mediaSource);
         let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
-        let streamUrl;
-        // origin link: /emby/videos/401929/stream.xxx?xxx
-        // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-        // this is not important, hit "/emby/videos/401929/" path level still worked
+        let streamUrl = `${domain}/`;
         let fileName = mediaSource.Path.replace(/.*[\\/]/, "");
         if (isEmby) {
-            fileName = mediaSource.IsInfiniteStream ? "master.m3u8" : fileName;
-            streamUrl = `${domain}/stream/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            if (mediaSource.IsInfiniteStream) {
+                streamUrl += mediaSource.IsInfiniteStream ? `master.m3u8` : "";
+            } else {
+                // origin link: /emby/videos/401929/stream.xxx?xxx
+                // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+                // this is not important, hit "/emby/videos/401929/" path level still worked
+                streamUrl += useRealFileName ? `stream/${fileName}` : `stream.${mediaSource.Container}`;
+            }
         } else {
-            streamUrl = `${domain}/Download/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            streamUrl += `Download`;
+            streamUrl += useRealFileName ? `/${fileName}` : "";
         }
+        streamUrl += `?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
         let position = parseInt(itemInfo.UserData.PlaybackPositionTicks / 10000);
         let intent = await getIntent(mediaSource, position);
         console.log(streamUrl, subUrl, intent);

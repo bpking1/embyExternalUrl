@@ -1,19 +1,24 @@
 // 只使用 strm 文件配置模板,即标准 strm 内部只有远程链接,不存在/开头的相对路径
 // 不需要挂载功能,不显示依赖 alist,strm 内部为任意直链
 // export constant allocation
+
 // 必填项,根据实际情况修改下面的设置
+
 // 这里默认 emby/jellyfin 的地址是宿主机,要注意 iptables 给容器放行端口
 const embyHost = "http://172.17.0.1:8096";
+
 // emby/jellyfin api key, 在 emby/jellyfin 后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 
 // 选填项,用不到保持默认即可
+
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "115.com",
   ali: "aliyundrive.net",
 };
+
 // 路由缓存配置
 const routeCacheConfig = {
   enable: false,
@@ -21,6 +26,7 @@ const routeCacheConfig = {
   // 注意 jellyfin 是小写开头 mediaSourceId
   keyExpression: "r.uri:r.args.MediaSourceId", // "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id"
 };
+
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
@@ -54,6 +60,7 @@ const routeRule = [
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
+
 // 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
@@ -67,6 +74,7 @@ const embyPathMapping = [
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
 ];
+
 // 指定是否转发由 njs 获取 strm 重定向后直链地址的规则,例如 strm 内部为局域网 ip 或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为 xxxPathMapping 映射后的 strm 内部链接
@@ -78,6 +86,7 @@ const redirectStrmLastLinkRule = [
   // 参数4: 当前 alistAddr 不需要此参数,alistSignExpireTime
   // [0, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
 ];
+
 // 图片缓存策略,包括主页、详情页、图片库的原图,路由器 nginx 请手动调小 conf 中 proxy_cache_path 的 max_size
 // 0: 不同尺寸设备共用一份缓存,先访问先缓存,空间占用最小但存在小屏先缓存大屏看的图片模糊问题
 // 1: 不同尺寸设备分开缓存,空间占用适中,命中率低下,但契合 emby 的图片缩放处理
@@ -90,6 +99,7 @@ const embyNotificationsAdmin = {
   includeUrl: false, // 链接太长,默认关闭
   name: "【emby2Alist】",
 };
+
 // 对接 emby 设备控制推送通知消息,目前只发送是否直链成功,此处为统一开关,范围为所有的客户端,通知目标只为当前播放的设备
 const embyRedirectSendMessage = {
   enable: false,
@@ -108,6 +118,13 @@ const itemHiddenRule = [
   // [2, "Google", 2],
   // [3, /private/ig],
 ];
+
+// 串流配置
+const streamConfig = {
+  // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
+  // 默认不启用,可能存在兼容问题,如发现原始链接代理失败,请关闭此选项
+  useRealFileName: false,
+};
 
 // 留空项,不需要更改
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
@@ -158,21 +175,22 @@ export default {
   embyHost,
   embyMountPath,
   embyApiKey,
-  routeCacheConfig,
-  routeRule,
   alistAddr,
   alistToken,
   alistSignEnable,
   alistSignExpireTime,
   alistPublicAddr,
   strHead,
-  cilentSelfAlistRule,
+  routeCacheConfig,
+  routeRule,
   embyPathMapping,
   redirectStrmLastLinkRule,
+  cilentSelfAlistRule,
+  transcodeConfig,
   embyNotificationsAdmin,
   embyRedirectSendMessage,
   itemHiddenRule,
-  transcodeConfig,
+  streamConfig,
   getEmbyHost,
   getTranscodeEnable,
   getTranscodeType,
