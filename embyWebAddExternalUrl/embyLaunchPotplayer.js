@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.4
+// @version      1.1.5
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -16,6 +16,9 @@
 
 (function () {
     'use strict';
+    // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
+    // 默认不启用,可能存在兼容问题,如发现原始链接播放失败,请关闭此选项
+    const useRealFileName = false;
     // 以下为内部使用变量,请勿更改
     let isEmby = "";
     function init() {
@@ -33,7 +36,7 @@
             <button id="embyInfuse" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="InfusePlayer"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-infuse">　</i>  <span class="button-text">Infuse</span> </div> </button>
             <button id="embyStellarPlayer" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="恒星播放器"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-StellarPlayer">　</i>  <span class="button-text">恒星</span> </div> </button>
             <button id="embyMPV" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-MPV">　</i>  <span class="button-text">MPV</span> </div> </button>
-            <button id="embyDDPlay" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="MPV"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-DDPlay">　</i>  <span class="button-text">DDPlay</span> </div> </button>
+            <button id="embyDDPlay" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="弹弹Play"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-DDPlay">　</i>  <span class="button-text">DDPlay</span> </div> </button>
             <button id="embyCopyUrl" type="button" class="detailButton  emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary" title="复制串流地址"> <div class="detailButton-content"> <i class="md-icon detailButton-icon button-icon button-icon-left" id="icon-Copy">　</i>  <span class="button-text">复制链接</span> </div> </button>
             </div>`;
         if (!isEmby) {
@@ -194,17 +197,22 @@
         let domain = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
         let subPath = getSubPath(mediaSource);
         let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
-        let streamUrl;
-        // origin link: /emby/videos/401929/stream.xxx?xxx
-        // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-        // this is not important, hit "/emby/videos/401929/" path level still worked
+        let streamUrl = `${domain}/`;
         let fileName = mediaSource.Path.replace(/.*[\\/]/, "");
         if (isEmby) {
-            fileName = mediaSource.IsInfiniteStream ? "master.m3u8" : fileName;
-            streamUrl = `${domain}/stream/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            if (mediaSource.IsInfiniteStream) {
+                streamUrl += mediaSource.IsInfiniteStream ? `master.m3u8` : "";
+            } else {
+                // origin link: /emby/videos/401929/stream.xxx?xxx
+                // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+                // this is not important, hit "/emby/videos/401929/" path level still worked
+                streamUrl += useRealFileName ? `stream/${fileName}` : `stream.${mediaSource.Container}`;
+            }
         } else {
-            streamUrl = `${domain}/Download/${fileName}?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
+            streamUrl += `Download`;
+            streamUrl += useRealFileName ? `/${fileName}` : "";
         }
+        streamUrl += `?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}`;
         let position = parseInt(itemInfo.UserData.PlaybackPositionTicks / 10000);
         let intent = await getIntent(mediaSource, position);
         console.log(streamUrl, subUrl, intent);
@@ -372,21 +380,22 @@
     }
 
     async function embyCopyUrl() {
-        let mediaInfo = await getEmbyMediaInfo();
+        const mediaInfo = await getEmbyMediaInfo();
         let textarea = document.createElement('textarea');
         document.body.appendChild(textarea);
         textarea.style.position = 'absolute';
         textarea.style.clip = 'rect(0 0 0 0)';
-        textarea.value = mediaInfo.streamUrl;
+        const streamUrl = encodeURI(mediaInfo.streamUrl);
+        textarea.value = streamUrl;
         textarea.select();
         if (document.execCommand('copy', true)) {
-            console.log(`copyUrl = ${mediaInfo.streamUrl}`);
+            console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
             this.innerText = '复制成功';
         }
         //need https
         // if (navigator.clipboard) {
-        //     navigator.clipboard.writeText(mediaInfo.streamUrl).then(() => {
-        //          console.log(`copyUrl = ${mediaInfo.streamUrl}`);
+        //     navigator.clipboard.writeText(streamUrl).then(() => {
+        //          console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
         //          this.innerText = '复制成功';
         //     })
         // }

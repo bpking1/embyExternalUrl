@@ -465,7 +465,7 @@ async function cost(func) {
 }
 
 function getDeviceId(rArgs) {
-  // jellyfin and old emby tv clients use DeviceId
+  // jellyfin and old emby tv clients use DeviceId/deviceId
   return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId ?? rArgs.deviceId;
 }
 
