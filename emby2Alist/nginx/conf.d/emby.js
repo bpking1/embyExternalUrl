@@ -603,6 +603,10 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     return;
   }
   embyApi.fetchSessions(config.embyHost, config.embyApiKey, {DeviceId:deviceId}).then(sessionResPromise => {
+    if (sessionResPromise.status !== 200) {
+      ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice sessionRes.status: ${sessionResPromise.status}`);
+      return;
+    }
     sessionResPromise.json().then(sessionRes => {
       if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
         ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: fetchSessions: session not found, skip`);
@@ -615,7 +619,11 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
       } else {
         ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: targetSession not found, skip`);
       }
+    }).catch((error) => {
+      ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: ${error}, skip`);
     });
+  }).catch((error) => {
+    ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: ${error}, skip`);
   });
 }
 
