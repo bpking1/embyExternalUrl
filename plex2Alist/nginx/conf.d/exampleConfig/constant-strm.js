@@ -1,21 +1,34 @@
 // 只使用 strm 文件配置模板,即标准 strm 内部只有远程链接,不存在/开头的相对路径
 // 不需要挂载功能,不显示依赖 alist,strm 内部为任意直链
 // export constant allocation
+
 // 必填项,根据实际情况修改下面的设置
+
 // 这里默认 plex 的地址是宿主机,要注意 iptables 给容器放行端口
 const plexHost = "http://172.17.0.1:32400";
 
 // 选填项,用不到保持默认即可
+
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   "115": "115.com",
 };
+
 // 路由缓存配置
 const routeCacheConfig = {
   enable: false,
   keyExpression: "r.uri", // "r.uri:r.args.X-Emby-Device-Id"
 };
+
+// 指定需要获取符号链接真实路径的规则,优先级在 embyMountPath 和 routeRule 之间
+// 注意前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效
+// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数2: 匹配目标,对象为媒体服务入库的文件路径(Item.Path)
+const symlinkRule = [
+  // [0, "/mnt/sda1"],
+];
+
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 只是屏蔽播放
@@ -46,6 +59,7 @@ const routeRule = [
   // ["redirect", "filePath", 0, "/mnt/sda2"],
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
+
 // 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
@@ -59,6 +73,7 @@ const plexPathMapping = [
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
 ];
+
 // 指定是否转发由 njs 获取 strm 重定向后直链地址的规则,例如 strm 内部为局域网 ip 或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为 xxxPathMapping 映射后的 strm 内部链接
@@ -109,6 +124,7 @@ export default {
   plexHost,
   plexMountPath,
   routeCacheConfig,
+  symlinkRule,
   routeRule,
   alistAddr,
   alistToken,

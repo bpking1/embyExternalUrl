@@ -376,7 +376,11 @@ async function cost(func) {
   return rvt;
 }
 
+/**
+ * Crypto
+ */
 const crypto = require('crypto');
+
 function calculateHMAC(data, key) {
   // 创建 HMAC 对象，并指定算法和密钥
   const hmac = crypto.createHmac('sha256', key);
@@ -412,6 +416,25 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
   return url;
 }
 
+/**
+ * File System
+ */
+const fs = require("fs");
+
+function checkAndGetRealpathSync(path) {
+  try {
+    fs.accessSync(path, fs.constants.R_OK);
+    let symStats = fs.lstatSync(path);
+    if (!symStats) throw new Error(`symStats is null`);
+    // if (!symStats.isFile()) throw new Error(`not a file`);
+    if (symStats.nlink > 1) throw new Error(`this is hard-link`);
+    if (!symStats.isSymbolicLink()) throw new Error(`not isSymbolicLink`);
+    return fs.realpathSync(path);
+  } catch (e) {
+    ngx.log(ngx.WARN, `${e}, skip: ${path}`);
+  }
+}
+
 // plex only
 function getFileNameByHead(contentDisposition) {
   if (contentDisposition && contentDisposition.length > 0) {
@@ -438,5 +461,6 @@ export default {
   cost,
   calculateHMAC,
   addAlistSign,
+  checkAndGetRealpathSync,
   getFileNameByHead,
 };

@@ -49,6 +49,14 @@ const routeCacheConfig = {
   keyExpression: "r.uri:r.args.MediaSourceId", // "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id"
 };
 
+// 指定需要获取符号链接真实路径的规则,优先级在 embyMountPath 和 routeRule 之间
+// 注意前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效
+// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数2: 匹配目标,对象为媒体服务入库的文件路径(Item.Path)
+const symlinkRule = [
+  // [0, "/mnt/sda1"],
+];
+
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
@@ -214,6 +222,7 @@ export default {
   alistPublicAddr,
   strHead,
   routeCacheConfig,
+  symlinkRule,
   routeRule,
   embyPathMapping,
   redirectStrmLastLinkRule,
