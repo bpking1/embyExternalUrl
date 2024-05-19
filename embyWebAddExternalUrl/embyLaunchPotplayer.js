@@ -97,7 +97,7 @@
 
         // add icons from jsdelivr, network
         const iconBaseUrl = "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons";
-        // const iconBaseUrl = "icons"; // server local icons
+        // iconBaseUrl = "icons"; // server local icons
         const icons = [
             // if url exists, use url property, if id diff icon name, use name property
             { id: "icon-PotPlayer", name: "icon-PotPlayer.webp", fontSize: "1.4em" },
@@ -113,10 +113,10 @@
         ];
         // add icons from Base64, script inner, this script size 22.5KB to 74KB, if use, self copy iconsExt from iconsExt.js
         // const iconsExt = [];
-        icons.forEach((icon, index) => {
+        icons.map((icon, index) => {
             const element = document.querySelector(`#${icon.id}`);
             if (element) {
-                icon.url = iconsExt && iconsExt[index] ? iconsExt[index].url : undefined;
+                icon.url = typeof iconsExt !== 'undefined' && iconsExt && iconsExt[index] ? iconsExt[index].url : undefined;
                 const url = icon.url || `${iconBaseUrl}/${icon.name || `${icon.id}.webp`}`;
                 element.style.cssText += `
                     background-image: url(${url});
