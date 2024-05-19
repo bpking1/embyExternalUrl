@@ -61,6 +61,21 @@ async function redirect2Pan(r) {
   r.warn(`notLocal: ${embyRes.notLocal}`);
   if (embyRes.notLocal) {
     embyRes.path = decodeURIComponent(embyRes.path);
+    r.warn(`notLocal decodeURIComponent embyRes.path`);
+  }
+
+  // check symlinkRule
+  const symlinkRule = config.symlinkRule;
+  if (symlinkRule && symlinkRule.length > 0) {
+    const hitRule = symlinkRule.find(rule => util.strMatches(rule[0], embyRes.path, rule[1]));
+    if (hitRule) {
+      r.warn(`hit symlinkRule: ${JSON.stringify(hitRule)}`);
+      const realpath = util.checkAndGetRealpathSync(embyRes.path);
+      if (realpath) {
+        r.warn(`symlinkRule realpath overwrite pre: ${embyRes.path}`);
+        embyRes.path = realpath;
+      }
+    }
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
