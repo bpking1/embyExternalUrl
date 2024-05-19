@@ -257,7 +257,8 @@ async function transferPlaybackInfo(r) {
           r,
           util
             .generateUrl(r, "", r.uri, ["StartTimeTicks"])
-            .replace("/emby/Items", "/videos")
+            // official clients hava /emby virtual path, like fileball not hava, both worked
+            .replace(/^.*\/items/i, "/videos")
             .replace("PlaybackInfo", streamPart)
         );
         source.DirectStreamUrl = util.appendUrlArg(
