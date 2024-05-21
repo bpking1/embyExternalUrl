@@ -5,10 +5,10 @@
 需要更改的地方:
 
 1.代码内部变量
-````js
+```javascript
 // 是否替换原始外部播放器
 const replaceOriginLinks = true;
-````
+```
 
 效果:
 
@@ -28,7 +28,7 @@ AList V2
 二. 添加到服务端 alist 网站上
 
 1. 登录 alist 管理后台 -> 设置 -> 全局 -> 自定义头部,填入脚本地址即可
-````js
+```javascript
 <!-- 这是 alist 原本自带的 -->
 <script src="https://polyfill.io/v3/polyfill.min.js?features=String.prototype.replaceAll"></script>
 <!-- 自己下载到服务器本地开放此文件出来 -->
@@ -36,7 +36,7 @@ AList V2
 <!-- 或下面的 CDN 仓库二选一 -->
 <!-- <script src="https://fastly.jsdelivr.net/gh/chen3861229/embyExternalUrl@main/embyWebAddExternalUrl/alistWebLaunchExternalPlayer.js"></script> -->
 <!-- <script src="https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/alistWebLaunchExternalPlayer.js"></script> -->
-````
+```
 
 #### 其余注意事项请参照
 [篡改猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
