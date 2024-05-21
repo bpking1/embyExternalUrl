@@ -11,11 +11,12 @@ const replaceOriginLinks = true;
 ````
 
 效果:
+
 AList V3
-![alt text](aabd331039262d2c073ea52dc51c5d24.png)
+![aabd331039262d2c073ea52dc51c5d24](https://github.com/chen3861229/embyExternalUrl/assets/42368856/e0c2b90a-02b0-41ec-861f-7a9ba0949fd4)
 
 AList V2
-![alt text](image.png)
+![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/2b5697f6-5b7c-40b1-a632-248d3b8d2d4e)
 
 一. 浏览器单独使用方法
 
