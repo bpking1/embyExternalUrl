@@ -315,24 +315,42 @@ nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无�
 
 1.115的302需要alist最新版v3.30.0,由于115直链并没有响应允许跨域标识,所以只能用客户端播放,测试emby所有官方客户端和第三方客户端支持跨域,~~不支持跨域的播放为Web浏览器...~~
 
-~~2.115播放形式为响应302到原始alist链接,由alist再302一次到直链~~
+2.115 播放形式为响应 302 到原始 alist 链接,由 alist 再 302 一次到直链
 
-3.Web浏览器被跨域拦截请使用拓展解决,该拓展有时不稳定,表现形式为开启状态,但是并没有添加跨域响应头,可以寻找类似拓展测试,或者多开关几次并增大urlRegex匹配范围确保成功添加自定义响应头后再使用
+3.Web浏览器被跨域拦截请使用拓展解决,该拓展有时不稳定,表现形式为开启状态,但是并没有添加跨域响应头,可以寻找类似拓展测试,或者多开关几次并增大 urlRegex 匹配范围确保成功添加自定义响应头后再使用
 
-3.1
+3.1 推荐这个拓展,虽然好像没人维护了,但是基本功能稳定,但是注意它的匹配规则已经失效,只有匹配类型为域名的全域名规则按预期工作,大部分互联网站都做了 CDN,所以域名是不定时动态变化的,建议直接选择匹配全部,但不用了一定注意关闭插件,以免产生跨域安全风险
+
 https://microsoftedge.microsoft.com/addons/detail/header-editor/afopnekiinpekooejpchnkgfffaeceko
 
 ````
-CORS Support
-匹配类型: 域名
-匹配规则: cdnfhnfile.115.com
+CORS Support All
+匹配类型: 全部
 执行类型: 常规
 头名称: access-control-allow-origin
 头内容: *
 ````
+````
+"receiveHeader": [
+    {
+        "enable": true,
+        "name": "CORS Support_all",
+        "ruleType": "modifyReceiveHeader",
+        "matchType": "all",
+        "exclude": "",
+        "group": "media server",
+        "isFunction": false,
+        "action": {
+            "name": "access-control-allow-origin",
+            "value": "*"
+        }
+    },
+],
+````
 ![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/5a06f4c5-3a39-4117-87db-899e7a0b22a6)
 
-3.2
+3.2 这个拓展虽然更新快,但是好像会不定时失效,自行测试
+
 https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbiafapkbbnbnjcdomjaghbckfkglc
 ````
 [
