@@ -1,10 +1,10 @@
 ### 主要功能
 | 名称 | 功能 |
 | - | :- |
-| [emby2Alist](./emby2Alist/README.md) | emby/jellyfin挂载alist转直链 |
-| embyAddExternalUrl | emby全客户端添加调用外部播放器按钮 |
-| embyWebAddExternalUrl | emby调用外部播放器油猴脚本,只支持网页 |
-| [plex2Alist](./plex2Alist/README.md) | plex挂载alist转直链 |
+| [emby2Alist](./emby2Alist/README.md) | emby/jellyfin 挂载 alist 转直链 |
+| embyAddExternalUrl | emby 全客户端添加调用外部播放器按钮 |
+| [embyWebAddExternalUrl](./embyWebAddExternalUrl/README.md) | emby/jellyfin/alistWeb 调用外部播放器用户脚本,只支持网页 |
+| [plex2Alist](./plex2Alist/README.md) | plex 挂载 alist 转直链 |
 
 ### 常见问题
 [FAQ](./FAQ.md)
@@ -18,7 +18,7 @@
 
 ![](https://raw.githubusercontent.com/bpking1/pics/main/img/Screenshot%202023-02-06%20191721.png)
 
-一. 单独使用方法:
+一. 单独使用方法
 
 这里采用的是docker安装,也可以不使用docker,自己安装njs模块
 
@@ -56,9 +56,9 @@ docker logs -f  embyUrl-nginx 2>&1 | grep error
 
 4.重启 ngixn 或者输入命令 nginx -s reload 重载配置文件,注意此时使用 emby2Alist 的 nginx 对应端口访问
 
-### emby调用外部播放器油猴脚本,只支持网页:
+### emby调用外部播放器用户脚本,只支持网页:
 
-[油猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
+[篡改猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
 
 
 

@@ -2,7 +2,7 @@
 
 #### 1.如何确定 embyMountPath 的路径填写?
 遵循媒体入库的路径和 alist 的根目录 / 取差集,多出来的那部分就是挂载工具的挂载路径,例如
-````
+```javascript
 // 我用的 CD2 挂载到群晖的共享目录中为
 /CloudNAS/CloudDrive2/AList
 // 对应的 alist 根路径为 /
@@ -13,9 +13,9 @@
 // 所以我 emby 中入库的媒体路径都是 /AList/xxx 开头的
 // 所以我的 embyMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
 const embyMountPath = ["/AList"];
-````
+```
 如果挂载的路径映射情况比这更加复杂,就需要这个参数来做路径字符串的映射了
-````
+```javascript
 // 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
@@ -29,7 +29,7 @@ const embyPathMapping = [
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
 ];
-````
+```
 
 #### 2.兼容 jellyfin 吗?
 API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同时工作在 emby/jellfin 上,
@@ -43,9 +43,9 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 
 #### 5.docker compose 后提示找不到 default.conf?
 这个是 IPv6 监听导致 nginx:lastest 默认在容器内部生成了 sh 脚本,忽略此提示也可正常访问
-````
+```bash
 /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
-````
+```
 或者删除此文件、注释掉 IPv6 监听、删除容器重新生成
 
 #### 6.115 内容无法 Web 端播放?
@@ -70,22 +70,22 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 #### 8.为什么需要识别内网网段的地址?
 这个如果没有特殊需要可以不用管,选填项,目前两个地方用到了
 1.有用户反馈内网环境走直链 infuse 反而会更卡
-````
+```javascript
 const routeRule = [
    // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["r.variables.remote_addr", 0, strHead.lanIp],
 ];
-````
+```
 2.如果 strm 内部的远程链接为局域网的,转发给远程客户端访问不了,
 所以做了内网的条件判断在 nginx 内网这层去获取 strm 内网链接 302 后的公网直链返回给远程客户端
-````
+```javascript
 const redirectStrmLastLinkRule = [
   [0, strHead.lanIp.map(s => "http://" + s)]
 ];
-````
+```
 
 #### 8.允许转码功能但不需要分离转码负载,该如何配置?
-````
+```javascript
 const routeRule = [
   ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
 ];
@@ -97,7 +97,7 @@ const transcodeConfig = {
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
   server: []
 };
-````
+```
 
 #### 9.strm文件的内容应该填写容器可以访问到的地址还是局域网可以访问到的地址还是公网可以访问到的地址?
 效率最高的还是填远程客户端可以访问的公网地址,这样代码里几乎没做费时的处理,
@@ -137,33 +137,33 @@ const transcodeConfig = {
 
 #### 14.哪些地方配置需要注意的?
 总的来说,只用关注,
-````
+```
 /conf.d/constant.js
 /conf.d/emby.conf
 /conf.d/includes/http.conf
 /conf.d/includes/https.conf
-````
+```
 1.挂载文件直链的,
-````
+```
 /conf.d/constant.js 中的必填项和 alistPublicAddr
-````
+```
 2.只用 strm 文件的,
-````
+```
 /conf.d/constant.js 中的 embyHost,embyApiKey
-````
+```
 3.只用 http 的,
-````
+```
 /conf.d/includes/http.conf 中 listen
-````
+```
 4.需要 https 的,
-````
+```
 /conf.d/emby.conf 中 # include /etc/nginx/conf.d/includes/https.conf; # 去掉 # 注释
 /conf.d/includes/https.conf 中 listen 和 ssl_certificate 的两个
-````
+```
 5.有转码需求的,
-````
+```
 /conf.d/constant.js 中 transcodeConfig,routeRule
-````
+```
 6.其余均为选填,参照文件内注释
 
 # embyAddExternalUrl
