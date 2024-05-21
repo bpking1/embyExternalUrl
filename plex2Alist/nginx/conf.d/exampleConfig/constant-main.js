@@ -1,3 +1,4 @@
+// 这个总配置拆分主体文件只是备份,生效需要放置在 conf.d 下,且重命名为 constant.js
 
 import commonConfig from "./config/constant-common.js";
 import mountConfig from "./config/constant-mount.js";
