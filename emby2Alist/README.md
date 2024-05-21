@@ -347,7 +347,8 @@ CORS Support All
     },
 ],
 ````
-![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/5a06f4c5-3a39-4117-87db-899e7a0b22a6)
+![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/cbe6aff2-7ea6-40ee-b3b5-6238ea33347e)
+
 
 3.2 这个拓展虽然更新快,但是好像会不定时失效,自行测试
 
