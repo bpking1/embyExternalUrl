@@ -30,6 +30,11 @@
       //    "host_port" : 8091,
       //    "container_port" : 8091,
       //    "type" : "tcp"
+      // },
+      // {
+      //    "host_port" : 8095,
+      //    "container_port" : 8095,
+      //    "type" : "tcp"
       // }
    ],
    "privileged" : false,

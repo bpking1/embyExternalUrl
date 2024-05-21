@@ -1,5 +1,8 @@
-// 全量配置,媒体库混合,本地文件 + rclone/CD2 挂载的 alist 文件 + strm文件
+// 这个总配置单体文件只是备份,生效需要放置在 conf.d 下,且重命名为 constant.js
+
+// 全量配置,媒体库混合,本地文件 + rclone/CD2 挂载的 alist 文件 + strm文件 + 软链接(路径和文件名不一致)
 // export constant allocation
+
 // 必填项,根据实际情况修改下面的设置
 
 // 这里默认 plex 的地址是宿主机,要注意 iptables 给容器放行端口
@@ -40,7 +43,7 @@ const routeCacheConfig = {
   keyExpression: "r.uri", // "r.uri:r.args.X-Emby-Device-Id"
 };
 
-// 指定需要获取符号链接真实路径的规则,优先级在 embyMountPath 和 routeRule 之间
+// 指定需要获取符号链接真实路径的规则,优先级在 xxxMountPath 和 routeRule 之间
 // 注意前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为媒体服务入库的文件路径(Item.Path)
