@@ -79,6 +79,12 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
+  // local resource use original link
+  const isLocalResource = config.embyLocalPath.some(s => embyRes.path.startsWith(s));
+  if (isLocalResource) {
+     return internalRedirect(r);
+  }
+
   // routeRule
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
   if (util.ROUTE_ENUM.proxy == routeMode) {

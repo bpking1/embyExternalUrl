@@ -20,6 +20,9 @@ const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 // 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
 const embyMountPath = ["/mnt"];
 
+// emby本地硬盘资源路径，本地硬盘资源直接使用原链接播放，不查询网盘。必须要是数组
+const embyLocalPath = ["/mnt"];
+
 // for js_set
 function getEmbyHost(r) {
   return embyHost;
@@ -38,6 +41,7 @@ export default {
   embyHost,
   embyApiKey,
   embyMountPath,
+  embyLocalPath,
   strHead: commonConfig.strHead,
 
   alistAddr: mountConfig.alistAddr,
