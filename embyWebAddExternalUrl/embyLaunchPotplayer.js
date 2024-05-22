@@ -112,10 +112,11 @@
             { id: "icon-Copy", fontSize: "1.4em" },
         ];
         // add icons from Base64, script inner, this script size 22.5KB to 74KB, if use, self copy iconsExt from iconsExt.js
-        // const iconsExt = [];
+        // const iconsExt = getIconsExt();
         icons.map((icon, index) => {
             const element = document.querySelector(`#${icon.id}`);
             if (element) {
+                // if url exists, use url property, if id diff icon name, use name property
                 icon.url = typeof iconsExt !== 'undefined' && iconsExt && iconsExt[index] ? iconsExt[index].url : undefined;
                 const url = icon.url || `${iconBaseUrl}/${icon.name || `${icon.id}.webp`}`;
                 element.style.cssText += `
@@ -126,6 +127,11 @@
                 `;
             }
         });
+    }
+
+    // copy from ./iconsExt, 如果更改了以下内容,请同步更改 ./iconsExt
+    function getIconsExt() {
+        return [];
     }
 
     function showFlag() {
