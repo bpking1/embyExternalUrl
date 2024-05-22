@@ -43,7 +43,7 @@ docker-compose up -d
 
 日志查看:
 ```
-docker logs -f  embyUrl-nginx 2>&1 | grep error
+docker logs -f nginx-embyUrl 2>&1 | grep error
 ```
 
 二. 与 emby2Alist 整合并共存

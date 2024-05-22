@@ -275,6 +275,7 @@ Web端可以直链下载,从之前issus的反馈推断第三方客户端播放�
     |   ├── api // JS 脚本文件夹,完全不用改
     |   ├── cert // SSL 证书文件夹,根据自身情况修改
     |   ├── common // 通用工具类文件夹,完全不用改
+    |   ├── config // 常量拆分后配置文件,若为 constant-all.js 完全不用改,若为 constant-main.js 则需要更改对应拆分文件
     |   ├── exampleConfig // 示例 constant 配置文件夹
     |   ├── includes // 拆分的 conf 文件夹,http 和 https 端口在这改
     |   ├── constant.js // 常量主配置文件,根据自身情况修改
