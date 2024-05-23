@@ -1,4 +1,5 @@
 // 这个总配置拆分主体文件只是备份,生效需要放置在 conf.d 下,且重命名为 constant.js
+// 如果使用拆分配置,请注意填写 config 下的使用到的配置文件
 
 import commonConfig from "./config/constant-common.js";
 import mountConfig from "./config/constant-mount.js";
@@ -26,10 +27,10 @@ function getEmbyHost(r) {
   return embyHost;
 }
 function getTranscodeEnable(r) {
-  return transcodeConfig.enable;
+  return transcodeConfig.transcodeConfig.enable;
 }
 function getTranscodeType(r) {
-  return transcodeConfig.type;
+  return transcodeConfig.transcodeConfig.type;
 }
 function getImageCachePolicy(r) {
   return extConfig.imageCachePolicy;

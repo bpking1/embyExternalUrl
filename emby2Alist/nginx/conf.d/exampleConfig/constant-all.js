@@ -1,4 +1,5 @@
 // 这个总配置单体文件只是备份,生效需要放置在 conf.d 下,且重命名为 constant.js
+// 如果使用这个全量总配置文件,忽略 config 下的所有文件,以这个文件为准
 
 // 全量配置,媒体库混合,本地文件 + rclone/CD2 挂载的 alist 文件 + strm文件 + 软链接(路径和文件名不一致)
 // export constant allocation

@@ -5,35 +5,147 @@ date: 2021/09/06 22:00:00
 
 ### 文章更新记录 
 
-2024/05/21
+#### 2024/05/23
+
+没有更新内容,测试均以失败告终,且兼容性极差,这里只是记录下折腾过程,少走弯路,有懂流媒体切片篡改的大佬可以参考下
+
+1.想解决外部播放器的外挂字幕无法统一传递问题
+
+1.1 测试模拟 HLS 的 master.m3u8 文件内容,加入字幕轨道链接,尝试过 ass 和正规的 webVTT 格式,所有播放器均不加载,
+失败告终,测试流程为 main.m3u8 中只加一个原始视频的分片,也就是不分片,视频播放 VLC 系全军覆没无法加载,很小部分播放器可以支持内部的 302,
+这里注意 #EXTINF:1440.0 为必要时长, PotPlayer 会直接使用这里的时长,不准确将截断后续无法播放, MxPlayer 没这个信息将直接拒绝加载,
+Win11 自带的 媒体播放器 会忽略这个时长,直接从视频中读取最准确的时长
+
+master.m3u8
+```
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",AUTOSELECT=YES,FORCED=NO,URI="https://xxx:8091/Videos/284773/xxx/Subtitles/3/Stream.ass?api_key=xxx"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Chinese",LANGUAGE="cn",AUTOSELECT=YES,FORCED=YES,URI="https://xxx:8091/Videos/284773/xxx/Subtitles/2/Stream.ass?api_key=xxx"
+
+#EXT-X-STREAM-INF:BANDWIDTH=4=8000000,CODECS="avc1,mp4a",RESOLUTION=1920x1080,SUBTITLES="subs"
+https://xxx:8091/test/test.m3u8
+```
+
+main.m3u8
+```
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:60000
+#EXT-X-PLAYLIST-TYPE:VOD
+
+#EXTINF:1440.0,
+https://xxx:8091/emby/videos/413843/Stream.mkv?api_key=xxx&Static=true&MediaSourceId=xxx
+
+#EXT-X-ENDLIST
+```
+
+1.2 再次尝试切换使用 HLS 的国际标准实现, MPEG-DASH 的 .mpd 文件,失败告终,字幕也是无一加载,且视频播放兼容性更差,
+唯一好处是不用计算视频时长,不需要这个 <Period duration="PT0H23M40.000S">,
+因为是 2011 年的新协议,PotPlayer 和 Win11 自带的 媒体播放器 失败,虽然 MxPlayer 可以播放,但已经没用了
+
+start.mpd
+```xml
+<?xml version="1.0"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" 
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="urn:mpeg:DASH:schema:MPD:2011 DASH-MPD.xsd"
+     profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"
+     type="static"
+     minBufferTime="PT2S">
+  <Period>
+    <AdaptationSet mimeType="video/mp4">
+      <Representation id="1">
+        <BaseURL>https://xxx:8091/emby/videos/413843/Stream.mkv?api_key=xxx&Static=true&MediaSourceId=xxx</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="text/vtt" lang="en">
+      <Representation id="2" bandwidth="10000">
+        <BaseURL>test.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="text/vtt" lang="ch">
+      <Representation id="3" bandwidth="10000">
+        <BaseURL>https://xxx:8091/Videos/284773/xxx/Subtitles/2/Stream.ass?api_key=xxx</BaseURL>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
+```
+
+1.3 测试过程发现,PotPlayer 和 MxPlayer 都会自动请求同目录下同文件名的常见字幕后缀文件,
+前提是主文件必须返回 200 状态码,不能为 302,但也没啥用,ass 和 vvt 均测试过了,所有播放器均不会在面板中提供选项
+
+```log
+xxx - - [23/May/2024:16:46:55 +0800] "https:GET /test/start.mpd HTTP/1.1" 200 1123 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+xxx - - [23/May/2024:16:46:56 +0800] "https:PROPFIND /test/ HTTP/1.1" 405 150 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+xxx - - [23/May/2024:16:46:56 +0800] "https:GET /test/ HTTP/1.1" 403 146 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+xxx - - [23/May/2024:16:46:56 +0800] "https:GET /test/start.smi HTTP/1.1" 404 146 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+xxx - - [23/May/2024:16:46:56 +0800] "https:GET /test/start.srt HTTP/1.1" 404 146 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+xxx - - [23/May/2024:16:46:56 +0800] "https:GET /test/start.ass HTTP/1.1" 200 37516 "-" "(Windows NT 10.0; Win64; x64) PotPlayer/24.01.25" "-"
+```
+
+1.4 也尝试过 Http2 的 serverPush,无用, http 规范的 Link 头并加上 preload 或 track 轨道,均无用
+
+2.想解决外部播放器没有回传播放进度的问题
+
+2.1 尝试篡改 HLS 和 DASH,在中间加入回传进度 API 的 URL,但是只有一个分片,且播放器的黑箱进度计算又是一大难题,失败告终
+
+2.2 尝试使用 http 规范的 Link 头并加上 preload 传递一个无限 302 的回调地址,客户端最大只能 20 次重定向,
+且大部分播放器并不会遵守浏览器规范,如上,失败告终
+
+2.3 构思使用 http 规范的 CSP 头部 report-to,因规范是用作 CORS 单次汇报使用的,理论阶段就无法使用,失败告终
+
+3.想解决直链播放原盘 BDMV 文件夹的问题
+
+3.1 已经测试过用 HLS 来欺骗播放器,m2ts 可能与 ts 有类似地方,单个分片能播放,但是毫无意义,播放器兼容性极差,
+如上述的篡改 HLS 使用原始媒体格式一样,且最大难题是 STREAM 的分片时长不统一且编号有跳跃且会夹杂花絮且外部播放器没法外挂字幕,无法处理,
+按蓝光规范需要读取 CLIPINF 中二进制内容,但描述文件过多,几百个 1 KB 文件,
+天生不适合网盘,同时为了网盘安全,也不建议用原始服务播放 BDMV,同样是播放的时候会读取 CLIPINF 所有的文件,
+建议换其他资源或者把文件下载本服务器本地,或按照 emby 官方的建议,自己混流合并再入库吧
+
+main.m3u8
+```
+#EXTM3U
+#EXT-X-VERSION:14
+#EXT-X-TARGETDURATION:60000
+#EXT-X-PLAYLIST-TYPE:VOD
+
+#EXTINF:,00001
+https://xxx:5244/d/xxx/AL-ZZ-02/test/Guardians.of.the.Galaxy.Vol.2.2017.1080p.BluRay.AVC.DTS-HD.MA.7.1-xxx/BDMV/STREAM/00905.m2ts
+
+#EXT-X-ENDLIST
+```
+
+#### 2024/05/21
 
 1.拆分配置文件,根据自身倾向选择 exampleConfig 中的配置并参照注释
 
-2024/05/19
+#### 2024/05/19
 
 1.提供获取软连接真实路径的配置项,前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效,
 只做了简单的测试,可能暂时存在和非本地文件路径走代理判断稍微有些冲突,自行尝试配置 xxxMountPath 或 routeRule
 
-2024/05/18
+#### 2024/05/18
 
 1.串流地址的文件名修改提供开关,默认关闭,按照自身测试和需求情况评估开启
 
-2024/05/11
+#### 2024/05/11
 
 1.修复错误的 proxy_buffering off 层级导致的缓存失效
 
-2024/05/05
+#### 2024/05/05
 
 1.还原 115 的链接判断为二级域名,三级域名为 CDN 负载均衡会动态变化,
 最好也不要用 alist get 接口中的 provider 字段,使用了 alias 情况下,provider 为 alias 而非 115 Cloud
 
 2.拆分 conf 配置,http 和 https 不要共用相同端口
 
-2024/04/30
+#### 2024/04/30
 
 1.精确几处逻辑判断的范围,修复媒体容器名不为文件后缀的情况以减少误导,精确 sign 参数添加的范围,去除无用的 itemsFilter 日志打印
 
-2024/04/27
+#### 2024/04/27
 
 1.升级路由缓存配置,缓存的 key 值可自定义表达式
 
@@ -41,11 +153,11 @@ date: 2021/09/06 22:00:00
 自行根据实际情况使用,只在缓存中没有直链且进入详情页才会查 alist 预热缓存,15分钟内第二次进入相同详情页命中缓存不再查询 alist,
 忽略直链通知的文本内容,只预热了缓存并没有跳转,再次点击播放就会直接读取预热后的直链缓存
 
-2024/04/25
+#### 2024/04/25
 
 1.媒体项目过滤添加可能为第三方使用的海报推荐接口
 
-2024/04/22
+#### 2024/04/22
 
 1.修复[emby > 4.8.3.0]直链通知的窗口持续时间
 
@@ -61,13 +173,13 @@ date: 2021/09/06 22:00:00
 "proxy": 这个单纯只是作为兜底方案,转给原始媒体服务处理,如果 emby 客户端自己带有转码参数,原始服务也会走转码,
 客户端可自行选择最大码率来切换回直链的 302
 
-2024/04/21
+#### 2024/04/21
 
 1.还原以兼容115部分客户端拖动进度条bug
 
 2.对直链通知添加幂等,默认10秒内不重复发送
 
-2024/04/20
+#### 2024/04/20
 
 1.升级禁用直链规则为路由规则,内部判断变得十分复杂,有一些历史遗留和可能存在一些优先级问题,请自行测试
 
@@ -80,7 +192,7 @@ date: 2021/09/06 22:00:00
 
 4.不用转码功能的,保持[transcodeConfig.enable=false]
 
-2024/04/19
+#### 2024/04/19
 
 1.升级分组禁用直链规则,添加NJS事件日志,重构拆分转码方法
 
@@ -92,7 +204,7 @@ date: 2021/09/06 22:00:00
 3.115还有一个问题,很久之前做文件迁移时发现的,一个账号不论多少客户端总共的下载进程最大10个,且有日传输量限制,
 这个具体多少流量不清楚,复现测试为浏览器开10个任务,官方客户端下载文件夹只算一个任务,就会发现其余客户端无法播放和下载了
 
-2024/04/16
+#### 2024/04/16
 
 1.!!!实验功能,转码负载均衡,默认false,将按之前逻辑禁止转码处理并移除转码选项参数,此条与emby配置无关,
 主库和所有从库给用户开启[播放-如有必要，在媒体播放期间允许视频转码]+[倒数7行-允许媒体转换],
@@ -172,7 +284,7 @@ STRM会导致jellfin的PlaybackInfo从几秒增长到30秒,效率极差,不建�
 因为没找到真正查询服务组转码数量的接口,后期可能参考nginx实现方式,NJS添加计数器解决,
 但会出现新问题,分布式需要各节点信息共享,且转码数量不精确,没经过nginx处理的转码会统计不到
 
-2024/04/13
+#### 2024/04/13
 
 1.注意需要保证njs >= 0.8.0,直接nginx:latest即可,
 加入防抖措施,添加内外部重定向地址缓存,以兼容部分客户端不遵循30X重定向规范导致的短时过多重复请求穿透到alist,
@@ -181,7 +293,7 @@ Web端没有此问题,调用外部第三方播放器也无此问题,但是播放
 可以打开embyRedirectSendMessage.enable = true,在官方客户端内进行提示查看,
 默认按阿里云盘的直链最大有效时间15分钟,请勿随意更改此时间
 
-2024/04/12
+#### 2024/04/12
 
 1.添加定时任务默认7天自动清空nginx日志,请结合日志重要程度和硬盘占用情况自行调整为合适间隔,建议不要改为小于1天以免影响性能,
 使用条件为没有更改过默认日志的路径和名称,且需要更新最新版本njs
@@ -192,7 +304,7 @@ Web端没有此问题,调用外部第三方播放器也无此问题,但是播放
 
 2.添加限流配置示例,只对302之前的请求生效,302后是直连第三方服务器,无法进行控制
 
-2024/04/11
+#### 2024/04/11
 
 1.当媒体服务中存在过多的媒体时访问首页很慢,优化方式为,设置=>服务器=>数据库=>数据库缓存大小（MB）=>进行适当调大,
 个人目前为460MB,请根据物理机内存情况合理设置,其他数据库设置请勿更改
@@ -200,7 +312,7 @@ Web端没有此问题,调用外部第三方播放器也无此问题,但是播放
 2.添加nginx对接日志中心示例配置,可以和原xxx_log共存,如有需要,打开注释并修改为自己的ip和端口即可
 发送日志到syslog,默认使用UDP的514端口,群晖=>日志中心=>接收日志=>新增=>名称随意,保持默认的BSD格式,UDP,514
 
-2024/04/10
+#### 2024/04/10
 
 客户端绕过nginx-emby的参考,新代码已经对系统信息接口反代修改了端口号,不确定是否还有问题
 
@@ -214,12 +326,12 @@ Web端没有此问题,调用外部第三方播放器也无此问题,但是播放
 
 猜测fileball接口接入比较完善了,使用了媒体服务提供的网络发现接口,而infuse并没有调用此接口,以用户手动填写的为准
 
-2024/04/08
+#### 2024/04/08
 
 1.增强禁用直链的规则配置,docker环境需要注意此参数客户端地址($remote_addr),
 nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无效
 
-2024/04/05
+#### 2024/04/05
 
 如何避免媒体服务器频繁进行整库扫描刮削,导致内存占用飙升且影响性能,并范围太大会触发网盘的熔断机制
 
@@ -245,11 +357,11 @@ nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无�
 缓存文件属性显示大小等于原始文件,但是实际占用大小只为读取的文件大小,例如1G文件,被刮削视频头后,大概实际只占用40%,完全没读取过,只占用0KB,
 但是此缓存文件最后修改时间为最后一次读写时间,文档中没有自定义配置的参数,如果想要Web控制台,可以再套一层cd2
 
-2024/03/31
+#### 2024/03/31
 
 1.对接emby设备控制推送通知消息,目前只发送是否直链成功,范围为所有的客户端,通知目标只为当前播放的设备,如果客户端短时间内走了缓存,则不会触发通知
 
-2024/03/30
+#### 2024/03/30
 
 1.增强路径映射功能,区分来源类型
 
@@ -268,11 +380,11 @@ nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无�
 ~~5.2.nginx请求的alist建议关闭设置-全局-签名所有,将此alist部署为和nginx同一局域网,接口响应也会快很多,通常在200ms-2000ms之间,跨网络会更慢~~
 ~~如果对直链安全有介意,去掉此alist的公网端口映射,只在局域网使用,公网使用另行部署一个开启sign全部的alist~~
 
-2024/03/28
+#### 2024/03/28
 
 1.添加基本的配置示例文件,若符合需求,更改内容并删除文件名后缀,复制文件到上一级目录覆盖原始文件即可,\emby2Alist\nginx\conf.d\constant.js
 
-2024/03/18
+#### 2024/03/18
 
 1.优化请求alist的115直链获取逻辑,透传UA,减少一次302过程,以兼容媒体服务器https而alist为http默认被浏览器客户端强制改写导致的错误
 
@@ -281,11 +393,11 @@ nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无�
 
 3.将items隐藏升级为按路径匹配规则并新增,更多类似,接口隐藏
 
-2024/03/14
+#### 2024/03/14
 
 1.按规则隐藏搜索接口返回的items
 
-2024/03/13
+#### 2024/03/13
 
 1.媒体服务器https后,如果alist没有https,且相同域名情况,http链接会被浏览器默认强制改写为https,导致115的处理的第一次302会失败
 
@@ -293,25 +405,25 @@ nginx容器网络必须为host模式,不然此变量全部为内网ip,判断无�
 
 3.非浏览器不存在此问题,例如第三方播放器,默认不会阻止,也可将alist套上证书解决此问题
 
-2024/03/10
+#### 2024/03/10
 
 1.测试并修复本地视频兼容问题,意外发现http2对本地原始链接的视频在部分跨宽带网络阻断有帮助(电信->联通),如有相同情况请开启http2或者http3
 
-2024/03/04
+#### 2024/03/04
 
 1.优化播放时减少一次媒体查询接口
 
-2024/03/01
+#### 2024/03/01
 
 1.串流地址加入媒体文件名方便标识和字幕匹配
 
 2.添加图片缓存策略可选配置项
 
-2024/01/20
+#### 2024/01/20
 
 1.添加实验功能,转码分流
 
-2023/12/31
+#### 2023/12/31
 
 1.115的302需要alist最新版v3.30.0,由于115直链并没有响应允许跨域标识,所以只能用客户端播放,测试emby所有官方客户端和第三方客户端支持跨域,~~不支持跨域的播放为Web浏览器...~~
 
@@ -380,7 +492,7 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 
 4.添加部分可选配置项,对接emby/jellyfin通知管理员设置,方便排查直链情况
 
-2023/10/02
+#### 2023/10/02
 
 1.支持strm文件的直链,下边第一种情况已做处理默认支持
 
@@ -399,11 +511,11 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 
 3.根据部分反馈看,1-1的相对路径方式可能存在进度跟踪不准确,且没有在播放完毕后自动标记完成,建议使用标准的第三方工具生成的样式1-2
 
-2023/09/28
+#### 2023/09/28
 
 1.实现客户端直链下载
 
-2023/2/2
+#### 2023/2/2
 
 升级到alist v3了,脚本github地址 [bpking1/embyExternalUrl (github.com)](https://github.com/bpking1/embyExternalUrl)
 
