@@ -308,9 +308,14 @@ async function fetchAlistAuthApi(url, username, password) {
 }
 
 async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
+  // this is for multiple instances alist add sign
   if (authType && authType === "sign" && authInfo) {
     const arr = authInfo.split(":");
     strmLink = util.addAlistSign(strmLink, arr[0], parseInt(arr[1]));
+  }
+  // this is for current alist add sign
+  if (!!config.alistSignEnable) {
+    strmLink = util.addAlistSign(strmLink, config.alistToken, config.alistSignExpireTime);
   }
   try {
   	// fetch Api ignore nginx locations
