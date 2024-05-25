@@ -56,13 +56,13 @@ docker logs -f nginx-embyUrl 2>&1 | grep error
 
 4.重启 ngixn 或者输入命令 nginx -s reload 重载配置文件,注意此时使用 emby2Alist 的 nginx 对应端口访问
 
-三. 集成版docker一键部署
+三. 集成版 docker 一键部署
 
-1.简化配置，拉取镜像映射配置文件即可一键启动。 
+1.简化配置,拉取镜像映射配置文件即可一键启动。 
 
-2.支持SSL，内置acme自动申请证书、定时更新证书。
+2.支持 SSL,内置 acme 自动申请证书、定时更新证书。
 
-3.支持重启自动更新，简化更新流程。
+3.支持重启自动更新,简化更新流程。
 
 [项目地址](https://github.com/thsrite/MediaLinker?tab=readme-ov-file)
 
