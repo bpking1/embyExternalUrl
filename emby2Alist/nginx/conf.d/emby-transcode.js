@@ -16,7 +16,7 @@ let keys = {
 }
 
 async function transcodeBalance(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`transcodeBalance: ${r.uri}`);
   checkEnable(r);
 
   // const routeInternalDictKey = `${r.args.MediaSourceId}:${util.getDeviceId(r.args)}`;
@@ -299,7 +299,7 @@ function buildTransServerUrl(r, transServer, targetMediaId) {
 }
 
 async function syncDelete(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`syncDelete: ${r.uri}`);
   checkEnable(r);
   
   const uri = r.uri;
@@ -340,7 +340,7 @@ async function syncDelete(r) {
 }
 
 async function syncPlayState(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`syncPlayState: ${r.uri}`);
   checkEnable(r);
 
   const uri = r.uri;

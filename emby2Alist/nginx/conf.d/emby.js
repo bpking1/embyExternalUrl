@@ -9,7 +9,7 @@ import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 
 async function redirect2Pan(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`redirect2Pan: ${r.uri}`);
 
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
@@ -197,7 +197,7 @@ async function redirect2Pan(r) {
 
 // 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
 async function transferPlaybackInfo(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
   let start = Date.now();
   // replay the request
@@ -236,22 +236,21 @@ async function transferPlaybackInfo(r) {
           delete source.TranscodingContainer;
         }
 
+        const notLocal = source.IsRemote || source.Container === "strm";
         // routeRule
         if (transcodeConfig.enable) {
-          const routeMode = util.getRouteMode(r, source.Path, false);
+          const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
           if (util.ROUTE_ENUM.redirect == routeMode) {
             const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
             if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks !== "0" 
               && maxStreamingBitrate < source.Bitrate) {
-              r.warn(`swich transcode opt, modify direct play supports all false`);
-              source.SupportsDirectPlay = false;
-              source.SupportsDirectStream = false;
+              r.warn(`swich transcode opt, modify direct play supports all false and add useProxyKey`);
+              modifyDirecPlaySupports(source);
             }
-          } else if (util.ROUTE_ENUM.transcode == routeMode) {
-            r.warn(`routeMode modify direct play supports all false`);
-            source.SupportsDirectPlay = false;
-            source.SupportsDirectStream = false;
+          } else if (util.ROUTE_ENUM.transcode == routeMode || util.ROUTE_ENUM.proxy == routeMode) {
+            r.warn(`routeMode modify direct play supports all false and add useProxyKey`);
+            modifyDirecPlaySupports(source);
             continue;
           } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
@@ -259,41 +258,7 @@ async function transferPlaybackInfo(r) {
         }
 
         r.warn(`modify direct play info`);
-        source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
-        let localtionPath = source.IsInfiniteStream ? "live" : "stream";
-        let streamPart = `${localtionPath}.${source.Container}`;
-        if (config.streamConfig.useRealFileName) {
-          // origin link: /emby/videos/401929/stream.xxx?xxx
-          // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-          // this is not important, hit "/emby/videos/401929/" path level still worked
-          streamPart = `${localtionPath}/${util.getFileNameByPath(source.Path)}`;
-        }
-        source.DirectStreamUrl = util.addDefaultApiKey(
-          r,
-          util
-            .generateUrl(r, "", r.uri, ["StartTimeTicks"])
-            // official clients hava /emby virtual path, like fileball not hava, both worked
-            .replace(/^.*\/items/i, "/videos")
-            .replace("PlaybackInfo", streamPart)
-        );
-        source.DirectStreamUrl = util.appendUrlArg(
-          source.DirectStreamUrl,
-          "MediaSourceId",
-          source.Id
-        );
-        source.DirectStreamUrl = util.appendUrlArg(
-          source.DirectStreamUrl,
-          "PlaySessionId",
-          body.PlaySessionId
-        );
-        source.DirectStreamUrl = util.appendUrlArg(
-          source.DirectStreamUrl,
-          "Static",
-          "true"
-        );
-        // a few players not support special character
-        source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
-        source.XModifySuccess = true; // for debug
+        modifyDirecPlayInfo(r, source, body.PlaySessionId);
 
         // async cachePreload
         if (routeCacheConfig.enable && routeCacheConfig.enableL2 
@@ -312,6 +277,60 @@ async function transferPlaybackInfo(r) {
   }
   r.warn("playbackinfo subrequest failed");
   return internalRedirect(r);
+}
+
+function modifyDirecPlayInfo(r, source, playSessionId) {
+  const notLocal = source.IsRemote || source.Container === "strm";
+  source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
+  let localtionPath = source.IsInfiniteStream ? "master" : "stream";
+  const fileExt = source.IsInfiniteStream 
+    && (!source.Container || source.Container === "hls")
+    ? "m3u8" : source.Container;
+  let streamPart = `${localtionPath}.${fileExt}`;
+  // only localfile check use real filename
+  if (!notLocal && config.streamConfig.useRealFileName) {
+    // origin link: /emby/videos/401929/stream.xxx?xxx
+    // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+    // this is not important, hit "/emby/videos/401929/" path level still worked
+    streamPart = `${localtionPath}/${util.getFileNameByPath(source.Path)}`;
+  }
+  source.DirectStreamUrl = util.addDefaultApiKey(
+    r,
+    util
+      .generateUrl(r, "", r.uri, ["StartTimeTicks"])
+      // official clients hava /emby virtual path, like fileball not hava, both worked
+      .replace(/^.*\/items/i, "/videos")
+      .replace("PlaybackInfo", streamPart)
+  );
+  source.DirectStreamUrl = util.appendUrlArg(
+    source.DirectStreamUrl,
+    "MediaSourceId",
+    source.Id
+  );
+  source.DirectStreamUrl = util.appendUrlArg(
+    source.DirectStreamUrl,
+    "PlaySessionId",
+    playSessionId
+  );
+  source.DirectStreamUrl = util.appendUrlArg(
+    source.DirectStreamUrl,
+    "Static",
+    "true"
+  );
+  // a few players not support special character
+  source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
+  source.XModifyDirectStreamUrlSuccess = true; // for debug
+}
+
+function modifyDirecPlaySupports(source) {
+  source.SupportsDirectPlay = false;
+  source.SupportsDirectStream = false;
+  source.TranscodingUrl = util.appendUrlArg(
+    source.TranscodingUrl,
+    util.ARGS.useProxyKey,
+    "1"
+  );
+  source.XModifyTranscodingUrlSuccess = true; // for debug
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
@@ -479,7 +498,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
 }
 
 async function itemsFilter(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`itemsFilter: ${r.uri}`);
 
   r.variables.request_uri += "&Fields=Path";
   const subR = await r.subrequest(util.proxyUri(r.uri));
@@ -548,7 +567,7 @@ async function itemsFilter(r) {
 }
 
 async function systemInfoHandler(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`systemInfoHandler: ${r.uri}`);
 
   const subR = await r.subrequest(util.proxyUri(r.uri));
   let body;
@@ -583,6 +602,14 @@ async function systemInfoHandler(r) {
   return r.return(200, JSON.stringify(body));
 }
 
+/**
+ * fetchStrmLastLink, actually this just once request,currently sufficient
+ * @param {String} strmLink eg: "https://alist/d/file.xxx"
+ * @param {String} authType eg: "sign"
+ * @param {String} authInfo eg: "sign:token:expireTime"
+ * @param {String} ua 
+ * @returns redirect after link
+ */
 async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
   // this is for multiple instances alist add sign
   if (authType && authType === "sign" && authInfo) {
@@ -594,7 +621,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
     strmLink = util.addAlistSign(strmLink, config.alistToken, config.alistSignExpireTime);
   }
   try {
-  	// fetch Api ignore nginx locations
+  	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
@@ -606,6 +633,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}, contentType: ${contentType}`);
     // response.redirected api error return false
     if ((response.status > 300 && response.status < 309) || response.status == 403) {
+      // if handle really LastLink, modify here to recursive and return link on status 200
       return response.headers["Location"];
     } else if (response.status == 200) {
       // alist 401 but return 200 status code

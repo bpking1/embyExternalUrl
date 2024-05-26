@@ -6,7 +6,7 @@ import events from "./common/events.js";
 import Emby from "./emby.js";
 
 async function directLive(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`directLive: ${r.uri}`);
   
   const embyHost = config.embyHost;
   const itemInfo = util.getItemInfo(r);
