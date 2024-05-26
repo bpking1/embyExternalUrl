@@ -10,7 +10,7 @@ const xml = require("xml");
 let allData = "";
 
 async function redirect2Pan(r) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`redirect2Pan: ${r.uri}`);
 
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
@@ -307,6 +307,14 @@ async function fetchAlistAuthApi(url, username, password) {
   }
 }
 
+/**
+ * fetchStrmLastLink, actually this just once request,currently sufficient
+ * @param {String} strmLink eg: "https://alist/d/file.xxx"
+ * @param {String} authType eg: "sign"
+ * @param {String} authInfo eg: "sign:token:expireTime"
+ * @param {String} ua 
+ * @returns redirect after link
+ */
 async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
   // this is for multiple instances alist add sign
   if (authType && authType === "sign" && authInfo) {
@@ -318,7 +326,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
     strmLink = util.addAlistSign(strmLink, config.alistToken, config.alistSignExpireTime);
   }
   try {
-  	// fetch Api ignore nginx locations
+  	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {
@@ -330,6 +338,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}, contentType: ${contentType}`);
     // response.redirected api error return false
     if ((response.status > 300 && response.status < 309) || response.status == 403) {
+      // if handle really LastLink, modify here to recursive and return link on status 200
       return response.headers["Location"];
     } else if (response.status == 200) {
       // alist 401 but return 200 status code
@@ -497,7 +506,7 @@ async function fetchStrmInnerText(r) {
 }
 
 function plexApiHandler(r, data, flags) {
-  events.njsOnExit(r.uri);
+  events.njsOnExit(`plexApiHandler: ${r.uri}`);
   
   const contentType = r.headersOut["Content-Type"];
   //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
@@ -513,14 +522,22 @@ function plexApiHandler(r, data, flags) {
 function plexApiHandlerForJson(r, data, flags) {
   allData += data;
   if (flags.last) {
+    const uri = r.uri;
   	let body = JSON.parse(allData);
-  	const MediaContainer = body.MediaContainer;
-    if (MediaContainer.size > 0) {
+  	const mediaContainer = body.MediaContainer;
+    mediaContainerHandler(uri, mediaContainer);
+    const directoryArr = mediaContainer.Directory;
+    if (!!directoryArr) {
+      directoryArr.map(dir => {
+        directoryHandler(uri, dir);
+      });
+    }
+    if (mediaContainer.size > 0) {
       let metadataArr = [];
       let partKey;
       let partFilePath;
-      if (!!MediaContainer.Hub) {
-        MediaContainer.Hub.map(hub => {
+      if (!!mediaContainer.Hub) {
+        mediaContainer.Hub.map(hub => {
           if (!!hub.Metadata) {
             hub.Metadata.map(metadata => {
               metadataArr.push(metadata);
@@ -528,25 +545,23 @@ function plexApiHandlerForJson(r, data, flags) {
           }
         });
       } else {
-        if (!!MediaContainer.Metadata) {
-          MediaContainer.Metadata.map(metadata => {
+        if (!!mediaContainer.Metadata) {
+          mediaContainer.Metadata.map(metadata => {
             metadataArr.push(metadata);
           });
         }
       }
       metadataArr.map(metadata => {
-        // Metadata.key prohibit modify, clients not supported
+        metadataHandler(uri, metadata);
         if (!!metadata.Media) {
           metadata.Media.map(media => {
-            fillMediaInfo(media);
+            mediaInfoHandler(uri, media);
             if (!!media.Part) {
               media.Part.map(part => {
                 partKey = part.key;
                 partFilePath = part.file;
                 util.dictAdd("partInfoDict", partKey, partFilePath);
-                fillPartInfo(part);
-                // Part.key can modify, but some clients not supported
-                // partKey += `?${util.filePathKey}=${partFilePath}`;
+                partInfoHandler(uri, part);
               });
             }
           });
@@ -560,8 +575,16 @@ function plexApiHandlerForJson(r, data, flags) {
 function plexApiHandlerForXml(r, data, flags) {
   allData += data;
   if (flags.last) {
+    const uri = r.uri;
     let body = xml.parse(allData);
     const mediaContainerXmlDoc = body.MediaContainer;
+    mediaContainerHandler(uri, mediaContainerXmlDoc, true);
+    const directoryXmlDoc = mediaContainer.$tags$Directory;
+    if (!!directoryXmlDoc) {
+      directoryXmlDoc.map(dir => {
+        directoryHandler(uri, dir, true);
+      });
+    }
     let videoXmlNodeArr = mediaContainerXmlDoc.$tags$Video;
     let mediaXmlNodeArr;
     let partXmlNodeArr;
@@ -570,20 +593,19 @@ function plexApiHandlerForXml(r, data, flags) {
     // r.log(videoXmlNodeArr.length);
     if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
     	videoXmlNodeArr.map(video => {
+        metadataHandler(uri, video, true);
     		// Video.key prohibit modify, clients not supported
     		mediaXmlNodeArr = video.$tags$Media;
     		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
     			mediaXmlNodeArr.map(media => {
-            fillMediaInfo(media, true);
+            mediaInfoHandler(uri, media, true);
     				partXmlNodeArr = media.$tags$Part;
     				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
     					partXmlNodeArr.map(part => {
                 partKey = part.$attr$key;
                 partFilePath = part.$attr$file;
                 util.dictAdd("partInfoDict", partKey, partFilePath);
-                fillPartInfo(part, true);
-                // Part.key can modify, but some clients not supported
-                // partKey += `?${util.filePathKey}=${partFilePath}`;
+                partInfoHandler(uri, part, true);
     					});
     				}
     			});
@@ -595,14 +617,50 @@ function plexApiHandlerForXml(r, data, flags) {
   }
 }
 
-function fillMediaInfo(media, isXmlNode) {
+/**
+ * handler design patterns,below root to child order
+ * @param {String} uri nginx r.uri, no host, no args
+ * @param {Object} mainObject different single object
+ * @param {Boolean} isXmlNode mainObject is xml node
+ */
+
+function mediaContainerHandler(uri, mediaContainer, isXmlNode) {
+  // another custome process
+}
+
+function directoryHandler(uri, directory, isXmlNode) {
+  // modifyDirectoryHidden(uri, directory, isXmlNode);
+  // another custome process
+}
+
+function metadataHandler(uri, metadata, isXmlNode) {
+  // Metadata.key prohibit modify, clients not supported
+  // json is metadata, xml is $tags$Video tag
+  // another custome process
+}
+
+function mediaInfoHandler(uri, media, isXmlNode) {
+  fillMediaInfo(uri, media, isXmlNode);
+  // another custome process
+}
+
+function partInfoHandler(uri, part, isXmlNode) {
+  // Part.key can modify, but some clients not supported
+  // partKey += `?${util.filePathKey}=${partFilePath}`;
+  fillPartInfo(uri, media, isXmlNode);
+  // another custome process
+}
+
+// another custome process
+
+function fillMediaInfo(uri, media, isXmlNode) {
   if (!media) {
     return;
   }
   // only strm file not have mediaContainer
   // no real container required can playback, but subtitles maybe error
   const defaultContainer = "mp4";
-  if (!!isXmlNode && isXmlNode) {
+  if (isXmlNode) {
     if (!media.$attr$container) {
       media.$attr$container = defaultContainer;
     }
@@ -613,7 +671,7 @@ function fillMediaInfo(media, isXmlNode) {
   }
 }
 
-function fillPartInfo(part, isXmlNode) {
+function fillPartInfo(uri, part, isXmlNode) {
   // !!!important is MediaInfo, PartInfo is not important
   if (!part) {
     return;
@@ -622,7 +680,7 @@ function fillPartInfo(part, isXmlNode) {
   // no real container required can playback, but subtitles maybe error
   const defaultContainer = "mp4";
   const defaultStream = [];
-  if (!!isXmlNode && isXmlNode) {
+  if (isXmlNode) {
     if (!part.$attr$container) {
       part.$attr$container = defaultContainer;
     }
@@ -637,6 +695,20 @@ function fillPartInfo(part, isXmlNode) {
       part.Stream = defaultStream;
     }
   }
+}
+
+function modifyDirectoryHidden(uri, dir, isXmlNode) {
+  if (!dir) return;
+  if (isXmlNode) {
+    if (dir.$attr$hidden == "2") {
+      dir.$attr$hidden = "0";
+    }
+  } else {
+    if (dir.hidden == 2) {
+      dir.hidden = 0;
+    }
+  }
+  r.warn(`${dir.title}, modify hidden 2 => 0`);
 }
 
 async function redirectAfter(r, url, isCached) {
