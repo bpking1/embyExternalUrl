@@ -647,7 +647,7 @@ function mediaInfoHandler(uri, media, isXmlNode) {
 function partInfoHandler(uri, part, isXmlNode) {
   // Part.key can modify, but some clients not supported
   // partKey += `?${util.filePathKey}=${partFilePath}`;
-  fillPartInfo(uri, media, isXmlNode);
+  fillPartInfo(uri, part, isXmlNode);
   // another custome process
 }
 
