@@ -16,8 +16,10 @@ let keys = {
 }
 
 async function transcodeBalance(r) {
+  if (!checkEnable(r)) {
+    return emby.internalRedirectExpect(r);
+  }
   events.njsOnExit(`transcodeBalance: ${r.uri}`);
-  checkEnable(r);
 
   // const routeInternalDictKey = `${r.args.MediaSourceId}:${util.getDeviceId(r.args)}`;
 
@@ -80,16 +82,14 @@ async function transcodeBalance(r) {
 }
 
 function checkEnable(r) {
+  let flag = false;
   const transcodeConfig = config.transcodeConfig;
-  if (!!transcodeConfig && transcodeConfig.enable) {
-    return emby.internalRedirectExpect(r);
+  if (transcodeConfig && transcodeConfig.enable 
+    && transcodeConfig.type === "distributed-media-server"
+    && transcodeConfig.server && transcodeConfig.server.length > 0) {
+    flag = true;
   }
-  let serverArr = transcodeConfig.server;
-  if (transcodeConfig.type != "distributed-media-server" 
-    || !serverArr || (!!serverArr && serverArr.length < 1)) {
-    // r.error(`transcodeConfig type not excepted`);
-    return emby.internalRedirectExpect(r);
-  }
+  return flag;
 }
 
 async function getTransServer(r) {
@@ -299,8 +299,10 @@ function buildTransServerUrl(r, transServer, targetMediaId) {
 }
 
 async function syncDelete(r) {
+  if (!checkEnable(r)) {
+    return emby.internalRedirectExpect(r);
+  }
   events.njsOnExit(`syncDelete: ${r.uri}`);
-  checkEnable(r);
   
   const uri = r.uri;
   let rArgs = r.args;
@@ -340,8 +342,10 @@ async function syncDelete(r) {
 }
 
 async function syncPlayState(r) {
+  if (!checkEnable(r)) {
+    return emby.internalRedirectExpect(r);
+  }
   events.njsOnExit(`syncPlayState: ${r.uri}`);
-  checkEnable(r);
 
   const uri = r.uri;
   if (!r.requestText) {
