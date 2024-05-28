@@ -27,6 +27,11 @@
    // 端口映射规则为,host_port(宿主机端口),container_port(容器内部端口)
    "port_bindings" : [
       // {
+      //    "host_port" : 8091,
+      //    "container_port" : 8091,
+      //    "type" : "tcp"
+      // },
+      // {
       //    "host_port" : 8095,
       //    "container_port" : 8095,
       //    "type" : "tcp"

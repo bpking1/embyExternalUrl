@@ -248,10 +248,10 @@
         let subPath = getSubPath(mediaSource);
         let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
         let streamUrl = `${domain}/`;
-        let fileName = mediaSource.Path.replace(/.*[\\/]/, "");
+        let fileName = mediaSource.IsInfiniteStream ? `master.m3u8` : mediaSource.Path.replace(/.*[\\/]/, "");
         if (isEmby) {
             if (mediaSource.IsInfiniteStream) {
-                streamUrl += mediaSource.IsInfiniteStream ? `master.m3u8` : "";
+                streamUrl += useRealFileName && mediaSource.Name ? `${mediaSource.Name}.m3u8` : fileName;
             } else {
                 // origin link: /emby/videos/401929/stream.xxx?xxx
                 // modify link: /emby/videos/401929/stream/xxx.xxx?xxx

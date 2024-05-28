@@ -10,6 +10,7 @@ services:
       # 如果需要使用bridge(桥接)网络,请取消ports(端口映射)注释,并注释network_mode
       # 端口映射规则为,宿主机端口:容器内部端口
       # ports:
+      #   - 8091:8091
       #   - 8095:8095
       # privileged: true
       volumes:
