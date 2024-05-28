@@ -195,7 +195,7 @@ async function redirect2Pan(r) {
   return internalRedirect(r);
 }
 
-// 拦截 PlaybackInfo 请求，防止客户端转码（转容器）
+// 拦截 PlaybackInfo 请求
 async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
@@ -224,36 +224,50 @@ async function transferPlaybackInfo(r) {
         //   // live streams are not blocked
         //   // return r.return(200, response.responseText);
         // }
-        r.warn(`default modify direct play supports all true`);
-        source.SupportsDirectPlay = true;
-        source.SupportsDirectStream = true;
+        // 防止客户端转码（转容器）
+        modifyDirecPlaySupports(source, true);
 
-        source.SupportsTranscoding = transcodeConfig.enable;
-        if (!source.SupportsTranscoding && !transcodeConfig.redirectTransOptEnable && source.TranscodingUrl) {
-          r.warn(`remove transcode config`);
-          delete source.TranscodingUrl;
-          delete source.TranscodingSubProtocol;
-          delete source.TranscodingContainer;
-        }
-
-        const notLocal = source.IsRemote || source.Container === "strm";
+        const isStrm = (!source.IsRemote && source.MediaStreams.length == 0) // strm inner local path
+          || (source.IsRemote && !source.IsInfiniteStream) // strm after first playback
+          || source.Container == "strm"; // strm before first playback
+        const notLocal = source.IsRemote || isStrm;
         // routeRule
+        source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
         if (transcodeConfig.enable) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
+          source.XRouteMode = routeMode; // for debug
           if (util.ROUTE_ENUM.redirect == routeMode) {
+            if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
+            // first priority is user clients choice video bitrate < source.Bitrate
             const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
-            if (r.args.AutoOpenLiveStream === "true" && r.args.StartTimeTicks !== "0" 
-              && maxStreamingBitrate < source.Bitrate) {
-              r.warn(`swich transcode opt, modify direct play supports all false and add useProxyKey`);
-              modifyDirecPlaySupports(source);
+            if (r.args.StartTimeTicks !== "0" && maxStreamingBitrate < source.Bitrate) {
+              r.warn(`playback started swich redirect to transcode by opt`);
+              modifyDirecPlaySupports(source, false);
+            }
+            // cover routeMode
+            // source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
+            if (!isStrm && r.args.StartTimeTicks === "0" && source.SupportsTranscoding && source.TranscodingUrl) {
+              // if (source.AutoOpenLiveStream === "true" && source.SupportsTranscoding) {
+              r.warn(`client reported and server judgment to transcode, cover routeMode`);
+              source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
+              modifyDirecPlaySupports(source, false);
+              continue;
             }
           } else if (util.ROUTE_ENUM.transcode == routeMode || util.ROUTE_ENUM.proxy == routeMode) {
-            r.warn(`routeMode modify direct play supports all false and add useProxyKey`);
-            modifyDirecPlaySupports(source);
+            r.warn(`routeMode modify playback supports`);
+            modifyDirecPlaySupports(source, false);
             continue;
           } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
+          }
+        } else {
+          source.SupportsTranscoding = false;
+          if (!transcodeConfig.redirectTransOptEnable) {
+            r.warn(`transcodeConfig.enable && redirectTransOptEnable all false, remove origin transcode var`);
+            delete source.TranscodingUrl;
+            delete source.TranscodingSubProtocol;
+            delete source.TranscodingContainer;
           }
         }
 
@@ -268,11 +282,11 @@ async function transferPlaybackInfo(r) {
       }
 
       util.copyHeaders(response.headersOut, r.headersOut);
-      const bodyJson = JSON.stringify(body);
+      const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       let end = Date.now();
-      r.warn(`${end - start}ms, transfer playbackinfo: ${bodyJson}`);
-      return r.return(200, bodyJson);
+      r.warn(`${end - start}ms, transfer playbackinfo: ${jsonBody}`);
+      return r.return(200, jsonBody);
     }
   }
   r.warn("playbackinfo subrequest failed");
@@ -280,15 +294,14 @@ async function transferPlaybackInfo(r) {
 }
 
 function modifyDirecPlayInfo(r, source, playSessionId) {
-  const notLocal = source.IsRemote || source.Container === "strm";
   source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
   let localtionPath = source.IsInfiniteStream ? "master" : "stream";
   const fileExt = source.IsInfiniteStream 
     && (!source.Container || source.Container === "hls")
     ? "m3u8" : source.Container;
   let streamPart = `${localtionPath}.${fileExt}`;
-  // only localfile check use real filename
-  if (!notLocal && config.streamConfig.useRealFileName) {
+  // only not live check use real filename
+  if (!source.IsInfiniteStream && config.streamConfig.useRealFileName) {
     // origin link: /emby/videos/401929/stream.xxx?xxx
     // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
     // this is not important, hit "/emby/videos/401929/" path level still worked
@@ -322,15 +335,20 @@ function modifyDirecPlayInfo(r, source, playSessionId) {
   source.XModifyDirectStreamUrlSuccess = true; // for debug
 }
 
-function modifyDirecPlaySupports(source) {
-  source.SupportsDirectPlay = false;
-  source.SupportsDirectStream = false;
-  source.TranscodingUrl = util.appendUrlArg(
-    source.TranscodingUrl,
-    util.ARGS.useProxyKey,
-    "1"
-  );
-  source.XModifyTranscodingUrlSuccess = true; // for debug
+function modifyDirecPlaySupports(source, flag) {
+  source.SupportsDirectPlay = flag;
+  source.SupportsDirectStream = flag;
+  let msg = `modify direct play supports all ${flag}`;
+  if (!flag && source.TranscodingUrl) {
+    source.TranscodingUrl = util.appendUrlArg(
+      source.TranscodingUrl,
+      util.ARGS.useProxyKey,
+      "1"
+    );
+    source.XModifyTranscodingUrlSuccess = true; // for debug
+    msg += ", and add useProxyKey"
+  }
+  ngx.log(ngx.WARN, msg);
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
