@@ -60,7 +60,7 @@ const routeCacheConfig = {
   enableL2: false,
   // 缓存键表达式,默认值添加按设备区分缓存
   // 注意这行也需要更改,如果 routeCacheConfig.enable 为 true 时
-  keyExpression: "r.uri:r.args.MediaSourceId:r.args.X-Emby-Client",
+  keyExpression: "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id",
 };
 // 路由规则
 const routeRule = [

@@ -81,6 +81,7 @@ async function redirect2Pan(r) {
 
   // routeRule
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
+  r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
     // use original link
     return internalRedirect(r);

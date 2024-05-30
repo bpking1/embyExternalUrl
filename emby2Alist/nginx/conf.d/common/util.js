@@ -102,8 +102,10 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   let cRouteRule = config.routeRule;
   // skip internal request
   if (r.args[ARGS.internalKey] === "1") {
-    cRouteRule = cRouteRule.filter(rule => rule[0] != "r.variables.remote_addr" 
-      && rule[1] != "r.variables.remote_addr" && rule[2] != "r.variables.remote_addr");
+    cRouteRule = cRouteRule.filter(rule => 
+      rule[0] != "r.variables.remote_addr" 
+      && rule[1] != "r.variables.remote_addr" 
+      && rule[2] != "r.variables.remote_addr");
   }
   // old proxy
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
