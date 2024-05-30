@@ -95,6 +95,7 @@ async function redirect2Pan(r) {
 
   // routeRule
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
+  r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
     // use original link
     return internalRedirect(r);
