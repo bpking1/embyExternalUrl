@@ -579,7 +579,7 @@ function plexApiHandlerForXml(r, data, flags) {
     let body = xml.parse(allData);
     const mediaContainerXmlDoc = body.MediaContainer;
     mediaContainerHandler(uri, mediaContainerXmlDoc, true);
-    const directoryXmlDoc = mediaContainer.$tags$Directory;
+    const directoryXmlDoc = mediaContainerXmlDoc.$tags$Directory;
     if (!!directoryXmlDoc) {
       directoryXmlDoc.map(dir => {
         directoryHandler(uri, dir, true);
