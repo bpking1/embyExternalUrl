@@ -7,7 +7,6 @@ import util from "./common/util.js";
 import events from "./common/events.js";
 
 const xml = require("xml");
-let allData = "";
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
@@ -29,11 +28,11 @@ async function redirect2Pan(r) {
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
     const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
     let routeDictKey = "routeL1Dict";
-    // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
-    //   routeDictKey = "routeL2Dict";
+    if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
+      routeDictKey = "routeL2Dict";
     // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
     //   routeDictKey = "routeL3Dict";
-    // }
+    }
     let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
     if (!cachedLink) {
       // 115 must use ua
@@ -56,7 +55,7 @@ async function redirect2Pan(r) {
   let mediaServerRes;
   if (itemInfo.filePath) {
     mediaServerRes = {path: itemInfo.filePath};
-    r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
+    r.warn(`get filePath from cache partInfoDict`);
   } else {
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
     mediaServerRes = await util.cost(fetchPlexFilePath,
@@ -505,158 +504,164 @@ async function fetchStrmInnerText(r) {
   }
 }
 
-function plexApiHandler(r, data, flags) {
+async function plexApiHandler(r) {
   events.njsOnExit(`plexApiHandler: ${r.uri}`);
-  
-  const contentType = r.headersOut["Content-Type"];
+
+  const subR = await r.subrequest(util.proxyUri(r.uri));
+  const contentType = subR.headersOut["Content-Type"];
   //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
-  if (contentType.includes("application/json")) {
-    plexApiHandlerForJson(r, data, flags);
-  } else if (contentType.includes("text/xml")) {
-    plexApiHandlerForXml(r, data, flags);
+  let bodyObj;
+  let sBody;
+  if (subR.status === 200) {
+    if (contentType.includes("application/json")) {
+      bodyObj = JSON.parse(subR.responseText);
+      plexApiHandlerForJson(r, bodyObj);
+      sBody = JSON.stringify(bodyObj);
+    } else if (contentType.includes("text/xml")) {
+      bodyObj = xml.parse(subR.responseText);
+      plexApiHandlerForXml(r, bodyObj);
+      sBody = xml.serialize(bodyObj);
+    }
   } else {
-    r.sendBuffer(data, flags);
+  	r.warn("plexApiHandler subrequest failed");
+	  return internalRedirect(r);
   }
+
+  util.copyHeaders(subR.headersOut, r.headersOut);
+  return r.return(200, sBody);
 }
 
-function plexApiHandlerForJson(r, data, flags) {
-  allData += data;
-  if (flags.last) {
-    const uri = r.uri;
-  	let body = JSON.parse(allData);
-  	const mediaContainer = body.MediaContainer;
-    mediaContainerHandler(uri, mediaContainer);
-    const directoryArr = mediaContainer.Directory;
-    if (!!directoryArr) {
-      directoryArr.map(dir => {
-        directoryHandler(uri, dir);
-      });
-    }
-    if (mediaContainer.size > 0) {
-      let metadataArr = [];
-      let partKey;
-      let partFilePath;
-      if (!!mediaContainer.Hub) {
-        mediaContainer.Hub.map(hub => {
-          if (!!hub.Metadata) {
-            hub.Metadata.map(metadata => {
-              metadataArr.push(metadata);
-            });
-          }
-        });
-      } else {
-        if (!!mediaContainer.Metadata) {
-          mediaContainer.Metadata.map(metadata => {
+function plexApiHandlerForJson(r, body) {
+  const mediaContainer = body.MediaContainer;
+  mediaContainerHandler(r, mediaContainer);
+  const directoryArr = mediaContainer.Directory;
+  if (!!directoryArr) {
+    directoryArr.map(dir => {
+      directoryHandler(r, dir);
+    });
+  }
+  if (mediaContainer.size > 0) {
+    let metadataArr = [];
+    if (!!mediaContainer.Hub) {
+      mediaContainer.Hub.map(hub => {
+        if (!!hub.Metadata) {
+          hub.Metadata.map(metadata => {
             metadataArr.push(metadata);
           });
         }
-      }
-      metadataArr.map(metadata => {
-        metadataHandler(uri, metadata);
-        if (!!metadata.Media) {
-          metadata.Media.map(media => {
-            mediaInfoHandler(uri, media);
-            if (!!media.Part) {
-              media.Part.map(part => {
-                partKey = part.key;
-                partFilePath = part.file;
-                util.dictAdd("partInfoDict", partKey, partFilePath);
-                partInfoHandler(uri, part);
-              });
-            }
-          });
-        }
       });
+    } else {
+      if (!!mediaContainer.Metadata) {
+        mediaContainer.Metadata.map(metadata => {
+          metadataArr.push(metadata);
+        });
+      }
     }
-  	r.sendBuffer(JSON.stringify(body), flags);
+    metadataArr.map(metadata => {
+      metadataHandler(r, metadata);
+      if (!!metadata.Media) {
+        metadata.Media.map(media => {
+          mediaInfoHandler(r, media);
+          if (!!media.Part) {
+            media.Part.map(part => partInfoHandler(r, part));
+          }
+        });
+      }
+    });
   }
 }
 
-function plexApiHandlerForXml(r, data, flags) {
-  allData += data;
-  if (flags.last) {
-    const uri = r.uri;
-    let body = xml.parse(allData);
-    const mediaContainerXmlDoc = body.MediaContainer;
-    mediaContainerHandler(uri, mediaContainerXmlDoc, true);
-    const directoryXmlDoc = mediaContainerXmlDoc.$tags$Directory;
-    if (!!directoryXmlDoc) {
-      directoryXmlDoc.map(dir => {
-        directoryHandler(uri, dir, true);
-      });
-    }
-    let videoXmlNodeArr = mediaContainerXmlDoc.$tags$Video;
-    let mediaXmlNodeArr;
-    let partXmlNodeArr;
-    let partKey;
-    let partFilePath;
-    // r.log(videoXmlNodeArr.length);
-    if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
-    	videoXmlNodeArr.map(video => {
-        metadataHandler(uri, video, true);
-    		// Video.key prohibit modify, clients not supported
-    		mediaXmlNodeArr = video.$tags$Media;
-    		if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
-    			mediaXmlNodeArr.map(media => {
-            mediaInfoHandler(uri, media, true);
-    				partXmlNodeArr = media.$tags$Part;
-    				if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
-    					partXmlNodeArr.map(part => {
-                partKey = part.$attr$key;
-                partFilePath = part.$attr$file;
-                util.dictAdd("partInfoDict", partKey, partFilePath);
-                partInfoHandler(uri, part, true);
-    					});
-    				}
-    			});
-    		}
-    	});
-    }
-    // r.log(JSON.stringify(body.MediaContainer.$tags$Video.length));
-    r.sendBuffer(xml.serialize(body), flags);
+function plexApiHandlerForXml(r, body) {
+  const mediaContainerXmlDoc = body.MediaContainer;
+  mediaContainerHandler(r, mediaContainerXmlDoc, true);
+  const directoryXmlDoc = mediaContainerXmlDoc.$tags$Directory;
+  if (!!directoryXmlDoc) {
+    directoryXmlDoc.map(dir => {
+      directoryHandler(r, dir, true);
+    });
+  }
+  let videoXmlNodeArr = mediaContainerXmlDoc.$tags$Video;
+  let mediaXmlNodeArr;
+  let partXmlNodeArr;
+  // r.log(videoXmlNodeArr.length);
+  if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
+    videoXmlNodeArr.map(video => {
+      metadataHandler(r, video, true);
+      // Video.key prohibit modify, clients not supported
+      mediaXmlNodeArr = video.$tags$Media;
+      if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
+        mediaXmlNodeArr.map(media => {
+          mediaInfoHandler(r, media, true);
+          partXmlNodeArr = media.$tags$Part;
+          if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
+            partXmlNodeArr.map(part => partInfoHandler(r, part, true));
+          }
+        });
+      }
+    });
   }
 }
 
 /**
  * handler design patterns,below root to child order
- * @param {String} uri nginx r.uri, no host, no args
+ * @param {Object} r nginx objects, HTTP Request
  * @param {Object} mainObject different single object
  * @param {Boolean} isXmlNode mainObject is xml node
  */
 
-function mediaContainerHandler(uri, mediaContainer, isXmlNode) {
+function mediaContainerHandler(r, mediaContainer, isXmlNode) {
   // another custome process
 }
 
-function directoryHandler(uri, directory, isXmlNode) {
-  // modifyDirectoryHidden(uri, directory, isXmlNode);
+function directoryHandler(r, directory, isXmlNode) {
+  // modifyDirectoryHidden(r, directory, isXmlNode);
   // another custome process
 }
 
-function metadataHandler(uri, metadata, isXmlNode) {
+function metadataHandler(r, metadata, isXmlNode) {
   // Metadata.key prohibit modify, clients not supported
   // json is metadata, xml is $tags$Video tag
   // another custome process
 }
 
-function mediaInfoHandler(uri, media, isXmlNode) {
-  fillMediaInfo(uri, media, isXmlNode);
+function mediaInfoHandler(r, media, isXmlNode) {
+  fillMediaInfo(r, media, isXmlNode);
   // another custome process
 }
 
-function partInfoHandler(uri, part, isXmlNode) {
-  // Part.key can modify, but some clients not supported
-  // partKey += `?${util.filePathKey}=${partFilePath}`;
-  fillPartInfo(uri, part, isXmlNode);
+function partInfoHandler(r, part, isXmlNode) {
+  cachePartInfo(r, part, isXmlNode);
+  fillPartInfo(r, part, isXmlNode);
   // another custome process
 }
 
 // another custome process
 
-function fillMediaInfo(uri, media, isXmlNode) {
-  if (!media) {
-    return;
+function cachePartInfo(r, part, isXmlNode) {
+  if (!part) return;
+  // Part.key can modify, but some clients not supported
+  // partKey += `?${util.filePathKey}=${partFilePath}`;
+  let partKey = part.key;
+  let partFilePath = part.file;
+  if (isXmlNode) {
+    partKey = part.$attr$key;
+    partFilePath = part.$attr$file;
   }
+  util.dictAdd("partInfoDict", partKey, partFilePath);
+  routeCachePartInfo(r, partKey);
+}
+
+function routeCachePartInfo(r, partKey) {
+  if (!partKey) return;
+  if (config.routeCacheConfig.enableL2 
+    && r.uri.startsWith("/library/metadata")) {
+    // async cachePreload
+    cachePreload(r, util.getCurrentRequestUrlPrefix(r) + partKey, util.CHCHE_LEVEL_ENUM.L2);
+  }
+}
+
+function fillMediaInfo(r, media, isXmlNode) {
+  if (!media) return;
   // only strm file not have mediaContainer
   // no real container required can playback, but subtitles maybe error
   const defaultContainer = "mp4";
@@ -671,11 +676,9 @@ function fillMediaInfo(uri, media, isXmlNode) {
   }
 }
 
-function fillPartInfo(uri, part, isXmlNode) {
+function fillPartInfo(r, part, isXmlNode) {
   // !!!important is MediaInfo, PartInfo is not important
-  if (!part) {
-    return;
-  }
+  if (!part) return;
   // only strm file not have mediaContainer
   // no real container required can playback, but subtitles maybe error
   const defaultContainer = "mp4";
@@ -697,7 +700,7 @@ function fillPartInfo(uri, part, isXmlNode) {
   }
 }
 
-function modifyDirectoryHidden(uri, dir, isXmlNode) {
+function modifyDirectoryHidden(r, dir, isXmlNode) {
   if (!dir) return;
   if (isXmlNode) {
     if (dir.$attr$hidden == "2") {
@@ -715,13 +718,13 @@ async function redirectAfter(r, url, isCached) {
   try {
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      // const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
+      const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let routeDictKey = "routeL1Dict";
-      // if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
-      //   routeDictKey = "routeL2Dict";
+      if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
+        routeDictKey = "routeL2Dict";
       // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
       //   routeDictKey = "routeL3Dict";
-      // }
+      }
       const ua = r.headersIn["User-Agent"];
       // webClient download only have itemId on pathParam
       let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;

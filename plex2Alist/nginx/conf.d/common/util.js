@@ -14,7 +14,7 @@ const ROUTE_ENUM = {
 
 const CHCHE_LEVEL_ENUM = {
   L1: "L1",
-  // L2: "L2",
+  L2: "L2",
   // L3: "L3",
 };
 
@@ -23,6 +23,29 @@ function proxyUri(uri) {
   return `/proxy${uri}`;
 }
 
+function appendUrlArg(u, k, v) {
+  if (u.includes(k)) {
+    return u;
+  }
+  return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
+}
+
+function getCurrentRequestUrlPrefix(r) {
+  return `${r.variables.scheme}://${r.headersIn["Host"]}`;
+}
+
+function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
+  if (!skipKeys) {
+    // auto generate content length
+    skipKeys = ["Content-Length"];
+  }
+  for (const key in sourceHeaders) {
+	  if (skipKeys.includes(key)) {
+	    continue;
+	  }
+	  targetHeaders[key] = sourceHeaders[key];
+	}
+}
 
 function groupBy(array, key) {
   return array.reduce((result, currentItem) => {
@@ -47,8 +70,10 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   let cRouteRule = config.routeRule;
   // skip internal request
   if (r.args[ARGS.internalKey] === "1") {
-    cRouteRule = cRouteRule.filter(rule => rule[0] != "r.variables.remote_addr" 
-      && rule[1] != "r.variables.remote_addr" && rule[2] != "r.variables.remote_addr");
+    cRouteRule = cRouteRule.filter(rule => 
+      rule[0] != "r.variables.remote_addr" 
+      && rule[1] != "r.variables.remote_addr" 
+      && rule[2] != "r.variables.remote_addr");
   }
   // old proxy
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
@@ -449,6 +474,9 @@ export default {
   ROUTE_ENUM,
   CHCHE_LEVEL_ENUM,
   proxyUri,
+  appendUrlArg,
+  getCurrentRequestUrlPrefix,
+  copyHeaders,
   strMapping,
   strMatches,
   getRouteMode,
