@@ -59,6 +59,7 @@ const routeCacheConfig = {
   enable: true,
   enableL2: false,
   // 缓存键表达式,默认值添加按设备区分缓存
+  // 注意这行也需要更改,如果 routeCacheConfig.enable 为 true 时
   keyExpression: "r.uri:r.args.MediaSourceId:r.args.X-Emby-Client",
 };
 // 路由规则
@@ -74,17 +75,17 @@ const routeRule = [
 
 #### 7.Web 端播放部分格式会无限循环播放停止?
 因为 Web 浏览器支持的格式极少,具体支持情况看浏览器控制台打印出的 canPlay 之类的信息,
-本项目优先保证直链,而原始媒体服务大部分情况都会走转码以兼容这种情况,建议优先使用对应平台的客户端,
+没开启允许转码参数的本项目优先保证直链,而原始媒体服务大部分情况都会走转码以兼容这种情况,建议优先使用对应平台的客户端,
 支持的媒体格式更多,实在需要 web 端的,结合转码配置参数和路由配置参数使用
 
 #### 8.nginx 必须使用 host 网络吗?
 不是必须的,只是方便处理和理解,因为 nginx 之前可能还有其他反代程序而没有传递客户端真实 IP 标头,
-所以用 host 比较简单,能保证本 nginx=> jellyfin 传递的是客户端的真实远程 IP,
-在 nginx 后如果直接就是原始媒体服务,emby 就不需要 host 网络了,但是如果 nginx 前后还有其他的反代程序,
+所以用 host 比较简单,能保证本 nginx=> MediaServer 传递的是客户端的真实远程 IP,
+在 nginx 后如果直接就是原始媒体服务,MediaServer 就不需要 host 网络了,但是如果 nginx 前后还有其他的反代程序,
 则它们都需要传递客户端真实 IP, 所需标头可以参考 proxy-header.conf 或 alist 文档中反代传递的标头,
-假如流量链路 npm -> emby2alist -> jellyfin 只需要在 npm 这里传递标头就行了,
-这样 nginx 和 jellyfin 都可以用桥接网络不用改,这个配置同时也是做内网外识别用的,
-如果用不到或者不在意 jellyfin 控制台中和 nginx 日志中的显示的客户端 IP 都是内网而不是真实远程 IP 的,也不用管这个配置了
+假如流量链路 npm -> xxx2alist -> MediaServer 只需要在 npm 这里传递标头就行了,
+这样 nginx 和 MediaServer 都可以用桥接网络不用改,这个配置同时也是做内网外识别用的,
+如果用不到或者不在意 MediaServer 控制台中和 nginx 日志中的显示的客户端 IP 都是内网而不是真实远程 IP 的,也不用管这个配置了
 
 #### 8.为什么需要识别内网网段的地址?
 这个如果没有特殊需要可以不用管,选填项,目前两个地方用到了
@@ -199,6 +200,15 @@ const transcodeConfig = {
 
 #### 18.win 客户端播放 115 内容有时存在问题?
 更新客户端为最新版本可以解决,不清楚原因
+
+#### 19.局域网下可能存在绕过 nginx 处理的问题?
+使用容器版 emby 并限定网络模式为桥接(bridge),只开放默认的 8096 端口出来,这样理论上能掐断客户端的 UDP 网络发现,
+同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否,
+更多参照 
+
+[emby2Alist](./emby2Alist/README.md#2024/04/10)
+
+https://github.com/bpking1/embyExternalUrl/issues/59#issuecomment-2036672011
 
 # embyAddExternalUrl
 
