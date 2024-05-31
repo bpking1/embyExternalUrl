@@ -79,6 +79,12 @@ function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
 	}
 }
 
+/**
+ * groupBy
+ * @param {Array} array original 2D array
+ * @param {*} key groupBy key
+ * @returns grouped Object Array, key is groupBy key, value is grouped 1D array
+ */
 function groupBy(array, key) {
   return array.reduce((result, currentItem) => {
     const groupKey = typeof key === 'function' ? key(currentItem) : currentItem[key];
@@ -107,8 +113,9 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
       && rule[1] != "r.variables.remote_addr" 
       && rule[2] != "r.variables.remote_addr");
   }
-  // old proxy
+  // old proxy, sigle rule length is 3 or 4(group)
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
+  // old proxy, validate rule[0] is ROUTE_ENUM
   proxyRules = proxyRules.filter(rule => !Object.keys(ROUTE_ENUM).includes(rule[0]));
   proxyRules = proxyRules.concat(cRouteRule
     .filter(rule => rule[0] === ROUTE_ENUM.proxy)
@@ -118,7 +125,7 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   if (isProxy(r, proxyRules, filePath, isAlistRes, notLocal)) {
     return ROUTE_ENUM.proxy;
   }
-  // new routeRules and not new proxy
+  // new routeRules and not new proxy routeMode
   let routeRules = cRouteRule.filter(rule => {
     for (const rKey in ROUTE_ENUM) {
       if (ROUTE_ENUM[rKey] === rule[0] && rule[0] != ROUTE_ENUM.proxy) {
@@ -127,9 +134,10 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
     }
   });
   if (routeRules.length === 0 && isAlistRes) {
-    // default value
+    // default value is redirect routeMode
     return ROUTE_ENUM.redirect;
   }
+  // routeRules groupBy group name
   const routeRulesObjArr = groupBy(routeRules, 0);
   for (const rKey in routeRulesObjArr) {
     routeRules = routeRulesObjArr[rKey];
@@ -152,6 +160,15 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   return ROUTE_ENUM.redirect;
 }
 
+/**
+ * isProxy, old isDisableRedirectRule, one rule matched will return
+ * sigle rule priority > group rule
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {String} filePath mediaFilePath or alistRes link
+ * @param {Boolean} isAlistRes alistRes link
+ * @param {Boolean} notLocal if not need proxy route can be undefined
+ * @returns Boolean
+ */
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
   const mountPath = config.embyMountPath;
@@ -163,17 +180,18 @@ function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
     }
   }
   
+  // old proxy, sigle rule length is 3 or 4(group)
   const oldRules = disableRedirectRule.filter(rule => rule.length <= 3);
-  if (oldRules.length === 0) {
-    return false;
+  if (oldRules.length > 0) {
+    let matchedRule = getMatchedRule(r, oldRules, filePath);
+    if (matchedRule) {
+      ngx.log(ngx.WARN, `hit proxy: ${JSON.stringify(matchedRule)}`);
+      return true;
+    }
   }
-  let matchedRule = getMatchedRule(r, oldRules, filePath);
-  if (matchedRule) {
-    ngx.log(ngx.WARN, `hit proxy: ${JSON.stringify(matchedRule)}`);
-    return true;
-  }
+  // new proxy with group name
   const groupRulesObjArr = groupBy(disableRedirectRule.filter(rule => rule.length > 3), 0);
-  if (Object.keys(groupRulesObjArr) === 0) {
+  if (Object.keys(groupRulesObjArr).length === 0) {
     return false;
   }
   let matchedGroupKey;
@@ -201,6 +219,7 @@ function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
   // remove groupKey
   const oldRulesArr3D = groupRulesArr3D.map(gRule => gRule.slice(1));
   ngx.log(ngx.INFO, `getMatchedRuleGroupKey oldRulesArr3D: ${JSON.stringify(oldRulesArr3D)}`);
+  // one group inner "every" is logical "and"
   if (oldRulesArr3D.every(rule => !!getMatchedRule(r, [rule], filePath))) {
     rvt = groupKey;
   }
