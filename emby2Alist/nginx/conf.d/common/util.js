@@ -182,12 +182,16 @@ function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   
   // old proxy, sigle rule length is 3 or 4(group)
   const oldRules = disableRedirectRule.filter(rule => rule.length <= 3);
-  if (oldRules.length === 0) {
-    return false;
+  if (oldRules.length > 0) {
+    let matchedRule = getMatchedRule(r, oldRules, filePath);
+    if (matchedRule) {
+      ngx.log(ngx.WARN, `hit proxy: ${JSON.stringify(matchedRule)}`);
+      return true;
+    }
   }
   // new proxy with group name
   const groupRulesObjArr = groupBy(disableRedirectRule.filter(rule => rule.length > 3), 0);
-  if (Object.keys(groupRulesObjArr) === 0) {
+  if (Object.keys(groupRulesObjArr).length === 0) {
     return false;
   }
   let matchedGroupKey;
