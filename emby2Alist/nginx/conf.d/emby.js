@@ -79,7 +79,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
-  // routeRule
+  // routeRule, must before xxxPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
   r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
