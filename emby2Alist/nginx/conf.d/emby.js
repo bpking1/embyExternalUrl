@@ -19,26 +19,26 @@ async function redirect2Pan(r) {
   if (routeCacheConfig.enable) {
     // webClient download only have itemId on pathParam
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
-    const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
-    let routeDictKey = "routeL1Dict";
-    if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
-      routeDictKey = "routeL2Dict";
-    // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
-    //   routeDictKey = "routeL3Dict";
-    }
-    let cachedLink = ngx.shared[routeDictKey].get(cacheKey);
-    if (!cachedLink) {
-      // 115 must use ua
-      cacheKey += `:${ua}`;
+    r.log(`redirect2Pan cacheKey: ${cacheKey}`);
+    let routeDictKey;
+    let cachedLink;
+    for (let index = 1; index < 3; index++) {
+      routeDictKey = `routeL${index}Dict`;
       cachedLink = ngx.shared[routeDictKey].get(cacheKey);
-    }
-    if (!!cachedLink) {
-      r.warn(`hit routeCache ${cacheLevle}: ${cachedLink}`);
-      if (cachedLink.startsWith("@")) {
-        // use original link
-        return internalRedirect(r, cachedLink, true);
+      if (!cachedLink) {
+        // 115 must use ua
+        cachedLink = ngx.shared[routeDictKey].get(`${cacheKey}:${ua}`);
+      }
+      if (!!cachedLink) {
+        r.warn(`hit cache ${routeDictKey}: ${cachedLink}`);
+        if (cachedLink.startsWith("@")) {
+          // use original link
+          return internalRedirect(r, cachedLink, routeDictKey);
+        } else {
+          return redirect(r, cachedLink, routeDictKey);
+        }
       } else {
-        return redirect(r, cachedLink, true);
+        r.log(`not found from cache ${routeDictKey}, skip`);
       }
     }
   }
@@ -278,7 +278,7 @@ async function transferPlaybackInfo(r) {
         // async cachePreload
         if (routeCacheConfig.enable && routeCacheConfig.enableL2 
           && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
-          cachePreload(r, util.getCurrentRequestUrlPrefix(r) + source.DirectStreamUrl, util.CHCHE_LEVEL_ENUM.L2);
+          cachePreload(r, `${util.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
         }
       }
 
@@ -728,24 +728,34 @@ async function preload(r, url) {
   });
 }
 
-async function redirectAfter(r, url, isCached) {
+async function redirectAfter(r, url, cachedRouteDictKey) {
   try {
+    await new Promise(resolve => setTimeout(resolve, 0));
     let cachedMsg = "";
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
-      let routeDictKey = "routeL1Dict";
-      if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
-        routeDictKey = "routeL2Dict";
-      // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
-      //   routeDictKey = "routeL3Dict";
-      }
       const ua = r.headersIn["User-Agent"];
       // webClient download only have itemId on pathParam
       let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
       cacheKey = url.includes(config.strHead["115"]) ? `${cacheKey}:${ua}` : cacheKey;
-      util.dictAdd(routeDictKey, cacheKey, url);
-      cachedMsg = `hit routeCache ${cacheLevle}: ${!!isCached}, `;
+      r.log(`redirectAfter cacheKey: ${cacheKey}`);
+      // cachePreload added args in url
+      const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
+      let flag = !ngx.shared["routeL2Dict"].has(cacheKey);
+        // && !ngx.shared["routeL3Dict"].has(cacheKey);
+      let routeDictKey = "routeL1Dict";
+      if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
+        routeDictKey = "routeL2Dict";
+        flag = !ngx.shared["routeL1Dict"].has(cacheKey);
+      // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
+      //   routeDictKey = "routeL3Dict";
+      //   flag = !ngx.shared["routeL1Dict"].has(cacheKey) && !ngx.shared["routeL2Dict"].has(cacheKey);
+      }
+      if (flag) {
+        util.dictAdd(routeDictKey, cacheKey, url);
+        cachedMsg += `cache ${routeDictKey} added, `;
+      }
+      cachedMsg = cachedRouteDictKey ? `hit cache ${cachedRouteDictKey}, ` : cachedMsg;
     }
 
     const deviceId = util.getDeviceId(r.args);
@@ -772,12 +782,13 @@ async function redirectAfter(r, url, isCached) {
   }
 }
 
-async function internalRedirectAfter(r, uri, isCached) {
+async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
   try {
+    await new Promise(resolve => setTimeout(resolve, 0));
     let cachedMsg = "";
     const routeCacheConfig = config.routeCacheConfig;
     if (routeCacheConfig.enable) {
-      cachedMsg = `hit routeCache L1: ${!!isCached}, `;
+      cachedMsg = `hit routeCache L1: ${!!cachedRouteDictKey}, `;
       // webClient download only have itemId on pathParam
       const cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
       util.dictAdd("routeL1Dict", cacheKey, uri);
@@ -808,7 +819,7 @@ async function internalRedirectAfter(r, uri, isCached) {
   }
 }
 
-function redirect(r, url, isCached) {
+function redirect(r, url, cachedRouteDictKey) {
   if (!!config.alistSignEnable) {
     url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
   }
@@ -818,10 +829,10 @@ function redirect(r, url, isCached) {
   r.return(302, url);
 
   // async
-  redirectAfter(r, url, isCached);
+  redirectAfter(r, url, cachedRouteDictKey);
 }
 
-function internalRedirect(r, uri, isCached) {
+function internalRedirect(r, uri, cachedRouteDictKey) {
   if (!uri) {
     uri = "@root";
     r.warn(`use original link`);
@@ -831,7 +842,7 @@ function internalRedirect(r, uri, isCached) {
   r.internalRedirect(uri);
 
   // async
-  internalRedirectAfter(r, uri, isCached);
+  internalRedirectAfter(r, uri, cachedRouteDictKey);
 }
 
 function internalRedirectExpect(r, uri) {

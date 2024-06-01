@@ -373,8 +373,8 @@ function alistLinkFailback(url) {
   return rvt;
 }
 
-async function dictAdd(dictName, key, value) {
-  if (!key || !value) {
+function dictAdd(dictName, key, value) {
+  if (!dictName || !key || !value) {
     return;
   }
   const dict = ngx.shared[dictName];
