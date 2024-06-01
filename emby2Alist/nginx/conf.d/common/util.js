@@ -438,8 +438,8 @@ function getItemInfo(r) {
   return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
 }
 
-async function dictAdd(dictName, key, value) {
-  if (!key || !value) {
+function dictAdd(dictName, key, value) {
+  if (!dictName || !key || !value) {
     return;
   }
   const dict = ngx.shared[dictName];
