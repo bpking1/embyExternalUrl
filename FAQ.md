@@ -249,6 +249,10 @@ const routeRule = [
 ];
 ```
 
+#### 21.因为图片缓存导致更新海报不生效?
+1.默认已经新增了指令 proxy_cache_bypass,自己编辑下该海报的访问接口添加 URL 参数 nocache=1,跳过该缓存后重新访问将覆盖旧缓存
+2.自行编译配置 proxy_cache_purge 模块并打开 emby.conf 中注释并看情况修改实现,未实际测试过
+
 # embyAddExternalUrl
 
 #### 1.支持 plex 吗?
