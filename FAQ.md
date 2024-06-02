@@ -51,7 +51,7 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 #### 6.115 内容无法 Web 端播放?
 因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,且 115 没有响应跨域支持,
 浏览器严格限制跨域内容,使用浏览器拓展的修改响应头或者使用对应平台的客户端播放,
-或者放弃 web 端的直链功能,打开路由配置中示例配置,以使用 nginx 代理中转流量兼容
+或者放弃 web 端的直链功能,打开路由配置中示例配置,让 nginx 转给原始服务处理
 
 ```js
 // 路由缓存配置
@@ -209,6 +209,45 @@ const transcodeConfig = {
 [emby2Alist](./emby2Alist/README.md#2024/04/10)
 
 https://github.com/bpking1/embyExternalUrl/issues/59#issuecomment-2036672011
+
+#### 20.路由规则还有更多示例吗?
+参考 routeRule 中的注释示例进行选择
+
+1.nginx 变量示例,remote_addr 代表远程客户端真实 IP,此规则代表 192. 开头的远程客户端走原始服务处理(proxy)
+
+```js
+const routeRule = [
+  // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
+  ["r.variables.remote_addr", 0, "192."], // 可为单字符串或数组内字符串,填自身实际情况,可以参照 strHead.lanIp, emby2Alist\nginx\conf.d\config\constant-common.js
+];
+```
+
+2.播放接口的链接 Path 入参,此规则代表,同规则分组需要同时满足,逻辑 and, filePath 以指定字符串开头,且链接入参 UserId 匹配指定字符串,
+filePath 本地文件是 / 开头的,远程文件将是链接协议开头的
+
+```js
+const routeRule = [
+  // 注意这里省略了参数1,默认值为"proxy",参数2: 分组名,只是做标识的,可以理解为备注,可以随意填写
+  ["iptv-user-proxy", "r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户 ID,这里填自身实际情况
+  ["iptv-user-proxy", "filePath", 0, "https://node1.xxx.com"], // 这里填自身实际情况
+];
+```
+
+3.指定特定后缀文件由原始服务自己处理(proxy),其中的数字 1 是入库路径以字符串结尾的判断规则,3 是正则匹配,三选一,分开写或者合并在一起
+
+```js
+const routeRule = [
+  ["proxy", "filePath", 1, ["theme.mp3", "theme.mkv", "theme.mp4"]],
+];
+const routeRule = [
+  ["proxy", "filePath", 1, "theme.mp3"],
+  ["proxy", "filePath", 1, "theme.mkv"],
+  ["proxy", "filePath", 1, "theme.mp4"],
+];
+const routeRule = [
+  ["proxy", "filePath", 3, /\/theme.(mp3|mkv|mp4)/ig],
+];
+```
 
 # embyAddExternalUrl
 
