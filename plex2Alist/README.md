@@ -340,7 +340,7 @@ web 端各大浏览器对音频和视频编码支持情况不一,碰到不支持
 
 ### 8. 补充说明
 鉴于 plex 除了 web 外各客户端对于不安全内容 http 默认都是禁止状态,故强烈建议配置域名和证书,
-具体查看 plex2Alist/nginx/conf.d/includes\https.conf 文件,注意端口为 8095,且需要放开 
+具体查看 plex2Alist/nginx/conf.d/includes/https.conf 文件,注意端口为 8095,且需要放开 
 plex2Alist/nginx/conf.d/plex.conf 中的注释 # include /etc/nginx/conf.d/includes/https.conf;
 
 ## 已知问题:
