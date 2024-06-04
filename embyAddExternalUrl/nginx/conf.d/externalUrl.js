@@ -13,7 +13,7 @@ let api_key = '';
 let domain = '';
 let oriData = '';
 let osType = '';
-let serverType = 'emby';
+let serverType = 'Emby';
 const redirectKey = 'redirect2external';
 
 const addExternalUrl = async (r, data, flags) => {
@@ -248,7 +248,7 @@ const getDDPlayUrl = (mediaInfo) => {
 }
 
 const getWebUrl = (mediaInfo, itemId, serverId) => {
-    let urlPart = serverType == 'emby' ? '#!/item' : '#/details';
+    let urlPart = serverType == 'Emby' ? '#!/item' : '#/details';
 	return {
         Name: `网页打开-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/web/index.html${urlPart}?id=${itemId}&serverId=${serverId}`
@@ -320,14 +320,24 @@ const fillApiKeyAndServerType = (r) => {
     if (api_key) {
         return;
     }
-    const jellfinAuth = r.headersIn['X-Emby-Authorization']
+    r.log(`fillApiKeyAndServerType uri: ${r.uri}`)
+    r.log(`fillApiKeyAndServerType args: ${JSON.stringify(r.args)}`)
+    r.log(`fillApiKeyAndServerType headersIn: ${JSON.stringify(r.headersIn)}`)
+    // Jellyfin for Android TV
+    api_key = r.headersIn['X-MediaBrowser-Token']
+    if (api_key) {
+        serverType = 'Jellyfin for Android TV'
+        return;
+    }
+    // Jellyfin for Android
+    jellfinAuth = r.headersIn['X-Emby-Authorization']
     if (jellfinAuth) {
         api_key = jellfinAuth.replaceAll(/"/g, '').split(',').map(m => m.trim())
             .find(item => item.startsWith('Token=')).replace('Token=', '')
-    }
-    if (api_key) {
-        serverType = 'jellyfin'
-        return;
+        if (api_key) {
+            serverType = 'Jellyfin for Android'
+            return;
+        }
     }
 }
 
