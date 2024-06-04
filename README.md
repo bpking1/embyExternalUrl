@@ -2,7 +2,7 @@
 | 名称 | 功能 |
 | - | :- |
 | [emby2Alist](./emby2Alist/README.md) | emby/jellyfin 挂载 alist 转直链 |
-| embyAddExternalUrl | emby 全客户端添加调用外部播放器按钮 |
+| embyAddExternalUrl | emby/jellyfin 全客户端(除TV端)添加调用外部播放器按钮 |
 | [embyWebAddExternalUrl](./embyWebAddExternalUrl/README.md) | emby/jellyfin/alistWeb 调用外部播放器用户脚本,只支持网页 |
 | [plex2Alist](./plex2Alist/README.md) | plex 挂载 alist 转直链 |
 
