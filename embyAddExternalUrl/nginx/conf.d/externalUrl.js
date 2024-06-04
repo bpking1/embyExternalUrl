@@ -330,7 +330,7 @@ const fillApiKeyAndServerType = (r) => {
         return;
     }
     // Jellyfin for Android
-    jellfinAuth = r.headersIn['X-Emby-Authorization']
+    const jellfinAuth = r.headersIn['X-Emby-Authorization']
     if (jellfinAuth) {
         api_key = jellfinAuth.replaceAll(/"/g, '').split(',').map(m => m.trim())
             .find(item => item.startsWith('Token=')).replace('Token=', '')
