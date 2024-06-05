@@ -72,6 +72,9 @@
         if (!isEmby) {
             // jellfin add class, detailPagePrimaryContainer、button-flat
             let playBtnsWrapper = document.getElementById("ExternalPlayersBtns");
+            // style to cover .layout-mobile
+            playBtnsWrapper.style.display = "flex";
+            // playBtnsWrapper.style["justifyContent"] = "center";
             playBtnsWrapper.classList.add("detailPagePrimaryContainer");
             let btns = playBtnsWrapper.getElementsByTagName("button");
             for (let i = 0; i < btns.length; i++) {
