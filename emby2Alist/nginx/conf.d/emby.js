@@ -597,9 +597,11 @@ async function systemInfoHandler(r) {
 	  return internalRedirect(r);
   }
   const currentPort = parseInt(r.variables.server_port);
-  const originPort = parseInt(body.HttpServerPortNumber);
+  const originPort = parseInt(body.WebSocketPortNumber);
   body.WebSocketPortNumber = currentPort;
-  body.HttpServerPortNumber = currentPort;
+  if (body.HttpServerPortNumber) {
+    body.HttpServerPortNumber = currentPort;
+  }
   if (body.LocalAddresses) {
     body.LocalAddresses.forEach((s, i, arr) => {
       arr[i] = s.replace(originPort, currentPort);
@@ -611,10 +613,10 @@ async function systemInfoHandler(r) {
     });
   }
   // old clients
-  if (!!body.LocalAddress) {
+  if (body.LocalAddress) {
     body.LocalAddress = body.LocalAddress.replace(originPort, currentPort);
   }
-  if (!!body.WanAddress) {
+  if (body.WanAddress) {
     body.WanAddress = body.WanAddress.replace(originPort, currentPort);
   }
   util.copyHeaders(subR.headersOut, r.headersOut);

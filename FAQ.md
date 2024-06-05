@@ -260,7 +260,7 @@ const routeRule = [
 不是修改的 html 网页,客户端都是内置的静态网页,除了 emby/jellyfin 之外没有地方通过修改接口展示内容
 
 #### 2.支持 TV 端吗?
-不支持,Jellryfin TV 端直接没有外部数据库链接这个区域,Emby TV 端虽然可以添加显示出来,但是电视是没有浏览器的,且内置 WebView 没有支持 URL Scheme 的处理,所以也是无法调用外部播放器的
+不支持,Jellyfin TV 端直接没有外部数据库链接这个区域,Emby TV 端虽然可以添加显示出来,但是电视是没有浏览器的,且内置 WebView 没有支持 URL Scheme 的处理,所以也是无法调用外部播放器的
 
 # embyWebAddExternalUrl
 
