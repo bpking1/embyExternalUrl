@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.6
+// @version      1.1.7
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -19,6 +19,17 @@
     // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
     // 默认不启用,可能存在兼容问题,如发现原始链接播放失败,请关闭此选项
     const useRealFileName = false;
+    const iconConfig = {
+        // 启用后将只显示图标,不显示文字
+        iconOnly: false,
+        // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
+        // 1.add icons from jsdelivr, network
+        baseUrl: "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons",
+        // 2.server local icons, same as /emby-server/system/dashboard-ui/icons
+        // baseUrl: "icons",
+        // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
+        // 自行复制 ./iconsExt.js 内容到此脚本的 getIconsExt 中
+    };
     // 以下为内部使用变量,请勿更改
     let isEmby = "";
     function init() {
@@ -49,9 +60,9 @@
                     title="${title}"
                 >
                     <div class="detailButton-content">
-                        <i class="md-icon detailButton-icon button-icon button-icon-left"
+                        <i class="md-icon detailButton-icon button-icon ${!iconConfig.iconOnly ? 'button-icon-left' : ''}" 
                             id="${iconId}">　</i>
-                        <span class="button-text">${title}</span>
+                        ${!iconConfig.iconOnly ? `<span class="button-text">${title}</span>` : ''}
                     </div>
                 </button>
             `;
@@ -98,9 +109,7 @@
         //     document.querySelector(`#${button.id}`).onclick = eval(button.id);
         // });
 
-        // add icons from jsdelivr, network
-        const iconBaseUrl = "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons";
-        // iconBaseUrl = "icons"; // server local icons
+        const iconBaseUrl = iconConfig.baseUrl;
         const icons = [
             // if url exists, use url property, if id diff icon name, use name property
             { id: "icon-PotPlayer", name: "icon-PotPlayer.webp", fontSize: "1.4em" },
@@ -114,8 +123,7 @@
             { id: "icon-DDPlay", fontSize: "1.4em" },
             { id: "icon-Copy", fontSize: "1.4em" },
         ];
-        // add icons from Base64, script inner, this script size 22.5KB to 74KB, if use, self copy iconsExt from iconsExt.js
-        // const iconsExt = getIconsExt();
+        const iconsExt = getIconsExt();
         icons.map((icon, index) => {
             const element = document.querySelector(`#${icon.id}`);
             if (element) {
@@ -132,9 +140,10 @@
         });
     }
 
-    // copy from ./iconsExt, 如果更改了以下内容,请同步更改 ./iconsExt
+    // copy from ./iconsExt,如果更改了以下内容,请同步更改 ./iconsExt.js
     function getIconsExt() {
-        return [];
+        const iconsExt = [];
+        return iconsExt;
     }
 
     function showFlag() {
