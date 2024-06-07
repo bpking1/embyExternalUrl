@@ -292,27 +292,27 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
   const expGroups = expression.split(groupSplit);
   let values = [];
 
-  expGroups.forEach(expGroup => {
+  expGroups.map(expGroup => {
     if (!expGroup.trim()) return;
 
     const expArr = expGroup.split(propertySplit);
     let val = rootObj;
 
     // skipped index 0
-    for (var j = 1; j < expArr.length; j++) {
-      var expPart = expArr[j];
-      if (val != null && Object.hasOwnProperty.call(val, expPart)) {
+    expArr.map((expPart, index) => {
+      if (index === 0) return;
+      if (val && Object.hasOwnProperty.call(val, expPart)) {
         val = val[expPart];
       } else {
         val = "";
         ngx.log(ngx.WARN, `Property "${expPart}" not found in object,will ignore`);
       }
-    }
+    });
 
     values.push(val);
   });
 
-  return values.join(groupSplit);
+  return values.filter(item => item).join(groupSplit);
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {

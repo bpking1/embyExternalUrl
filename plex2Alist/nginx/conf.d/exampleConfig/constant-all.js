@@ -43,8 +43,7 @@ const routeCacheConfig = {
   // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,cilentSelfAlistRule 中的和首页直接播放的不生效
   enableL2: false,
   // 缓存键表达式,默认值好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
-  // plex uri 唯一
-  keyExpression: "r.uri", // "r.uri:r.args.X-Plex-Client-Identifier"
+  keyExpression: "r.uri:r.args.path:r.args.mediaIndex:r.args.partIndex", //"xxx:r.args.X-Plex-Client-Identifier"
 };
 
 // 指定需要获取符号链接真实路径的规则,优先级在 xxxMountPath 和 routeRule 之间
