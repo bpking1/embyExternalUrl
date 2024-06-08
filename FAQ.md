@@ -251,6 +251,7 @@ const routeRule = [
 
 #### 21.因为图片缓存导致更新海报不生效?
 1.默认已经新增了指令 proxy_cache_bypass,自己编辑下该海报的访问接口添加 URL 参数 nocache=1,跳过该缓存后重新访问将覆盖旧缓存
+
 2.自行编译配置 proxy_cache_purge 模块并打开 emby.conf 中注释并看情况修改实现,未实际测试过
 
 #### 22.支持 emby API 的客户端播放 STRM 无法记录播放进度?
@@ -258,21 +259,57 @@ const routeRule = [
 将导致 itemInfo 接口中的 RunTimeTicks 可播放毫秒值没有这个字段,所以以下情况是无法记录播放进度的
 
 1.strm 内部文本为 / 开头的,这个属于脚本强行兼容支持的播放,emby 服务端不会进行补充信息
+
 2.strm 内部文本为 http 开头的远程直链,只在第一次播放的时候估计也是没有编码信息的,
 第一次播放后 emby 客户端都会报告媒体信息给 server 端进行补充媒体编码信息
 
 可选解决方案
+
 1.可退出后查看详情页下方有没有多出来媒体编码信息,然后再进行播放就是没问题的了
+
 2.emby 插件库里有个貌似可以定时处理 strm 媒体信息的,设置-高级-插件-Catalog-元数据-StrmExtract,
 我这边只是看到了,没有尝试过这个插件,需要自行摸索,但是这样其实 strm 又扫库了,虽然可能是定时可控可手动取消的,这点也需要自行权衡下
 
 补充建议
+
 1.StrmExtract 这个也大概率不支持自定义的内部 / 开头的 strm,故还是建议使用 emby 官方文档中 strm 的写法
+
 2.Jellyfin 对于 strm 支持貌似有 bug,会导致播放时源服务的 PlaybackInfo 接口长达 30s 请求超时,
 且没有 Emby 针对 strm 的第一次播放后补充入库媒体编码信息的处理,所以每次播放会长达 6-8s 且无播放进度记录,
 故 Jellyfin 用 strm 时不建议使用官方客户端播放
+
 3.Plex 基本和 Jellyfin 一样,更甚是官方客户端禁止了 strm 播放支持,虽然也是脚本强行兼容了播放,但也仅限于播放了,
 进度和播放记录肯定是没有的,部分第三方播放器不用此脚本也能播放,其余和前文一样
+
+#### 23.播放流程解析?
+切入点
+
+Emby/Jellyfin 全靠 PlaybackInfo 接口,但两者实现稍有不同,Emby 进入详情页和播放时都会请求 PlaybackInfo 接口,
+两次区别为链接入参有个 IsPlayback 为字符串的 "false":"true",
+Jellyfin 进入详情页会查通用的 Items 接口,只在播放时查询一次 PlaybackInfo 接口,
+
+修改点
+
+PlaybackInfo 这个里边的处理更多还是根据路由规则参数判断,
+是否强制修改直接播放的服务端判断结果,少量有一段直播的 location 路由处理,
+
+流程
+
+完整流程是客户端发出 PlaybackInfo 请求到达 nginx 的 location ~* /Items/(.)/PlaybackInfo 上,
+js 中的 transferPlaybackInfo 发送子请求到源服务(也就是实现反代,只请求了一次,没有多余请求,因为没走 nginx.conf 的 proxy_pass 反代实现),
+然后 PlaybackInfo 请求到达源媒体服务内部处理,
+NJS 实例等待返回结果(nginx 整体的超时时间这边并没有进行配置,从其他人 issus 中得知 nginx 全局默认 60s 超时),
+源服务响应成功的状态后,根据 transferPlaybackInfo => modifyDirecPlayInfo 中 source.IsInfiniteStream 判断修改 source.DirectStreamUrl 直接播放链接,即构造 location 的路由
+
+1.直播走 location ~* /videos/(.)/master 块,然后就是 embyLive.directLive 中 302 到直播 IPTV 源地址的处理了
+
+2.普通媒体文件走 location ~* /videos/(.*)/(stream|original) 块,然后就是 emby2Pan.redirect2Pan 中 302 到直链的处理了
+
+流程失败情况
+
+1.反代响应等待失败会回退到源服务处理,其实这种失败情况还是把 PlaybackInfo 到源服务又走了一遍,假如源服务依旧无法响应,也同样会卡住导致后续 NJS 处理失败
+
+2.还有一种失败是源服务响应回的非 200 状态失败,这种 NJS 会传递源服务的失败结果给客户端,不会导致流程链路断掉
 
 # embyAddExternalUrl
 
