@@ -455,7 +455,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
         "Content-Type": "application/json;charset=utf-8",
         "Content-Length": 0,
       },
-      max_response_body_size: 8388608, // 1MB
+      max_response_body_size: 8388608, // bytes, default 32KB this is 8MB
     });
     if (res.ok) {
       const result = await res.json();
@@ -530,8 +530,7 @@ async function itemsFilter(r) {
   }
   const itemHiddenRule = config.itemHiddenRule;
   if (itemHiddenRule && itemHiddenRule.length > 0) {
-    let totalRecordCount = body.Items.length;
-    r.warn(`itemsFilter before: ${totalRecordCount}`);
+    r.warn(`itemsFilter before: ${body.Items.length}`);
 
     const flag = r.variables.flag;
     r.warn(`itemsFilter flag: ${flag}`);
@@ -550,7 +549,8 @@ async function itemsFilter(r) {
       r.warn(`mainItemPath: ${mainItemPath}`);
     }
 
-    if (!!body.Items) {
+    let itemHiddenCount = 0;
+    if (body.Items) {
       body.Items = body.Items.filter(item => {
         if (!item.Path) {
           return true;
@@ -566,19 +566,28 @@ async function itemsFilter(r) {
           if (flag == "backdropSuggest" && rule[2] == 3) {
             return false;
           }
+          // 4: 只隐藏[类型风格]接口,这个暂时分页有 bug,被隐藏掉的项会有个空的海报,第一页后的 StartIndex 需要减去 itemHiddenCount
+          // 且最重要是无法得知当前浏览项目,会误伤导致接口返回[],不建议实现该功能
+          // if (flag == "genreSearch" && rule[2] == 4) {
+          //   return false;
+          // }
           if (flag == "itemSimilar" && rule[2] == 1) {
             return false;
           }
           if (util.strMatches(rule[0], item.Path, rule[1])) {
             r.warn(`itemPath hit itemHiddenRule: ${item.Path}`);
+            itemHiddenCount++;
             return true;
           }
         });
       });
     }
-    totalRecordCount = body.Items.length;
-    r.warn(`itemsFilter after: ${totalRecordCount}`);
-    body.TotalRecordCount = totalRecordCount;
+    r.warn(`itemsFilter after: ${body.Items.length}`);
+    r.warn(`itemsFilter itemHiddenCount: ${itemHiddenCount}`);
+    if (body.TotalRecordCount) {
+      body.TotalRecordCount -= itemHiddenCount;
+      r.warn(`itemsFilter TotalRecordCount: ${body.TotalRecordCount}`);
+    }
   }
 
   util.copyHeaders(subR.headersOut, r.headersOut);
