@@ -460,7 +460,7 @@ async function fetchPlexFileFullName(downloadApiPath) {
   try {
     const response = await ngx.fetch(downloadApiPath, {
       method: "HEAD",
-      max_response_body_size: 858993459200 // 100Gb,not important,because HEAD method not have body
+      max_response_body_size: 100 * 1024 ** 3, // 100GB,not important,because HEAD method not have body
     });
     if (response.ok) {
       return util.getFileNameByHead(decodeURI(response.headers["Content-Disposition"]));
