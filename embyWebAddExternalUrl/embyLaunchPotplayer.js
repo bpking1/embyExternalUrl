@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.7
+// @version      1.1.8
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -12,6 +12,7 @@
 // @author       @bpking
 // @github       https://github.com/bpking1/embyExternalUrl
 // @include      */web/index.html
+// @match        */web/
 // ==/UserScript==
 
 (function () {
