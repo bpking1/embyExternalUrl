@@ -492,7 +492,7 @@
         if (isEmby) {
             isItemDetailPage = e.detail.contextPath.startsWith("/item?id=");
         } else {
-            isItemDetailPage = !!e.detail.state && !!e.detail.state.item.Id;
+            isItemDetailPage = e.detail.params && e.detail.params.id;
         }
         if (isItemDetailPage) {
             const mutation = new MutationObserver(function() {
