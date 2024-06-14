@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.6
+// @version      1.0.7
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -85,8 +85,8 @@
             }
         }
         
-        // get mediaInfo from original a tag href
-        const streamUrl = decodeURIComponent(oriLinkEle.href.match(/\?(.*)$/)[1].replace("url=", ""));
+        // get mediaInfo from original a tag href, this is IINA player, see alistWeb $edurl
+        const streamUrl = decodeURIComponent(decodeURIComponent(oriLinkEle.href.match(/\?(.*)$/)[1].replace("url=", "")));
         const urlObj = new URL(streamUrl);
         const filePath = decodeURIComponent(urlObj.pathname.substring(urlObj.pathname.indexOf("/d/") + 2));
         const fileName = filePath.replace(/.*[\\/]/, "");
@@ -240,7 +240,7 @@
     }
 
     function getPotUrl(mediaInfo) {
-        return `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /title="${mediaInfo.title}"}`;
+        return `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current`;
     }
 
     // https://wiki.videolan.org/Android_Player_Intents/
