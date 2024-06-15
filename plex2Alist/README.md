@@ -344,7 +344,7 @@ web 端各大浏览器对音频和视频编码支持情况不一,碰到不支持
 plex2Alist/nginx/conf.d/plex.conf 中的注释 # include /etc/nginx/conf.d/includes/https.conf;
 
 ## 已知问题:
-1.PlexWeb自身存在很多问题,不支持DTS的直接播放,不支持所有非内嵌字幕的直接播放,使用起来就是已经直连云盘在接收数据了,但是Web播放器卡住不动,页签内存过载就直接白屏了,Web只支持简单格式的内嵌字幕视频,解决方案为使用对应平台的客户端,经测试,安卓客户端是没问题的。
+1.PlexWeb 自身存在很多问题,不支持 DTS 的直接播放,不支持所有非内嵌字幕的直接播放,使用起来就是已经直连云盘在接收数据了,但是 Web 播放器卡住不动,页签内存过载就直接白屏了,Web 只支持简单格式的内嵌字幕视频,解决方案为使用对应平台的客户端,经测试,安卓客户端是没问题的。
 ![47dc8412c5d0b46aac999d4c3aae36ae](https://github.com/bpking1/embyExternalUrl/assets/42368856/625731e4-a8b9-46f9-b511-96aba4498485)
 ![baddd39444f9ca6f2069209c2f73f9d](https://github.com/bpking1/embyExternalUrl/assets/42368856/47be6ced-e630-460b-9a7d-bfdedc795907)
 ![cf1b5edc12c2fd2b52eed17ab3afc85](https://github.com/bpking1/embyExternalUrl/assets/42368856/8bd44d0e-3761-4dc8-b86e-fa3baf8163b6)
