@@ -520,7 +520,10 @@ async function itemsFilter(r) {
   events.njsOnExit(`itemsFilter: ${r.uri}`);
 
   r.variables.request_uri += "&Fields=Path";
-  const subR = await r.subrequest(util.proxyUri(r.uri));
+  // util.appendUrlArg(r.variables.request_uri, "Fields", "Path");
+  const subR = await r.subrequest(util.proxyUri(r.uri), {
+    method: r.method,
+  });
   let body;
   if (subR.status === 200) {
   	body = JSON.parse(subR.responseText);
@@ -597,7 +600,9 @@ async function itemsFilter(r) {
 async function systemInfoHandler(r) {
   events.njsOnExit(`systemInfoHandler: ${r.uri}`);
 
-  const subR = await r.subrequest(util.proxyUri(r.uri));
+  const subR = await r.subrequest(util.proxyUri(r.uri), {
+    method: r.method,
+  });
   let body;
   if (subR.status === 200) {
   	body = JSON.parse(subR.responseText);

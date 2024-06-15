@@ -509,7 +509,9 @@ async function fetchStrmInnerText(r) {
 async function plexApiHandler(r) {
   events.njsOnExit(`plexApiHandler: ${r.uri}`);
 
-  const subR = await r.subrequest(util.proxyUri(r.uri));
+  const subR = await r.subrequest(util.proxyUri(r.uri), {
+    method: r.method,
+  });
   const contentType = subR.headersOut["Content-Type"];
   //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
   let bodyObj;
@@ -525,7 +527,7 @@ async function plexApiHandler(r) {
       sBody = xml.serialize(bodyObj);
     }
   } else {
-  	r.warn("plexApiHandler subrequest failed");
+  	r.warn(`plexApiHandler subrequest failed, status: ${subR.status}`);
 	  return internalRedirect(r);
   }
 
