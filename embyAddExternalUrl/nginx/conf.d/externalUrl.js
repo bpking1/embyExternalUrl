@@ -5,7 +5,7 @@ let serverAddr = 'https://bpking.top';
 const tags = ['BluRay', 'REMUX', 'WEB-DL']; // 添加视频tag
 const groups = ['CMCT', 'WIKI', 'Z0N3', 'EbP', 'PTer', 'EPSILON', 'FRDS', 'SMURF']; // 添加制作组
 // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
-// 默认不启用,可能存在兼容问题,如发现原始链接播放失败,请关闭此选项
+// 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
 const useRealFileName = false;
 
 // 正常情况请勿填写和更改,程序内部用的全局变量

@@ -18,7 +18,7 @@
 (function () {
     'use strict';
     // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
-    // 默认不启用,可能存在兼容问题,如发现原始链接播放失败,请关闭此选项
+    // 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
     const useRealFileName = false;
     const iconConfig = {
         // 启用后将只显示图标,不显示文字
@@ -324,7 +324,8 @@
     async function embyPot() {
         let mediaInfo = await getEmbyMediaInfo();
         let intent = mediaInfo.intent;
-        let poturl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /title="${intent.title}" /seek=${getSeek(intent.position)}`;
+        let poturl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)}`;
+        poturl += useRealFileName ? '' : ` /title="${intent.title}"`;
         console.log(poturl);
         window.open(poturl, "_self");
     }
