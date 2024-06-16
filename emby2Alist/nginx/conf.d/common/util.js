@@ -491,6 +491,19 @@ function getDeviceId(rArgs) {
 }
 
 /**
+ * 1.CloudDrive
+ * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
+ * 2.AList
+ * http://mydomain:5244/d/AList/xxx.mkv
+ * @param {String} url full url
+ * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
+ */
+function getFilePathPart(url) {
+  const matches = url.match(/\/False\/(.*)|\/d\/(.*)/);
+  return matches && matches[1] ? matches[1] : "";
+}
+
+/**
  * Crypto
  */
 const crypto = require('crypto');
@@ -574,6 +587,7 @@ export default {
   dictAdd,
   cost,
   getDeviceId,
+  getFilePathPart,
   calculateHMAC,
   addAlistSign,
   checkAndGetRealpathSync,

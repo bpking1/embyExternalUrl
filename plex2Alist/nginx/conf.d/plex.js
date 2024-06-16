@@ -148,7 +148,12 @@ async function redirect2Pan(r) {
         }
       }
     }
-    // don't encode, excepted webClient, clients not decode
+    // need careful encode filePathPart, other don't encode
+    const filePathPart = util.getFilePathPart(mediaItemPath);
+    if (filePathPart) {
+      r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${mediaItemPath}`);
+      mediaItemPath = mediaItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
+    }
     return redirect(r, mediaItemPath);
   }
 
