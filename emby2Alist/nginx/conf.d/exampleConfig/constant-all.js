@@ -7,7 +7,7 @@
 // 必填项,根据实际情况修改下面的设置
 
 // 这里默认 emby/jellyfin 的地址是宿主机,要注意 iptables 给容器放行端口
-const embyHost = "http://172.17.0.1:8096";
+const embyHost = "http://127.0.0.1:8096";
 
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理,不用重复填写至 disableRedirectRule
@@ -18,7 +18,7 @@ const embyMountPath = ["/mnt"];
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 
 // 访问宿主机上 5244 端口的 alist 地址, 要注意 iptables 给容器放行端口
-const alistAddr = "http://172.17.0.1:5244";
+const alistAddr = "http://127.0.0.1:5244";
 
 // alist token, 在 alist 后台查看
 const alistToken = "alsit-123456";

@@ -210,8 +210,8 @@ async function redirect2Pan(r) {
         ua,
       );
       if (!driverRes.startsWith("error")) {
-        driverRes = driverRes.includes("http://172.17.0.1")
-          ? driverRes.replace("http://172.17.0.1", config.alistPublicAddr)
+        driverRes = driverRes.includes("http://127.0.0.1")
+          ? driverRes.replace("http://127.0.0.1", config.alistPublicAddr)
           : driverRes;
         return redirect(r, driverRes);
       }

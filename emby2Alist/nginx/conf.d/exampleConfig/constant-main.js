@@ -12,7 +12,7 @@ import extConfig from "./config/constant-ext.js";
 // 必填项,根据实际情况修改下面的设置
 
 // 这里默认 emby/jellyfin 的地址是宿主机,要注意 iptables 给容器放行端口
-const embyHost = "http://172.17.0.1:8096";
+const embyHost = "http://127.0.0.1:8096";
 
 // emby/jellyfin api key, 在 emby/jellyfin 后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
