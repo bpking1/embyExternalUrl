@@ -435,7 +435,13 @@ function getItemInfo(r) {
 	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
-      itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
+      // before is GUID like "3c25399d9cbb41368a5abdb71cfe3dc9", V4.9.0.25 is "mediasource_447039" fomrmat
+      // 447039 is't main itemId, is mutiple video mediaSourceId
+      let newMediaSourceId;
+      if (mediaSourceId.startsWith("mediasource_")) {
+        newMediaSourceId = mediaSourceId.replace("mediasource_", "");
+      }
+      itemInfoUri = `${embyHost}/Items?Ids=${newMediaSourceId ?? mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     } else {
       itemInfoUri = `${embyHost}/Items?Ids=${itemId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     }
