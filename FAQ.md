@@ -49,7 +49,7 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 或者删除此文件、注释掉 IPv6 监听、删除容器重新生成
 
 #### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
-~~ 因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预, ~~
+~~因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,~~
 更正,感谢 @lixuemin13 #236 提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
 
 1.运行 shell 命令,先运行 cp 复制备份原文件为 _backup 后缀文件,/system 层级按自身实际情况修改
