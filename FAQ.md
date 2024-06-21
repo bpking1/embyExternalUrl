@@ -48,9 +48,41 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 ```
 或者删除此文件、注释掉 IPv6 监听、删除容器重新生成
 
-#### 6.115 内容无法 Web 端播放?
-因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,且 115 没有响应跨域支持,
-浏览器严格限制跨域内容,使用浏览器拓展的修改响应头或者使用对应平台的客户端播放,
+#### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
+~~ 因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预, ~~
+更正,感谢 @lixuemin13 #236 提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
+
+1.运行 shell 命令,先运行 cp 复制备份原文件为 _backup 后缀文件,/system 层级按自身实际情况修改
+```shell
+cp /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js_backup
+```
+
+2.再运行 sed 文本正则替换修改,以去除 emby 最终 <vedio> 标签中 crossorigin="anonymous" 属性,
+注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 #236
+```shell
+sed -i 's/mediaSource\.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"/null/g' /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
+```
+js 中的 mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous 被替换为 null
+
+3.浏览器控制台网络选项卡勾选 禁用缓存,刷新页面,在源代码选项卡中确认修改生效后取消勾选
+
+4.可选验证结果,不太严谨,只取了 basehtmlplayer.js 倒数开始的 185 个字符,根据实际情况修改
+```shell
+tail -c 185 /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
+```
+预期修改为
+```js
+BaseHtmlPlayer.prototype.getCrossOriginValue=function(mediaSource,playMethod){return mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"};_exports.default=BaseHtmlPlayer})
+=>
+BaseHtmlPlayer.prototype.getCrossOriginValue=function(mediaSource,playMethod){return null};_exports.default=BaseHtmlPlayer})
+```
+
+5.这个是 HTML 规范的 <vedio> 标签还有 HTTP 的规范的 CSP 有关,和 emby 版本关系应该不大,测试 beta V4.9.0.25 也是可以的
+https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Sec-Fetch-Mode
+
+以下为原始不完美方案,仅做记录和备用选择,
+且 115 没有响应跨域支持,浏览器严格限制跨域内容,使用浏览器拓展的修改响应头 [emby2Alist](./emby2Alist/README.md#2023-12-31)
+或者使用对应平台的客户端播放,
 或者放弃 web 端的直链功能,打开路由配置中示例配置,让 nginx 转给原始服务处理
 
 ```js
@@ -340,6 +372,28 @@ r 对象没有重定向或返回的情况下,客户端请求是断在 NJS 这里
 3.4 r.return() 和 r.sendXXX,单纯 NJS HTTP 响应信息,不算反代,要实现反代需结合上述方案
 
 4.使用 lua 脚本来实现,建议参考 OpenRestry
+
+#### 24.如何避免频繁扫库?
+可以避免但是会有副作用,没扫描媒体信息入库会导致以下已知问题,
+
+1.没有可播放时长信息表现为点击播放直接标记为了已播放,没有进度记录信息或部分客户端进度跳转有 bug
+
+2.详情页中没有媒体的编码信息,虽然已知影响不大,但不确定是否还有其他影响
+
+实现方式已知的有 3 种,后 2 种偏门方法为网友提供,多谢思路
+
+1.emby/jellyfin 官方文档中支持的 STRM 文件方式,优势可能为官方支持吧,缺点是批量补充媒体信息依赖插件库中插件,
+不局限为 http 协议,plex 的话因官方不支持,脚本强制做了支持但已知有上述问题
+
+2.软/硬链接文件结合挂载工具,在扫库前切断链接文件和源文件的联系,扫完后恢复链接文件,切换过程仅为路径的卸载和挂载,
+优势是在有工具的情况下操作简单且事后需要单独扫指定媒体信息可以手动限定范围不依赖其他插件,缺点是部分依赖源文件的存在
+
+3.虚拟占位空文件,CMD 下 copy nul "C:\Program Files (x86)\test.mkv" 生成 1 KB 的 test.mkv 空文件,
+也可用在 nas-tools 等快速刮削上,shell 下可能是换 touch 命令,没啥优势且肯定无法转码了,毕竟是假文件
+
+3.1 以下只是理论,没实践过,利用 alist 的地址树驱动,添加假的媒体文件
+
+3.2 直接往 SQLite 插入假数据,前提是文件必须存在,不然会被服务端视作失效自动移除,没优点且风险较大
 
 # embyAddExternalUrl
 
