@@ -94,12 +94,12 @@ const routeRule = [
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
 
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
+// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
 const embyPathMapping = [
-  // [0, 0, "/mnt/aliyun-01", "/mnt/aliyun-02"],
+  // [0, 0, "/aliyun-01", "/aliyun-02"],
   // [0, 2, "http:", "https:"], 
   // [0, 2, ":5244", "/alist"], 
   // [0, 0, "D:", "F:"],
