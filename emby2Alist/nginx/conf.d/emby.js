@@ -260,13 +260,15 @@ async function transferPlaybackInfo(r) {
               modifyDirecPlaySupports(source, false);
               continue;
             }
-          } else if (util.ROUTE_ENUM.transcode == routeMode || util.ROUTE_ENUM.proxy == routeMode) {
+          } else if (util.ROUTE_ENUM.transcode == routeMode) {
             r.warn(`routeMode modify playback supports`);
+            // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
             modifyDirecPlaySupports(source, false);
             continue;
           } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
           }
+          // util.ROUTE_ENUM.proxy == routeMode, because subdivided transcode, proxy do't modify
         } else {
           source.SupportsTranscoding = false;
           if (!transcodeConfig.redirectTransOptEnable) {

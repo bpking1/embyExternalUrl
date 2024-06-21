@@ -139,11 +139,16 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
  */
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
-  const mountPath = config.plexMountPath;
+  const mountPath = config.plexMountPath ?? [];
   if (!isAlistRes) {
-    // local file not xxxMountPath first
+    // exact, local file not xxxMountPath first
     if (mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
       ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
+      return true;
+    }
+    // indeterminate, regard notLocal and xxxMountPath empty default as local file
+    if ((mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
+      ngx.log(ngx.WARN, `hit proxy, maybe is localFile`);
       return true;
     }
   }
