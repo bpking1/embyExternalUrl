@@ -50,7 +50,9 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 
 #### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
 ~~因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,~~
-更正,感谢 @lixuemin13 #236 提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
+
+更正,感谢 @lixuemin13 [#236](https://github.com/bpking1/embyExternalUrl/issues/236) 
+提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
 
 1.运行 shell 命令,先运行 cp 复制备份原文件为 _backup 后缀文件,/system 层级按自身实际情况修改
 ```shell
@@ -58,7 +60,7 @@ cp /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js /system/dashbo
 ```
 
 2.再运行 sed 文本正则替换修改,以去除 emby 最终 <vedio> 标签中 crossorigin="anonymous" 属性,
-注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 #236
+注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 [#236](https://github.com/bpking1/embyExternalUrl/issues/236)
 ```shell
 sed -i 's/mediaSource\.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"/null/g' /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
 ```
