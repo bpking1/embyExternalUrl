@@ -49,8 +49,10 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 或者删除此文件、注释掉 IPv6 监听、删除容器重新生成
 
 #### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
-~~ 因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预, ~~
-更正,感谢 @lixuemin13 #236 提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
+~~因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,~~
+
+更正,感谢 @lixuemin13 [#236](https://github.com/bpking1/embyExternalUrl/issues/236) 
+提供的新思路,干预 htmlvideoplayer 的 <vedio> 标签可以实现
 
 1.运行 shell 命令,先运行 cp 复制备份原文件为 _backup 后缀文件,/system 层级按自身实际情况修改
 ```shell
@@ -58,7 +60,7 @@ cp /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js /system/dashbo
 ```
 
 2.再运行 sed 文本正则替换修改,以去除 emby 最终 <vedio> 标签中 crossorigin="anonymous" 属性,
-注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 #236
+注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 [#236](https://github.com/bpking1/embyExternalUrl/issues/236)
 ```shell
 sed -i 's/mediaSource\.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"/null/g' /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
 ```
@@ -112,7 +114,7 @@ const routeRule = [
 
 #### 8.nginx 必须使用 host 网络吗?
 不是必须的,只是方便处理和理解,因为 nginx 之前可能还有其他反代程序而没有传递客户端真实 IP 标头,
-所以用 host 比较简单,能保证本 nginx=> MediaServer 传递的是客户端的真实远程 IP,
+所以用 host 比较简单,能保证本 nginx => MediaServer 传递的是客户端的真实远程 IP,
 在 nginx 后如果直接就是原始媒体服务,MediaServer 就不需要 host 网络了,但是如果 nginx 前后还有其他的反代程序,
 则它们都需要传递客户端真实 IP, 所需标头可以参考 proxy-header.conf 或 alist 文档中反代传递的标头,
 假如流量链路 npm -> xxx2alist -> MediaServer 只需要在 npm 这里传递标头就行了,
@@ -121,12 +123,14 @@ const routeRule = [
 
 #### 8.为什么需要识别内网网段的地址?
 这个如果没有特殊需要可以不用管,选填项,目前两个地方用到了
+
 1.有用户反馈内网环境走直链 Infuse 反而会更卡
 ```javascript
 const routeRule = [
    // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["r.variables.remote_addr", 0, strHead.lanIp],
 ];
+
 ```
 2.如果 strm 内部的远程链接为局域网的,转发给远程客户端访问不了,
 所以做了内网的条件判断在 nginx 内网这层去获取 strm 内网链接 302 后的公网直链返回给远程客户端
@@ -138,9 +142,10 @@ const redirectStrmLastLinkRule = [
 
 #### 8.允许转码功能但不需要分离转码负载,该如何配置?
 ```javascript
-const routeRule = [
-  ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
-];
+// 目前路由规则可以不用配置了,默认遵循客户端自己的上报结果
+// const routeRule = [
+//   ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
+// ];
 const transcodeConfig = {
   enable: true, // 允许转码功能的总开关
   type: "distributed-media-server", // 负载类型,只有这个实现了路由规则
@@ -174,10 +179,14 @@ const transcodeConfig = {
 偶尔会导致 playbackinfo 这个接口长达 30 秒,也就是进详情页也会调用这个接口查询
 
 #### 12.emby/jellyfin 建议配置 https 吗?
-不是必须的,但如果是国内家庭带宽出现跨运营商访问端口间歇性阻断,则建议配置,表现形式为访问和浏览详情页都没问题,但是播放视频时可能是因为接口带有 video/stream 等关键字被运营商拦截会卡住无法播放,切换到手机流量则一切正常,需要自行分析判断,注意配置 https 后直播内容如果是 http 的,默认会被浏览器拦截,需要换用对应平台客户端播放,自行取舍,[emby2Alist](./emby2Alist/README.md#2024/03/10)
+不是必须的,但如果是国内家庭带宽出现跨运营商访问端口间歇性阻断,则建议配置,
+表现形式为访问和浏览详情页都没问题,但是播放视频时可能是因为接口带有 video/stream 等关键字被运营商拦截会卡住无法播放,
+切换到手机流量则一切正常,需要自行分析判断,注意配置 https 后直播内容如果是 http 的,
+默认会被浏览器拦截,需要换用对应平台客户端播放,自行取舍,[emby2Alist](./emby2Alist/README.md#2024/03/10)
 
 #### 13.为什么日志名称叫 error.log,不会有歧义吗?
-这是因为 nginx 官方的指令就是这个名称,猜测最初是做错误日志使用的,但是添加了 NJS 实现后功能以及指令遗留已经无法更改了,所以还是沿用这个名称,
+这是因为 nginx 官方的指令就是这个名称,猜测最初是做错误日志使用的,
+但是添加了 NJS 实现后功能以及指令遗留已经无法更改了,所以还是沿用这个名称,
 日志中已经有错误等级实现了,所以忽略 error 这个名称,视作普通业务日志就行了
 
 #### 13.为什么 strm 内部文本中文没有 encodeURIComponent 的情况下显示会乱码?
@@ -394,6 +403,17 @@ r 对象没有重定向或返回的情况下,客户端请求是断在 NJS 这里
 3.1 以下只是理论,没实践过,利用 alist 的地址树驱动,添加假的媒体文件
 
 3.2 直接往 SQLite 插入假数据,前提是文件必须存在,不然会被服务端视作失效自动移除,没优点且风险较大
+
+#### 24.阿里网盘非会员限速?
+最正规肯定是支持正版开会员解决,这里只是记录几个当前限速规则下的网速最大化的理论解决方案,没有实际测试过,
+部分限速细节参考,[emby2Alist](./emby2Alist/README.md#2024-06-16)
+
+1.尽量选择支持多线程播放的客户端,多线程总限速 3MB/s 播 1080P 是没太大问题的,或客户端下载后再播放咯
+
+2.这个不一定有效,chrome 内核浏览器新版默认就是多线程下载,老版本可以 flags 中开启
+
+3.对于不支持多线程的播放器,单线程限速 1MB/s,依赖挂载工具的多线程实现,路由规则中配置特定 UA 走 proxy 代理中转来兼容,
+或使用 alist 自身的代理中转功能
 
 # embyAddExternalUrl
 
