@@ -243,11 +243,15 @@ const transcodeConfig = {
 更新客户端为最新版本可以解决,不清楚原因
 
 #### 19.局域网下可能存在绕过 nginx 处理的问题?
-使用容器版 emby 并限定网络模式为桥接(bridge),只开放默认的 8096 端口出来,这样理论上能掐断客户端的 UDP 网络发现,
-同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否,
-更多参照 
+1.使用容器版 emby 并限定网络模式为桥接(bridge),只开放默认的 8096 端口出来,这样理论上能掐断客户端的 UDP 网络发现,
+同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否
 
-[emby2Alist](./emby2Alist/README.md#2024-04-10)
+2.或者尝试防火墙禁止 emby 默认的 UDP 广播发现端口 7359,注意是 UDP,而不是 TCP 协议
+https://dev.emby.media/doc/restapi/Locating-the-Server.html?q=UDP
+
+3.更多参照
+
+[emby2Alist#2024-04-10](./emby2Alist/README.md#2024-04-10)
 
 https://github.com/bpking1/embyExternalUrl/issues/59#issuecomment-2036672011
 
