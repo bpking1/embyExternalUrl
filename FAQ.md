@@ -247,7 +247,7 @@ const transcodeConfig = {
 同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否,
 更多参照 
 
-[emby2Alist](./emby2Alist/README.md#2024/04/10)
+[emby2Alist](./emby2Alist/README.md#2024-04-10)
 
 https://github.com/bpking1/embyExternalUrl/issues/59#issuecomment-2036672011
 
