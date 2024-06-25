@@ -473,7 +473,8 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
       if (itemInfoUri.includes("JobItems")) {
         const jobItem = result.Items.find(o => o.Id == itemId);
         if (jobItem) {
-          rvt.path = jobItem.MediaSource.Path;
+          // "MediaType": "Photo"... not have "MediaSources" field
+          rvt.path = jobItem.OutputPath;
           // live stream not support download, can ignore it
           rvt.notLocal = util.checkIsStrmByPath(jobItem.OutputPath);
         } else {
