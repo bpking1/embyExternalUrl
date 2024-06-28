@@ -435,7 +435,8 @@ r 对象没有重定向或返回的情况下,客户端请求是断在 NJS 这里
 
 # [plex2Alist](./plex2Alist/README.md)
 
-#### 1.部分可以参考 emby2Alist
+#### 1.部分可以参考 emby2Alist 和 issues#59
+https://github.com/bpking1/embyExternalUrl/issues/59
 
 #### 2.plex 必须配置 https 吗?
 不是必须的,但是如果有 IOS 客户端就必须配置,因为该客户端强制禁止非 https 连接,
