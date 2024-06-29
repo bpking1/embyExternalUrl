@@ -107,10 +107,10 @@ async function redirect2Pan(r) {
     }
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
-  // windows filePath to URL path
+  // windows filePath to URL path, warn: markdown log text show \\ to \
   if (embyItemPath.startsWith("\\")) {
-    r.warn(`windows filePath to URL path \ => /`);
-    embyItemPath = String.raw`${embyItemPath}`.replaceAll("\\", "/");
+    r.warn(`windows filePath to URL path \\ => /`);
+    embyItemPath = embyItemPath.replaceAll("\\", "/");
   }
   r.warn(`mapped emby file path: ${embyItemPath}`);
   
