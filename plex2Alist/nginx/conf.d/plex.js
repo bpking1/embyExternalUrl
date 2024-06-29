@@ -130,9 +130,9 @@ async function redirect2Pan(r) {
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
   // windows filePath to URL path
-  if (filePath.startsWith("\\")) {
+  if (mediaItemPath.startsWith("\\")) {
     r.warn(`windows filePath to URL path \ => /`);
-    embyItemPath = String.raw`${embyItemPath}`.replaceAll("\\", "/");
+    mediaItemPath = String.raw`${mediaItemPath}`.replaceAll("\\", "/");
   }
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
