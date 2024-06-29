@@ -108,7 +108,7 @@ async function redirect2Pan(r) {
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
   // windows filePath to URL path
-  if (filePath.startsWith("\\")) {
+  if (embyItemPath.startsWith("\\")) {
     r.warn(`windows filePath to URL path \ => /`);
     embyItemPath = String.raw`${embyItemPath}`.replaceAll("\\", "/");
   }

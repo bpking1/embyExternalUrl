@@ -332,7 +332,7 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
   }
   if (type == 0) {
     str = str.replaceAll(searchValue, replaceValue);
-    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+    ngx.log(ngx.WARN, `strMapping replaceAll: ${searchValue} => ${replaceValue}`);
   }
   return str;
 }
