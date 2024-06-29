@@ -101,8 +101,9 @@ const routeRule = [
 // 参数3: 来源, 参数4: 目标
 const embyPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
-  // [0, 2, "http:", "https:"], 
-  // [0, 2, ":5244", "/alist"], 
+  // [0, 2, "http:", "https:"],
+  // [0, 2, ":5244", "/alist"],
+  // [0, 0, "\", "/"], // win 平台打开此项
   // [0, 0, "D:", "F:"],
   // [0, 0, /blue/g, "red"], // 此处正则不要加引号
   // [1, 1, `${alistPublicAddr}/d`],
