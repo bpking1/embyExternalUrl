@@ -111,7 +111,7 @@ async function redirect2Pan(r) {
     mediaServerRes.path = strmInnerText;
   }
 
-  let isRemote = util.checkIsRemoteByPath(mediaServerRes.path);
+  let isRemote = !util.isAbsolutePath(mediaServerRes.path);
   let plexPathMapping = config.plexPathMapping;
   // file path mapping
   config.plexMountPath.map(s => {
@@ -129,10 +129,15 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
+  // windows filePath to URL path
+  if (filePath.startsWith("\\")) {
+    r.warn(`windows filePath to URL path \ => /`);
+    embyItemPath = String.raw`${embyItemPath}`.replaceAll("\\", "/");
+  }
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
-  isRemote = util.checkIsRemoteByPath(mediaItemPath);
+  isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {

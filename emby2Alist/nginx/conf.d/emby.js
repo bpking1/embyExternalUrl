@@ -89,7 +89,7 @@ async function redirect2Pan(r) {
     return r.return(403, "blocked");
   }
 
-  let isRemote = util.checkIsRemoteByPath(embyRes.path);
+  let isRemote = !util.isAbsolutePath(embyRes.path);
   // file path mapping
   let embyPathMapping = config.embyPathMapping;
   config.embyMountPath.map(s => {
@@ -98,7 +98,7 @@ async function redirect2Pan(r) {
     }
   });
   r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
-  let embyItemPath = embyRes.path;
+  var embyItemPath = embyRes.path;
   embyPathMapping.map(arr => {
     if ((arr[1] == 0 && embyRes.notLocal)
       || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
@@ -107,10 +107,15 @@ async function redirect2Pan(r) {
     }
     embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
   });
+  // windows filePath to URL path
+  if (filePath.startsWith("\\")) {
+    r.warn(`windows filePath to URL path \ => /`);
+    embyItemPath = String.raw`${embyItemPath}`.replaceAll("\\", "/");
+  }
   r.warn(`mapped emby file path: ${embyItemPath}`);
   
   // strm file inner remote link redirect,like: http,rtsp
-  isRemote = util.checkIsRemoteByPath(embyItemPath);
+  isRemote = !util.isAbsolutePath(embyItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
     if (!!rule && rule.length > 0) {
