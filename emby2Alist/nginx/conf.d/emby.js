@@ -253,10 +253,11 @@ async function transferPlaybackInfo(r) {
             // 1. first priority is user clients choice video bitrate < source.Bitrate
             // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
             // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
-            // 4. ensure transcoding experience, disable STRM file transcode, because clients 1 ts part only wait 10s forced disconnection
-            const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate); 
-            if (!isStrm && maxStreamingBitrate < source.Bitrate 
-              && source.SupportsTranscoding && source.TranscodingUrl) {
+            if (
+              (transcodeConfig.enableStrmTranscode || !isStrm)
+              && parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
+              && source.SupportsTranscoding && source.TranscodingUrl
+            ) {
               r.warn(`client reported and server judgment to transcode, cover routeMode`);
               source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
               modifyDirecPlaySupports(source, false);
