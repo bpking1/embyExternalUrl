@@ -299,7 +299,7 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
     ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
   }
   if (type == 0) {
-    str = str.replace(searchValue, replaceValue);
+    str = str.replaceAll(searchValue, replaceValue);
     ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
   }
   return str;
@@ -329,11 +329,9 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
-function checkIsRemoteByPath(filePath) {
-  if (!!filePath) {
-    return !filePath.startsWith("/") && !filePath.startsWith("\\");
-  }
-  return false;
+function isAbsolutePath(filePath) {
+  return filePath && typeof filePath === "string" 
+    ? filePath.startsWith("/") || filePath.startsWith("\\") : false;
 }
 
 
@@ -519,7 +517,7 @@ export default {
   getRouteMode,
   parseExpression,
   checkIsStrmByPath,
-  checkIsRemoteByPath,
+  isAbsolutePath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
   dictAdd,
