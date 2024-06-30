@@ -252,11 +252,16 @@ async function transferPlaybackInfo(r) {
             if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
             // 1. first priority is user clients choice video bitrate < source.Bitrate
             // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
-            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
+            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty        
             if (
               (transcodeConfig.enableStrmTranscode || !isStrm)
-              && parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
               && source.SupportsTranscoding && source.TranscodingUrl
+              && (
+                // https://dev.emby.media/reference/pluginapi/MediaBrowser.Model.Session.TranscodeReason.html
+                source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit") 
+                ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
+                : true
+              )
             ) {
               r.warn(`client reported and server judgment to transcode, cover routeMode`);
               source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
