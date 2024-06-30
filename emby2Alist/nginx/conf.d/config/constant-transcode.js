@@ -12,7 +12,7 @@ const transcodeConfig = {
   enableStrmTranscode: false, // 默认禁用 strm 的转码,体验很差,仅供调试使用
   type: "distributed-media-server", // 负载类型,可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
-  redirectTransOptEnable: true, // 302的直链文件是否保留码率选择,不保留客户端将无法手动切换至转码
+  redirectTransOptEnable: true, // 是否保留码率选择,不保留官方客户端将无法手动切换至转码
   targetItemMatchFallback: "redirect", // 目标服务媒体匹配失败后的降级后路由措施,可选值, ["redirect", "proxy"]
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
   // server: [],
