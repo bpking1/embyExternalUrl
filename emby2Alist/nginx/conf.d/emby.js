@@ -673,20 +673,20 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
   }
   try {
   	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
-    const response = await util.cost(ngx.fetch, encodeURI(strmLink), {
-      method: "HEAD",
-      headers: {
-        "User-Agent": ua,
-      },
-      max_response_body_size: 1024
-    });
-    // const response = await ngx.fetch(encodeURI(strmLink), {
+    // const response = await util.cost(ngx.fetch, encodeURI(strmLink), {
     //   method: "HEAD",
     //   headers: {
     //     "User-Agent": ua,
     //   },
     //   max_response_body_size: 1024
     // });
+    const response = await ngx.fetch(encodeURI(strmLink), {
+      method: "HEAD",
+      headers: {
+        "User-Agent": ua,
+      },
+      max_response_body_size: 1024
+    });
     const contentType = response.headers["Content-Type"];
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}, contentType: ${contentType}`);
     // response.redirected api error return false
