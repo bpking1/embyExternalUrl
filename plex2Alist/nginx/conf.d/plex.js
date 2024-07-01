@@ -112,16 +112,16 @@ async function redirect2Pan(r) {
   }
 
   let isRemote = !util.isAbsolutePath(mediaServerRes.path);
-  let plexPathMapping = config.plexPathMapping;
+  let mediaPathMapping = config.mediaPathMapping;
   // file path mapping
-  config.plexMountPath.map(s => {
+  config.mediaMountPath.map(s => {
     if (!!s) {
-      plexPathMapping.unshift([0, 0 , s, ""]);
+      mediaPathMapping.unshift([0, 0 , s, ""]);
     }
   });
-  r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
+  r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
   let mediaItemPath = mediaServerRes.path;
-  plexPathMapping.map(arr => {
+  mediaPathMapping.map(arr => {
     if ((arr[1] == 0 && notLocal)
       || (arr[1] == 1 && (!notLocal || isRemote))
       || (arr[1] == 2 && (!notLocal || !isRemote))) {
@@ -130,9 +130,9 @@ async function redirect2Pan(r) {
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
   // windows filePath to URL path, warn: markdown log text show \\ to \
-  if (embyItemPath.startsWith("\\")) {
+  if (mediaItemPath.startsWith("\\")) {
     r.warn(`windows filePath to URL path \\ => /`);
-    embyItemPath = embyItemPath.replaceAll("\\", "/");
+    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
   }
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 

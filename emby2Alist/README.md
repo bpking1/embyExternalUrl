@@ -330,7 +330,7 @@ https://xxx:5244/d/xxx/AL-ZZ-02/test/Guardians.of.the.Galaxy.Vol.2.2017.1080p.Bl
 #### 2024-05-19
 
 1.提供获取软连接真实路径的配置项,前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效,
-只做了简单的测试,可能暂时存在和非本地文件路径走代理判断稍微有些冲突,自行尝试配置 xxxMountPath 或 routeRule
+只做了简单的测试,可能暂时存在和非本地文件路径走代理判断稍微有些冲突,自行尝试配置 mediaMountPath 或 routeRule
 
 #### 2024-05-18
 
@@ -710,7 +710,7 @@ https://microsoftedge.microsoft.com/addons/detail/modheader-modify-http-h/opgbia
 有多种填写方式,一个strm文件内部只能有一行路径或者链接,具体可以参考emby官方文档,我这里只测试了两种情况,例如:
 
 1-1:
-从alist的根路径开始填写,注意不要包含embyMountPath这个参数的路径,特殊字符不用转义,代码内部已做处理
+从alist的根路径开始填写,注意不要包含 mediaMountPath 这个参数的路径,特殊字符不用转义,代码内部已做处理
 ![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/240f5aa5-a603-40b6-ab6f-ed7c1b13c806)
 
 1-2:

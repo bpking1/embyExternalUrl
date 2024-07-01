@@ -91,57 +91,57 @@ async function redirect2Pan(r) {
 
   let isRemote = !util.isAbsolutePath(embyRes.path);
   // file path mapping
-  let embyPathMapping = config.embyPathMapping;
-  config.embyMountPath.map(s => {
+  let mediaPathMapping = config.mediaPathMapping;
+  config.mediaMountPath.map(s => {
     if (!!s) {
-      embyPathMapping.unshift([0, 0 , s, ""]);
+      mediaPathMapping.unshift([0, 0 , s, ""]);
     }
   });
-  r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
-  var embyItemPath = embyRes.path;
-  embyPathMapping.map(arr => {
+  r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
+  let mediaItemPath = embyRes.path;
+  mediaPathMapping.map(arr => {
     if ((arr[1] == 0 && embyRes.notLocal)
       || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
       || (arr[1] == 2 && (!embyRes.notLocal || !isRemote))) {
         return;
     }
-    embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
+    mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
   // windows filePath to URL path, warn: markdown log text show \\ to \
-  if (embyItemPath.startsWith("\\")) {
+  if (mediaItemPath.startsWith("\\")) {
     r.warn(`windows filePath to URL path \\ => /`);
-    embyItemPath = embyItemPath.replaceAll("\\", "/");
+    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
   }
-  r.warn(`mapped emby file path: ${embyItemPath}`);
+  r.warn(`mapped emby file path: ${mediaItemPath}`);
   
   // strm file inner remote link redirect,like: http,rtsp
-  isRemote = !util.isAbsolutePath(embyItemPath);
+  isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
-    const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
+    const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], ua);
+      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
-        embyItemPath = directUrl;
+        mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
         directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], ua);
         if (!!directUrl) {
-          embyItemPath = directUrl;
+          mediaItemPath = directUrl;
         }
       }
     }
     // need careful encode filePathPart, other don't encode
-    const filePathPart = util.getFilePathPart(embyItemPath);
+    const filePathPart = util.getFilePathPart(mediaItemPath);
     if (filePathPart) {
-      r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${embyItemPath}`);
-      embyItemPath = embyItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
+      r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${mediaItemPath}`);
+      mediaItemPath = mediaItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
     }
-    return redirect(r, embyItemPath);
+    return redirect(r, mediaItemPath);
   }
 
   // fetch alist direct link
-  const alistFilePath = embyItemPath;
+  const alistFilePath = mediaItemPath;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
@@ -673,13 +673,20 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
   }
   try {
   	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
-    const response = await ngx.fetch(encodeURI(strmLink), {
+    const response = await util.cost(ngx.fetch, encodeURI(strmLink), {
       method: "HEAD",
       headers: {
         "User-Agent": ua,
       },
       max_response_body_size: 1024
     });
+    // const response = await ngx.fetch(encodeURI(strmLink), {
+    //   method: "HEAD",
+    //   headers: {
+    //     "User-Agent": ua,
+    //   },
+    //   max_response_body_size: 1024
+    // });
     const contentType = response.headers["Content-Type"];
     ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}, contentType: ${contentType}`);
     // response.redirected api error return false
