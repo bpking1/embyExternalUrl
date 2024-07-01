@@ -15,7 +15,7 @@ const plexHost = "http://172.17.0.1:32400";
 
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 plex 处理,不用重复填写至 disableRedirectRule
-const plexMountPath = ["/mnt"];
+const mediaMountPath = ["/mnt"];
 
 // for js_set
 function getPlexHost(r) {
@@ -27,7 +27,7 @@ function getTranscodeEnable(r) {
 
 export default {
   plexHost,
-  plexMountPath,
+  mediaMountPath,
   strHead: commonConfig.strHead,
 
   alistAddr: mountConfig.alistAddr,
@@ -39,7 +39,7 @@ export default {
 
   routeCacheConfig: proConfig.routeCacheConfig,
   routeRule: proConfig.routeRule,
-  plexPathMapping: proConfig.plexPathMapping,
+  mediaPathMapping: proConfig.mediaPathMapping,
 
   symlinkRule: symlinkConfig.symlinkRule,
   redirectStrmLastLinkRule: strmConfig.redirectStrmLastLinkRule,

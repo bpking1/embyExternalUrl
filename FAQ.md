@@ -1,6 +1,6 @@
 # [emby2Alist](./emby2Alist/README.md)
 
-#### 1.如何确定 embyMountPath 的路径填写?
+#### 1.如何确定 mediaMountPath 的路径填写?
 遵循媒体入库的路径和 alist 的根目录 / 取差集,多出来的那部分就是挂载工具的挂载路径,例如
 ```javascript
 // 我用的 CD2 挂载到群晖的共享目录中为
@@ -11,16 +11,16 @@
 =>
 /AList
 // 所以我 emby 中入库的媒体路径都是 /AList/xxx 开头的
-// 所以我的 embyMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
-const embyMountPath = ["/AList"];
+// 所以我的 mediaMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
+const mediaMountPath = ["/AList"];
 ```
 如果挂载的路径映射情况比这更加复杂,就需要这个参数来做路径字符串的映射了
 ```javascript
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
-const embyPathMapping = [
+const mediaPathMapping = [
   // [0, 0, "/mnt/aliyun-01", "/mnt/aliyun-02"],
   // [0, 2, "http:", "https:"], 
   // [0, 2, ":5244", "/alist"], 
@@ -420,11 +420,11 @@ r 对象没有重定向或返回的情况下,客户端请求是断在 NJS 这里
 或使用 alist 自身的代理中转功能
 
 ```js
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
-const embyPathMapping = [
+const mediaPathMapping = [
   [0, 0, "\", "/"], // win 平台打开此项
 ];
 ```

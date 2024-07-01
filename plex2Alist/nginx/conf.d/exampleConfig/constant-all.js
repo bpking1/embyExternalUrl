@@ -11,7 +11,7 @@ const plexHost = "http://172.17.0.1:32400";
 
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 plex 处理,不用重复填写至 disableRedirectRule
-const plexMountPath = ["/mnt"];
+const mediaMountPath = ["/mnt"];
 
 // 访问宿主机上 5244 端口的 alist 地址, 要注意 iptables 给容器放行端口
 const alistAddr = "http://172.17.0.1:5244";
@@ -46,7 +46,7 @@ const routeCacheConfig = {
   keyExpression: "r.uri:r.args.path:r.args.mediaIndex:r.args.partIndex", //"xxx:r.args.X-Plex-Client-Identifier"
 };
 
-// 指定需要获取符号链接真实路径的规则,优先级在 xxxMountPath 和 routeRule 之间
+// 指定需要获取符号链接真实路径的规则,优先级在 mediaMountPath 和 routeRule 之间
 // 注意前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效
 // 此参数仅在软连接后的文件名和原始文件名不一致或路径差异较大时使用,其余情况建议用 xxxPathMapping
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
@@ -86,11 +86,11 @@ const routeRule = [
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
 
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
-const plexPathMapping = [
+const mediaPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
   // [0, 2, "http:", "https:"],
   // [0, 2, ":5244", "/alist"],
@@ -139,7 +139,7 @@ function getTranscodeEnable(r) {
 
 export default {
   plexHost,
-  plexMountPath,
+  mediaMountPath,
   routeCacheConfig,
   symlinkRule,
   routeRule,
@@ -150,7 +150,7 @@ export default {
   alistPublicAddr,
   strHead,
   cilentSelfAlistRule,
-  plexPathMapping,
+  mediaPathMapping,
   redirectStrmLastLinkRule,
   transcodeConfig,
   getPlexHost,
