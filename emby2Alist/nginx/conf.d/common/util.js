@@ -504,12 +504,13 @@ function getDeviceId(rArgs) {
  * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
  * 2.AList
  * http://mydomain:5244/d/AList/xxx.mkv
+ * see: https://regex101.com/r/Gd3JUH/1
  * @param {String} url full url
  * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
  */
 function getFilePathPart(url) {
-  const matches = url.match(/\/False\/(.*)|\/d\/(.*)/);
-  return matches && matches[1] ? matches[1] : "";
+  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/g);
+  return matches ? matches[1] : "";
 }
 
 /**
