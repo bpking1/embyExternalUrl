@@ -171,16 +171,17 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
  */
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
-  const mountPath = config.mediaMountPath ?? [];
+  const mountPath = config.mediaMountPath;
   if (!isAlistRes) {
     // exact, local file not mediaMountPath first
-    if (mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
+    if (mountPath && mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
       ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
       return true;
     }
     // indeterminate, regard notLocal and mediaMountPath empty default as local file
-    if ((mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
-      ngx.log(ngx.WARN, `hit proxy, maybe is localFile`);
+    if (mountPath && Array.isArray(mountPath) 
+      && (mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
+      ngx.log(ngx.WARN, `hit proxy, maybe is localFile: ${JSON.stringify(mountPath)}`);
       return true;
     }
   }
