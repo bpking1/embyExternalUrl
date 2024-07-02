@@ -94,7 +94,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount plex file path: ${mediaServerRes.path}`);
 
-  // routeRule, must before xxxPathMapping
+  // routeRule, must before mediaPathMapping
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
   r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
