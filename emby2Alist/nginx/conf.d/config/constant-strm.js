@@ -12,7 +12,7 @@ const alistSignExpireTime = mountConfig.alistSignExpireTime;
 
 // 指定是否转发由 njs 获取 strm 重定向后直链地址的规则,例如 strm 内部为局域网 ip 或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// 参数2: 匹配目标,对象为 xxxPathMapping 映射后的 strm 内部链接
+// 参数2: 匹配目标,对象为 mediaPathMapping 映射后的 strm 内部链接
 const redirectStrmLastLinkRule = [
   [0, strHead.lanIp.map(s => "http://" + s)],
   // [0, alistAddr],

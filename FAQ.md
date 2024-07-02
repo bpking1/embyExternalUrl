@@ -429,6 +429,37 @@ const mediaPathMapping = [
 ];
 ```
 
+#### 25.nginx 需要配置限流参数吗?
+这个根据自身承受范围调整,115 强烈推荐套一层 alist 限流可避免网盘熔断,特点是超限请求会排队执行并不会丢弃,具体参考,
+[emby2Alist#2024-04-05](./emby2Alist/README.md#2024-04-05)
+,因 alist 限流仅限 115 且不认 IP,毕竟这不是它的本职,这里讲下 nginx 的限流补充方案,可根据远程客户端的真实 IP 地址进行精细化限流,
+当然有一定网络配置前提,[FAQ.md#8](./FAQ.md#8nginx-必须使用-host-网络吗),
+```
+limit_conn: 限制单个 ip 建立连接的个数,注意此种超限直接丢弃请求返回 503 错误
+limit_req: 限制单个 ip 请求的个数(请求频率),这个可以配置突发请求个数,超限请求排队执行
+# limit_rate: 限制下载速度,只针对 proxy 有效,302 无效,仅记录区别
+```
+以上两种可结合使用,放置在出现了 js_content emby2Pan.redirect2Pan; 的 location 块中, conf 中添加了一些示例,
+具体如何配置随便问下 AI 就行了,很简单且参考资料很多,这里提一个误区,例如想实现限制每天只允许 5 个 IP 访问,
+这种过于宽泛的条件很复杂且没必要,建议简单使用两个内置指令就够了,硬要实现的自行结合 js_shared_dict_zone 手动计数,
+以下只是个人觉得够用了,根据心理可承受范围自行调整,我只用了 alist 限流并没有使用 nginx 限流且是 115,
+从 emby 走的 302 限制为并发时间内最大 5 个 IP 同时连接,细化到请求数,单 IP 1s 内只允许 1 个请求,激发请求等待队列 5 个,
+超限的默认 503 返回直接丢弃
+
+./nginx/conf.d/emby/plex.conf
+```
+## ReqLimit, the processing rate of requests coming from a single IP address
+limit_req_zone $binary_remote_addr zone=one:1m rate=1r/s;
+
+## ConnLimit, the number of connections from a single IP addres
+limit_conn_zone $binary_remote_addr zone=one:1m;
+
+location ~* /videos/(.*)/(stream|original) {
+  limit_conn one 5;
+  limit_req zone=one burst=5;
+}
+```
+
 # embyAddExternalUrl
 
 #### 1.支持 plex 吗?
