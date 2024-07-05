@@ -8,10 +8,11 @@
 // type: "distributed-media-server", 分布式媒体服务负载均衡(暂未实现均衡),优先利用 302 真正实现流量的 LB,且灵活,
 // 不区分主从,当前访问服务即为主库,可 emby/jellyfin 混搭,挂载路径可以不一致,但要求库中的标题和语种一致且原始文件名一致
 const transcodeConfig = {
-  enable: false, // 此为允许转码的总开关
+  enable: false, // 此大多数情况下为允许转码的总开关
+  enableStrmTranscode: false, // 默认禁用 strm 的转码,体验很差,仅供调试使用
   type: "distributed-media-server", // 负载类型,可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
-  redirectTransOptEnable: true, // 302的直链文件是否保留码率选择,不保留客户端将无法手动切换至转码
+  redirectTransOptEnable: true, // 是否保留码率选择,不保留官方客户端将无法手动切换至转码
   targetItemMatchFallback: "redirect", // 目标服务媒体匹配失败后的降级后路由措施,可选值, ["redirect", "proxy"]
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
   // server: [],

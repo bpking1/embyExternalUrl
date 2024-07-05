@@ -9,13 +9,13 @@
 // 这里默认 emby/jellyfin 的地址是宿主机,要注意 iptables 给容器放行端口
 const embyHost = "http://127.0.0.1:8096";
 
+// emby/jellyfin api key, 在 emby/jellyfin 后台设置
+const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
+
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理,不用重复填写至 disableRedirectRule
 // 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
-const embyMountPath = ["/mnt"];
-
-// emby/jellyfin api key, 在 emby/jellyfin 后台设置
-const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
+const mediaMountPath = ["/mnt"];
 
 // 访问宿主机上 5244 端口的 alist 地址, 要注意 iptables 给容器放行端口
 const alistAddr = "http://127.0.0.1:5244";
@@ -52,8 +52,9 @@ const routeCacheConfig = {
   keyExpression: "r.uri:r.args.MediaSourceId", // "r.uri:r.args.MediaSourceId:r.args.X-Emby-Device-Id"
 };
 
-// 指定需要获取符号链接真实路径的规则,优先级在 embyMountPath 和 routeRule 之间
+// 指定需要获取符号链接真实路径的规则,优先级在 mediaMountPath 和 routeRule 之间
 // 注意前提条件是此程序或容器必须挂载或具有对应目录的读取权限,否则将跳过处理,不生效
+// 此参数仅在软连接后的文件名和原始文件名不一致或路径差异较大时使用,其余情况建议用 mediaPathMapping
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为媒体服务入库的文件路径(Item.Path)
 const symlinkRule = [
@@ -94,14 +95,14 @@ const routeRule = [
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
 
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
-const embyPathMapping = [
-  // [0, 0, "/mnt/aliyun-01", "/mnt/aliyun-02"],
-  // [0, 2, "http:", "https:"], 
-  // [0, 2, ":5244", "/alist"], 
+const mediaPathMapping = [
+  // [0, 0, "/aliyun-01", "/aliyun-02"],
+  // [0, 2, "http:", "https:"],
+  // [0, 2, ":5244", "/alist"],
   // [0, 0, "D:", "F:"],
   // [0, 0, /blue/g, "red"], // 此处正则不要加引号
   // [1, 1, `${alistPublicAddr}/d`],
@@ -110,7 +111,7 @@ const embyPathMapping = [
 
 // 指定是否转发由 njs 获取 strm 重定向后直链地址的规则,例如 strm 内部为局域网 ip 或链接需要验证
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// 参数2: 匹配目标,对象为 xxxPathMapping 映射后的 strm 内部链接
+// 参数2: 匹配目标,对象为 mediaPathMapping 映射后的 strm 内部链接
 const redirectStrmLastLinkRule = [
   [0, strHead.lanIp.map(s => "http://" + s)],
   // [0, alistAddr],
@@ -139,10 +140,11 @@ const cilentSelfAlistRule = [
 // type: "distributed-media-server", 分布式媒体服务负载均衡(暂未实现均衡),优先利用 302 真正实现流量的 LB,且灵活,
 // 不区分主从,当前访问服务即为主库,可 emby/jellyfin 混搭,挂载路径可以不一致,但要求库中的标题和语种一致且原始文件名一致
 const transcodeConfig = {
-  enable: false, // 此为允许转码的总开关
+  enable: false, // 此大多数情况下为允许转码的总开关
+  enableStrmTranscode: false, // 默认禁用 strm 的转码,体验很差,仅供调试使用
   type: "distributed-media-server", // 负载类型,可选值, ["nginx", "distributed-media-server"]
   maxNum: 3, // 单机最大转码数量,有助于加速轮询, 参数暂无作用,接口无法查询转码情况,忽略此参数
-  redirectTransOptEnable: true, // 302的直链文件是否保留码率选择,不保留客户端将无法手动切换至转码
+  redirectTransOptEnable: true, // 是否保留码率选择,不保留官方客户端将无法手动切换至转码
   targetItemMatchFallback: "redirect", // 目标服务媒体匹配失败后的降级后路由措施,可选值, ["redirect", "proxy"]
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
   // server: [],
@@ -217,8 +219,8 @@ function getImageCachePolicy(r) {
 
 export default {
   embyHost,
-  embyMountPath,
   embyApiKey,
+  mediaMountPath,
   alistAddr,
   alistToken,
   alistSignEnable,
@@ -228,7 +230,7 @@ export default {
   routeCacheConfig,
   symlinkRule,
   routeRule,
-  embyPathMapping,
+  mediaPathMapping,
   redirectStrmLastLinkRule,
   cilentSelfAlistRule,
   transcodeConfig,

@@ -79,7 +79,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
-  // routeRule, must before xxxPathMapping
+  // routeRule, must before mediaPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
   r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
@@ -89,54 +89,59 @@ async function redirect2Pan(r) {
     return r.return(403, "blocked");
   }
 
-  let isRemote = util.checkIsRemoteByPath(embyRes.path);
+  let isRemote = !util.isAbsolutePath(embyRes.path);
   // file path mapping
-  let embyPathMapping = config.embyPathMapping;
-  config.embyMountPath.map(s => {
+  let mediaPathMapping = config.mediaPathMapping;
+  config.mediaMountPath.map(s => {
     if (!!s) {
-      embyPathMapping.unshift([0, 0 , s, ""]);
+      mediaPathMapping.unshift([0, 0 , s, ""]);
     }
   });
-  r.warn(`embyPathMapping: ${JSON.stringify(embyPathMapping)}`);
-  let embyItemPath = embyRes.path;
-  embyPathMapping.map(arr => {
+  r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
+  let mediaItemPath = embyRes.path;
+  mediaPathMapping.map(arr => {
     if ((arr[1] == 0 && embyRes.notLocal)
       || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
       || (arr[1] == 2 && (!embyRes.notLocal || !isRemote))) {
         return;
     }
-    embyItemPath = util.strMapping(arr[0], embyItemPath, arr[2], arr[3]);
+    mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
-  r.warn(`mapped emby file path: ${embyItemPath}`);
+  // windows filePath to URL path, warn: markdown log text show \\ to \
+  if (mediaItemPath.startsWith("\\")) {
+    r.warn(`windows filePath to URL path \\ => /`);
+    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
+  }
+  r.warn(`mapped emby file path: ${mediaItemPath}`);
   
   // strm file inner remote link redirect,like: http,rtsp
-  isRemote = util.checkIsRemoteByPath(embyItemPath);
+  isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
-    const rule = util.redirectStrmLastLinkRuleFilter(embyItemPath);
+    const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(embyItemPath, rule[2], rule[3], ua);
+      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
-        embyItemPath = directUrl;
+        mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
         directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], ua);
         if (!!directUrl) {
-          embyItemPath = directUrl;
+          mediaItemPath = directUrl;
         }
       }
     }
     // need careful encode filePathPart, other don't encode
-    const filePathPart = util.getFilePathPart(embyItemPath);
+    const filePathPart = util.getFilePathPart(mediaItemPath);
     if (filePathPart) {
-      r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${embyItemPath}`);
-      embyItemPath = embyItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
+      r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${mediaItemPath}`);
+      mediaItemPath = mediaItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
     }
-    return redirect(r, embyItemPath);
+    return redirect(r, mediaItemPath);
   }
 
   // fetch alist direct link
-  const alistFilePath = embyItemPath;
+  const alistFilePath = mediaItemPath;
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
@@ -245,28 +250,33 @@ async function transferPlaybackInfo(r) {
           source.XRouteMode = routeMode; // for debug
           if (util.ROUTE_ENUM.redirect == routeMode) {
             if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
-            // first priority is user clients choice video bitrate < source.Bitrate
-            const maxStreamingBitrate = parseInt(r.args.MaxStreamingBitrate);
-            if (r.args.StartTimeTicks !== "0" && maxStreamingBitrate < source.Bitrate) {
-              r.warn(`playback started swich redirect to transcode by opt`);
-              modifyDirecPlaySupports(source, false);
-            }
-            // cover routeMode
-            // source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
-            if (!isStrm && r.args.StartTimeTicks === "0" && source.SupportsTranscoding && source.TranscodingUrl) {
-              // if (source.AutoOpenLiveStream === "true" && source.SupportsTranscoding) {
+            // 1. first priority is user clients choice video bitrate < source.Bitrate
+            // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
+            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty        
+            if (
+              (transcodeConfig.enableStrmTranscode || !isStrm)
+              && source.SupportsTranscoding && source.TranscodingUrl
+              && (
+                // https://dev.emby.media/reference/pluginapi/MediaBrowser.Model.Session.TranscodeReason.html
+                source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit") 
+                ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
+                : true
+              )
+            ) {
               r.warn(`client reported and server judgment to transcode, cover routeMode`);
               source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
               modifyDirecPlaySupports(source, false);
               continue;
             }
-          } else if (util.ROUTE_ENUM.transcode == routeMode || util.ROUTE_ENUM.proxy == routeMode) {
+          } else if (util.ROUTE_ENUM.transcode == routeMode) {
             r.warn(`routeMode modify playback supports`);
+            // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
             modifyDirecPlaySupports(source, false);
             continue;
           } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
           }
+          // util.ROUTE_ENUM.proxy == routeMode, because subdivided transcode, proxy do't modify
         } else {
           source.SupportsTranscoding = false;
           if (!transcodeConfig.redirectTransOptEnable) {
@@ -471,7 +481,8 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
       if (itemInfoUri.includes("JobItems")) {
         const jobItem = result.Items.find(o => o.Id == itemId);
         if (jobItem) {
-          rvt.path = jobItem.MediaSource.Path;
+          // "MediaType": "Photo"... not have "MediaSources" field
+          rvt.path = jobItem.OutputPath;
           // live stream not support download, can ignore it
           rvt.notLocal = util.checkIsStrmByPath(jobItem.OutputPath);
         } else {
@@ -662,6 +673,13 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
   }
   try {
   	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
+    // const response = await util.cost(ngx.fetch, encodeURI(strmLink), {
+    //   method: "HEAD",
+    //   headers: {
+    //     "User-Agent": ua,
+    //   },
+    //   max_response_body_size: 1024
+    // });
     const response = await ngx.fetch(encodeURI(strmLink), {
       method: "HEAD",
       headers: {

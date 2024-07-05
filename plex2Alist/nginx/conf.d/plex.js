@@ -94,7 +94,7 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount plex file path: ${mediaServerRes.path}`);
 
-  // routeRule, must before xxxPathMapping
+  // routeRule, must before mediaPathMapping
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
   r.warn(`getRouteMode: ${routeMode}`);
   if (util.ROUTE_ENUM.proxy == routeMode) {
@@ -111,17 +111,17 @@ async function redirect2Pan(r) {
     mediaServerRes.path = strmInnerText;
   }
 
-  let isRemote = util.checkIsRemoteByPath(mediaServerRes.path);
-  let plexPathMapping = config.plexPathMapping;
+  let isRemote = !util.isAbsolutePath(mediaServerRes.path);
+  let mediaPathMapping = config.mediaPathMapping;
   // file path mapping
-  config.plexMountPath.map(s => {
+  config.mediaMountPath.map(s => {
     if (!!s) {
-      plexPathMapping.unshift([0, 0 , s, ""]);
+      mediaPathMapping.unshift([0, 0 , s, ""]);
     }
   });
-  r.warn(`plexPathMapping: ${JSON.stringify(plexPathMapping)}`);
+  r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
   let mediaItemPath = mediaServerRes.path;
-  plexPathMapping.map(arr => {
+  mediaPathMapping.map(arr => {
     if ((arr[1] == 0 && notLocal)
       || (arr[1] == 1 && (!notLocal || isRemote))
       || (arr[1] == 2 && (!notLocal || !isRemote))) {
@@ -129,10 +129,15 @@ async function redirect2Pan(r) {
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
+  // windows filePath to URL path, warn: markdown log text show \\ to \
+  if (mediaItemPath.startsWith("\\")) {
+    r.warn(`windows filePath to URL path \\ => /`);
+    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
+  }
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
-  isRemote = util.checkIsRemoteByPath(mediaItemPath);
+  isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {

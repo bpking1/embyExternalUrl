@@ -1,6 +1,6 @@
 # [emby2Alist](./emby2Alist/README.md)
 
-#### 1.如何确定 embyMountPath 的路径填写?
+#### 1.如何确定 mediaMountPath 的路径填写?
 遵循媒体入库的路径和 alist 的根目录 / 取差集,多出来的那部分就是挂载工具的挂载路径,例如
 ```javascript
 // 我用的 CD2 挂载到群晖的共享目录中为
@@ -11,16 +11,16 @@
 =>
 /AList
 // 所以我 emby 中入库的媒体路径都是 /AList/xxx 开头的
-// 所以我的 embyMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
-const embyMountPath = ["/AList"];
+// 所以我的 mediaMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
+const mediaMountPath = ["/AList"];
 ```
 如果挂载的路径映射情况比这更加复杂,就需要这个参数来做路径字符串的映射了
 ```javascript
-// 路径映射,会在 xxxMountPath 之后从上到下依次全部替换一遍,不要有重叠
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
-const embyPathMapping = [
+const mediaPathMapping = [
   // [0, 0, "/mnt/aliyun-01", "/mnt/aliyun-02"],
   // [0, 2, "http:", "https:"], 
   // [0, 2, ":5244", "/alist"], 
@@ -48,9 +48,43 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 ```
 或者删除此文件、注释掉 IPv6 监听、删除容器重新生成
 
-#### 6.115 内容无法 Web 端播放?
-因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,且 115 没有响应跨域支持,
-浏览器严格限制跨域内容,使用浏览器拓展的修改响应头或者使用对应平台的客户端播放,
+#### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
+~~因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,~~
+
+更正,感谢 @lixuemin13 [#236](https://github.com/bpking1/embyExternalUrl/issues/236) 
+提供的新思路,干预 htmlvideoplayer 的 <video> 标签可以实现
+
+1.运行 shell 命令,先运行 cp 复制备份原文件为 _backup 后缀文件,/system 层级按自身实际情况修改
+```shell
+cp /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js_backup
+```
+
+2.再运行 sed 文本正则替换修改,以去除 emby 最终 <video> 标签中 crossorigin="anonymous" 属性,
+注意这里更改的为 basehtmlplayer 全局的,包含视频和音频播放标签,仅需视频的参照 [#236](https://github.com/bpking1/embyExternalUrl/issues/236)
+```shell
+sed -i 's/mediaSource\.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"/null/g' /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
+```
+js 中的 mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous 被替换为 null
+
+3.浏览器控制台网络选项卡勾选 禁用缓存,刷新页面,在源代码选项卡中确认修改生效后取消勾选
+
+4.可选验证结果,不太严谨,只取了 basehtmlplayer.js 倒数开始的 185 个字符,根据实际情况修改
+```shell
+tail -c 185 /system/dashboard-ui/modules/htmlvideoplayer/basehtmlplayer.js
+```
+预期修改为
+```js
+BaseHtmlPlayer.prototype.getCrossOriginValue=function(mediaSource,playMethod){return mediaSource.IsRemote&&"DirectPlay"===playMethod?null:"anonymous"};_exports.default=BaseHtmlPlayer})
+=>
+BaseHtmlPlayer.prototype.getCrossOriginValue=function(mediaSource,playMethod){return null};_exports.default=BaseHtmlPlayer})
+```
+
+5.这个是 HTML 规范的 <video> 标签还有 HTTP 的规范的 CSP 有关,和 emby 版本关系应该不大,测试 beta V4.9.0.25 也是可以的
+https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Sec-Fetch-Mode
+
+以下为原始不完美方案,仅做记录和备用选择,
+且 115 没有响应跨域支持,浏览器严格限制跨域内容,使用浏览器拓展的修改响应头 [emby2Alist](./emby2Alist/README.md#2023-12-31)
+或者使用对应平台的客户端播放,
 或者放弃 web 端的直链功能,打开路由配置中示例配置,让 nginx 转给原始服务处理
 
 ```js
@@ -80,7 +114,7 @@ const routeRule = [
 
 #### 8.nginx 必须使用 host 网络吗?
 不是必须的,只是方便处理和理解,因为 nginx 之前可能还有其他反代程序而没有传递客户端真实 IP 标头,
-所以用 host 比较简单,能保证本 nginx=> MediaServer 传递的是客户端的真实远程 IP,
+所以用 host 比较简单,能保证本 nginx => MediaServer 传递的是客户端的真实远程 IP,
 在 nginx 后如果直接就是原始媒体服务,MediaServer 就不需要 host 网络了,但是如果 nginx 前后还有其他的反代程序,
 则它们都需要传递客户端真实 IP, 所需标头可以参考 proxy-header.conf 或 alist 文档中反代传递的标头,
 假如流量链路 npm -> xxx2alist -> MediaServer 只需要在 npm 这里传递标头就行了,
@@ -89,12 +123,14 @@ const routeRule = [
 
 #### 8.为什么需要识别内网网段的地址?
 这个如果没有特殊需要可以不用管,选填项,目前两个地方用到了
+
 1.有用户反馈内网环境走直链 Infuse 反而会更卡
 ```javascript
 const routeRule = [
    // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["r.variables.remote_addr", 0, strHead.lanIp],
 ];
+
 ```
 2.如果 strm 内部的远程链接为局域网的,转发给远程客户端访问不了,
 所以做了内网的条件判断在 nginx 内网这层去获取 strm 内网链接 302 后的公网直链返回给远程客户端
@@ -106,9 +142,10 @@ const redirectStrmLastLinkRule = [
 
 #### 8.允许转码功能但不需要分离转码负载,该如何配置?
 ```javascript
-const routeRule = [
-  ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
-];
+// 目前路由规则可以不用配置了,默认遵循客户端自己的上报结果
+// const routeRule = [
+//   ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
+// ];
 const transcodeConfig = {
   enable: true, // 允许转码功能的总开关
   type: "distributed-media-server", // 负载类型,只有这个实现了路由规则
@@ -138,14 +175,18 @@ const transcodeConfig = {
 因为相比本地文件多出来走一遍服务转码的文件分块读取(下载)过程,如果转码的响应时间超过了 10 秒客户端就会主动断开请求,
 断开后转码进度就清空重置了,然后客户端会重试转码,循环失败次数过多就直接报没有兼容的流了,
 需要保证网络带宽和转码硬件的能力都跟上才能有个好的体验,使用条件太苛刻,
-所以不建议对 strm 文件进行转码,且 jellyfin 对它的支持可能有bug,
-偶尔会导致 playbackinfo 这个接口长达 30 秒,也就是进详情页也会调用这个接口查询
+所以不建议对 strm 文件进行转码,默认是禁用 strm 转码状态,可关闭 transcodeConfig.enableStrmTranscode = true,仅供调试使用,
+且 jellyfin 对它的支持可能有bug,偶尔会导致 playbackinfo 这个接口长达 30 秒,也就是进详情页也会调用这个接口查询
 
 #### 12.emby/jellyfin 建议配置 https 吗?
-不是必须的,但如果是国内家庭带宽出现跨运营商访问端口间歇性阻断,则建议配置,表现形式为访问和浏览详情页都没问题,但是播放视频时可能是因为接口带有 video/stream 等关键字被运营商拦截会卡住无法播放,切换到手机流量则一切正常,需要自行分析判断,注意配置 https 后直播内容如果是 http 的,默认会被浏览器拦截,需要换用对应平台客户端播放,自行取舍,[emby2Alist](./emby2Alist/README.md#2024/03/10)
+不是必须的,但如果是国内家庭带宽出现跨运营商访问端口间歇性阻断,则建议配置,
+表现形式为访问和浏览详情页都没问题,但是播放视频时可能是因为接口带有 video/stream 等关键字被运营商拦截会卡住无法播放,
+切换到手机流量则一切正常,需要自行分析判断,注意配置 https 后直播内容如果是 http 的,
+默认会被浏览器拦截,需要换用对应平台客户端播放,自行取舍,[emby2Alist](./emby2Alist/README.md#2024/03/10)
 
 #### 13.为什么日志名称叫 error.log,不会有歧义吗?
-这是因为 nginx 官方的指令就是这个名称,猜测最初是做错误日志使用的,但是添加了 NJS 实现后功能以及指令遗留已经无法更改了,所以还是沿用这个名称,
+这是因为 nginx 官方的指令就是这个名称,猜测最初是做错误日志使用的,
+但是添加了 NJS 实现后功能以及指令遗留已经无法更改了,所以还是沿用这个名称,
 日志中已经有错误等级实现了,所以忽略 error 这个名称,视作普通业务日志就行了
 
 #### 13.为什么 strm 内部文本中文没有 encodeURIComponent 的情况下显示会乱码?
@@ -202,11 +243,15 @@ const transcodeConfig = {
 更新客户端为最新版本可以解决,不清楚原因
 
 #### 19.局域网下可能存在绕过 nginx 处理的问题?
-使用容器版 emby 并限定网络模式为桥接(bridge),只开放默认的 8096 端口出来,这样理论上能掐断客户端的 UDP 网络发现,
-同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否,
-更多参照 
+1.使用容器版 emby 并限定网络模式为桥接(bridge),只开放默认的 8096 端口出来,这样理论上能掐断客户端的 UDP 网络发现,
+同时确保 设置 -> 服务器 -> 网络 -> 读取代理标头以确定客户端 IP 地址 选项不为 否
 
-[emby2Alist](./emby2Alist/README.md#2024/04/10)
+2.或者尝试防火墙禁止 emby 默认的 UDP 广播发现端口 7359,注意是 UDP,而不是 TCP 协议
+https://dev.emby.media/doc/restapi/Locating-the-Server.html?q=UDP
+
+3.更多参照
+
+[emby2Alist#2024-04-10](./emby2Alist/README.md#2024-04-10)
 
 https://github.com/bpking1/embyExternalUrl/issues/59#issuecomment-2036672011
 
@@ -311,6 +356,110 @@ NJS 实例等待返回结果(nginx 整体的超时时间这边并没有进行配
 
 2.还有一种失败是源服务响应回的非 200 状态失败,这种 NJS 会传递源服务的失败结果给客户端,不会导致流程链路断掉
 
+#### 24.NJS 中出现了很多子请求是干什么的?
+为了实现自定义反代功能,其次不会影响 nginx 的性能和效率,客户端请求只到达了 nginx,不发子请求是不会从 nginx 到达源服务的,
+也就是请求从客户端出发只走了一遍,很多人对这个过程觉得是多走了一遍,是不对的,
+注意仔细查看 conf 中条件分支,NJS 处理的基本都没有走 proxy_pass 反代实现,
+这里补充总结下 nginx 实现反代修改响应体的已知 4 种方式
+
+1.conf 中的 proxy_pass 指令,nginx 内部基于 C 实现的,也是最常用的方式,但自定义不足很依赖 nginx 其他指令配合才能修改数据
+
+2.conf 中 js_body_filter 指令,nginx 基于 NJS 实现,依赖 proxy_pass 指令进行反代请求,
+注意只是请求,响应体是自定义的,响应头官方推荐在 conf 中使用指令修改,
+只有 r.sendBuffer(data.toLowerCase(), flags); 时才是手动放行响应数据,故此指令只是修改数据使用,
+限定了只能调用同步方式,且方法是根据分块缓冲区被循环调用的,依赖 flags.last 参数 true 来识别最后的分块,
+局限性太强且使用繁琐,并不是不推荐使用,需要在特定环境下用反而会更简单
+
+3.conf 中 js_content 指令,nginx 基于 NJS 实现,自定义程度最大,反代的请求和响应均需要自己实现,且与 proxy_pass 解耦,支持异步方法,
+r 对象没有重定向或返回的情况下,客户端请求是断在 NJS 这里了,十分注意并没有请求源服务!!! 这里有三种实现反代请求的方式
+
+3.1 r.subrequest(),子请求,只继承源请求的头部信息,这个注意看官方文档,有很多注意事项,这里只提一点,该子请求同样会走 location 匹配,
+不会死循环, NJS VM 会强制报错处理,正常使用需要自定义 location 来放行处理,且拿到子请求响应后需要自行构造新的主请求响应体和响应头,
+十分注意不要忘了响应头的处理,就算不是分离的子请求,主请求响应头也是空的
+
+3.2 ngx.fetch(),HTTP 请求,和 subrequest 不同之处在于没有依赖关系且不受 location 匹配拦截,
+具体也是查看官方文档,需要注意 DNS 解析,和 HTTPS 的证书处理,且响应对象是不同的类型,同样需自行构造响应对象
+
+3.3 r.internalRedirect(uri),NJS 的内部重定向到 location,依赖 conf 中的 proxy_pass 指令
+
+3.4 r.return() 和 r.sendXXX,单纯 NJS HTTP 响应信息,不算反代,要实现反代需结合上述方案
+
+4.使用 lua 脚本来实现,建议参考 OpenRestry
+
+#### 24.如何避免频繁扫库?
+可以避免但是会有副作用,没扫描媒体信息入库会导致以下已知问题,
+
+1.没有可播放时长信息表现为点击播放直接标记为了已播放,没有进度记录信息或部分客户端进度跳转有 bug
+
+2.详情页中没有媒体的编码信息,虽然已知影响不大,但不确定是否还有其他影响
+
+实现方式已知的有 3 种,后 2 种偏门方法为网友提供,多谢思路
+
+1.emby/jellyfin 官方文档中支持的 STRM 文件方式,优势可能为官方支持吧,缺点是批量补充媒体信息依赖插件库中插件,
+不局限为 http 协议,plex 的话因官方不支持,脚本强制做了支持但已知有上述问题
+
+2.软/硬链接文件结合挂载工具,在扫库前切断链接文件和源文件的联系,扫完后恢复链接文件,切换过程仅为路径的卸载和挂载,
+优势是在有工具的情况下操作简单且事后需要单独扫指定媒体信息可以手动限定范围不依赖其他插件,缺点是部分依赖源文件的存在
+
+3.虚拟占位空文件,CMD 下 copy nul "C:\Program Files (x86)\test.mkv" 生成 1 KB 的 test.mkv 空文件,
+也可用在 nas-tools 等快速刮削上,shell 下可能是换 touch 命令,没啥优势且肯定无法转码了,毕竟是假文件
+
+3.1 以下只是理论,没实践过,利用 alist 的地址树驱动,添加假的媒体文件
+
+3.2 直接往 SQLite 插入假数据,前提是文件必须存在,不然会被服务端视作失效自动移除,没优点且风险较大
+
+#### 24.阿里网盘非会员限速?
+最正规肯定是支持正版开会员解决,这里只是记录几个当前限速规则下的网速最大化的理论解决方案,没有实际测试过,
+部分限速细节参考,[emby2Alist](./emby2Alist/README.md#2024-06-16)
+
+1.尽量选择支持多线程播放的客户端,多线程总限速 3MB/s 播 1080P 是没太大问题的,或客户端下载后再播放咯
+
+2.这个不一定有效,chrome 内核浏览器新版默认就是多线程下载,老版本可以 flags 中开启
+
+3.对于不支持多线程的播放器,单线程限速 1MB/s,依赖挂载工具的多线程实现,路由规则中配置特定 UA 走 proxy 代理中转来兼容,
+或使用 alist 自身的代理中转功能
+
+```js
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
+// 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
+// 参数3: 来源, 参数4: 目标
+const mediaPathMapping = [
+  [0, 0, "\", "/"], // win 平台打开此项
+];
+```
+
+#### 25.nginx 需要配置限流参数吗?
+这个根据自身承受范围调整,115 强烈推荐套一层 alist 限流可避免网盘熔断,特点是超限请求会排队执行并不会丢弃,具体参考,
+[emby2Alist#2024-04-05](./emby2Alist/README.md#2024-04-05)
+,因 alist 限流仅限 115 且不认 IP,毕竟这不是它的本职,这里讲下 nginx 的限流补充方案,可根据远程客户端的真实 IP 地址进行精细化限流,
+当然有一定网络配置前提,[FAQ.md#8](./FAQ.md#8nginx-必须使用-host-网络吗),
+```
+limit_conn: 限制单个 ip 建立连接的个数,注意此种超限直接丢弃请求返回 503 错误
+limit_req: 限制单个 ip 请求的个数(请求频率),这个可以配置突发请求个数,超限请求排队执行
+# limit_rate: 限制下载速度,只针对 proxy 有效,302 无效,仅记录区别
+```
+以上两种可结合使用,放置在出现了 js_content emby2Pan.redirect2Pan; 的 location 块中, conf 中添加了一些示例,
+具体如何配置随便问下 AI 就行了,很简单且参考资料很多,这里提一个误区,例如想实现限制每天只允许 5 个 IP 访问,
+这种过于宽泛的条件很复杂且没必要,建议简单使用两个内置指令就够了,硬要实现的自行结合 js_shared_dict_zone 手动计数,
+以下只是个人觉得够用了,根据心理可承受范围自行调整,我只用了 alist 限流并没有使用 nginx 限流且是 115,
+从 emby 走的 302 限制为并发时间内最大 5 个 IP 同时连接,细化到请求数,单 IP 1s 内只允许 1 个请求,激发请求等待队列 5 个,
+超限的默认 503 返回直接丢弃
+
+./nginx/conf.d/emby/plex.conf
+```
+## ReqLimit, the processing rate of requests coming from a single IP address
+limit_req_zone $binary_remote_addr zone=one:1m rate=1r/s;
+
+## ConnLimit, the number of connections from a single IP addres
+limit_conn_zone $binary_remote_addr zone=one:1m;
+
+location ~* /videos/(.*)/(stream|original) {
+  limit_conn one 5;
+  limit_req zone=one burst=5;
+}
+```
+
 # embyAddExternalUrl
 
 #### 1.支持 plex 吗?
@@ -327,7 +476,8 @@ NJS 实例等待返回结果(nginx 整体的超时时间这边并没有进行配
 
 # [plex2Alist](./plex2Alist/README.md)
 
-#### 1.部分可以参考 emby2Alist
+#### 1.部分可以参考 emby2Alist 和 issues#59
+https://github.com/bpking1/embyExternalUrl/issues/59
 
 #### 2.plex 必须配置 https 吗?
 不是必须的,但是如果有 IOS 客户端就必须配置,因为该客户端强制禁止非 https 连接,
@@ -342,3 +492,31 @@ PlexWeb 自身存在很多问题,不支持 DTS 的直接播放,不支持所有�
 
 2.官方客户端部分样式的字幕无法显示,和字幕格式没太大关系,ASS/SRT 都是支持的,换简单格式的字幕,尽量找不要特殊字体或太多特效的字幕,
 官方客户端支持很差,开启允许转码,或换用第三方客户端播放
+
+#### 5.plex 为何大量 API 进行了反代?
+大量播放链接走的直接是 part 的请求,这个单独的 URL 中是没有任何能获取文件路径的办法的,
+location ~* /library/parts/(\d+)/(\d+)/file ,/metadata/ 这个是客户端单独的请求,
+多线程请求下都是分离的,无法关联使用,/metadata/ 的 media 和 parts 这两个对象是一对多的树结构,
+plex 没有提供直接查询 part 这个子节点信息的接口且 /library/parts/(\d+)/(\d+)/file 链接中做了类似于混淆的处理,
+没有任何实际含义,两串数字只是文件的修改时间戳,要么查询 sql lite 数据库,
+要么就是目前的处理 /metadata/ 之类的接口以缓存此结构中树的子节点 part 的文件路径信息,
+为了提升效率,缓存中并没有维护 metadata 和 parts 的关联关系,表现形式为只缓存了 part 的路径信息,因为此脚本只关注这个信息,
+记录下尝试过的已知方案,考虑到移除挂载 plex 的 SQLite 文件的依赖,目前选取的方案 4 进行实现
+
+1.原作者的实践处理方案,直接使用其他语言进行查询 plex 的 SQLite 数据库文件来一劳永逸,可以延申出以下理论方案,但是并没有实践过
+
+1.1 NPM 中有用 JS 直接查询 SQLite 的包 sqlite3,参考 https://nginx.org/en/docs/njs/node_modules.html 进行实现
+
+2.尝试过用 media 的 id: 308 和 metadata 的 id: 307 的偏移差来估算关联,plex 对象树层级大致为 metadata > media > part,
+数据量少的特定情况下,metadata.id ~= media.id, part.id 在没有多版本视频情况下也是近似或相等的,
+所以初期尝试过偏移量直接认定为整库中多版本视频的套数然后 +- 10 的偏移修复量进行实时撞接口处理,直到撞到响应状态 200 的接口,
+故此种方案十分不可靠,已废弃并移除了处理代码,且 media.id 并不是严格的视频量递增 id,预告片或者特定的演员也属于 media 对象,
+具体查询 plex 的 SQLite 数据库文件进行理清表关系和 id 分配方案
+
+3.part 的关键字已经使用 API 工具进行 URL 的穷举试过了,没有直接查询 part 信息的接口, media 关键字同样如此,只有 /library 接口,
+/library/parts/308/1718463720/file.mkv 链接中 308 是 media 对象的 id,1718463720 是 part 的修改时间戳,该接口直接返回二进制流,
+没有任何有效信息和 metadata 能关联上,包括请求头和响应头中同样没有
+
+4.直接反代所有包含 part 信息的请求,然后通过 nginx 配置的 js_shared_dict_zone 共享内存缓存 part 的文件路径在多线程的多 NJS VM 中共享,
+当然会有非必要的 part 文件路径被缓存,但这点内存占用和反代性能几乎可以忽略不计,且缓存的添加也是做了重复时跳过的处理的,
+纯 http API 实现,唯一问题是 js_shared_dict_zone 指令是在 NJS 0.8.0 才被添加的,故对 NJS 版本有了最低限制,需要 nginx:latest

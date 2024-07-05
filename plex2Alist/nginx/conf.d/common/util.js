@@ -139,11 +139,17 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
  */
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
-  const mountPath = config.plexMountPath;
+  const mountPath = config.mediaMountPath;
   if (!isAlistRes) {
-    // local file not xxxMountPath first
-    if (mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
+    // exact, local file not mediaMountPath first
+    if (mountPath && mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
       ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
+      return true;
+    }
+    // indeterminate, regard notLocal and mediaMountPath empty default as local file
+    if (mountPath && Array.isArray(mountPath) 
+      && (mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
+      ngx.log(ngx.WARN, `hit proxy, maybe is localFile: ${JSON.stringify(mountPath)}`);
       return true;
     }
   }
@@ -273,7 +279,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
         val = val[expPart];
       } else {
         val = "";
-        ngx.log(ngx.WARN, `Property "${expPart}" not found in object,will ignore`);
+        ngx.log(ngx.INFO, `Property "${expPart}" not found in object,will ignore`);
       }
     });
 
@@ -294,8 +300,8 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
     ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
   }
   if (type == 0) {
-    str = str.replace(searchValue, replaceValue);
-    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+    str = str.replaceAll(searchValue, replaceValue);
+    ngx.log(ngx.WARN, `strMapping replaceAll: ${searchValue} => ${replaceValue}`);
   }
   return str;
 }
@@ -324,11 +330,9 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
-function checkIsRemoteByPath(filePath) {
-  if (!!filePath) {
-    return !filePath.startsWith("/") && !filePath.startsWith("\\");
-  }
-  return false;
+function isAbsolutePath(filePath) {
+  return filePath && typeof filePath === "string" 
+    ? filePath.startsWith("/") || filePath.startsWith("\\") : false;
 }
 
 
@@ -425,12 +429,13 @@ async function cost(func) {
  * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
  * 2.AList
  * http://mydomain:5244/d/AList/xxx.mkv
+ * see: https://regex101.com/r/Gd3JUH/1
  * @param {String} url full url
  * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
  */
 function getFilePathPart(url) {
-  const matches = url.match(/\/False\/(.*)|\/d\/(.*)/);
-  return matches && matches[1] ? matches[1] : "";
+  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/g);
+  return matches ? matches[1] : "";
 }
 
 /**
@@ -514,7 +519,7 @@ export default {
   getRouteMode,
   parseExpression,
   checkIsStrmByPath,
-  checkIsRemoteByPath,
+  isAbsolutePath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
   dictAdd,

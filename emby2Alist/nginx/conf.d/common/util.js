@@ -171,11 +171,17 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
  */
 function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const disableRedirectRule = proxyRules;
-  const mountPath = config.embyMountPath;
+  const mountPath = config.mediaMountPath;
   if (!isAlistRes) {
-    // local file not xxxMountPath first
-    if (mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
+    // exact, local file not mediaMountPath first
+    if (mountPath && mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
       ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
+      return true;
+    }
+    // indeterminate, regard notLocal and mediaMountPath empty default as local file
+    if (mountPath && Array.isArray(mountPath) 
+      && (mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
+      ngx.log(ngx.WARN, `hit proxy, maybe is localFile: ${JSON.stringify(mountPath)}`);
       return true;
     }
   }
@@ -305,7 +311,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
         val = val[expPart];
       } else {
         val = "";
-        ngx.log(ngx.WARN, `Property "${expPart}" not found in object,will ignore`);
+        ngx.log(ngx.INFO, `Property "${expPart}" not found in object,will ignore`);
       }
     });
 
@@ -326,8 +332,8 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
     ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
   }
   if (type == 0) {
-    str = str.replace(searchValue, replaceValue);
-    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+    str = str.replaceAll(searchValue, replaceValue);
+    ngx.log(ngx.WARN, `strMapping replaceAll: ${searchValue} => ${replaceValue}`);
   }
   return str;
 }
@@ -356,11 +362,9 @@ function checkIsStrmByPath(filePath) {
   return false;
 }
 
-function checkIsRemoteByPath(filePath) {
-  if (!!filePath) {
-    return !filePath.startsWith("/") && !filePath.startsWith("\\");
-  }
-  return false;
+function isAbsolutePath(filePath) {
+  return filePath && typeof filePath === "string" 
+    ? filePath.startsWith("/") || filePath.startsWith("\\") : false;
 }
 
 function getFileNameByPath(filePath) {
@@ -430,7 +434,13 @@ function getItemInfo(r) {
 	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
-      itemInfoUri = `${embyHost}/Items?Ids=${mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
+      // before is GUID like "3c25399d9cbb41368a5abdb71cfe3dc9", V4.9.0.25 is "mediasource_447039" fomrmat
+      // 447039 is't main itemId, is mutiple video mediaSourceId
+      let newMediaSourceId;
+      if (mediaSourceId.startsWith("mediasource_")) {
+        newMediaSourceId = mediaSourceId.replace("mediasource_", "");
+      }
+      itemInfoUri = `${embyHost}/Items?Ids=${newMediaSourceId ?? mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     } else {
       itemInfoUri = `${embyHost}/Items?Ids=${itemId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     }
@@ -495,12 +505,13 @@ function getDeviceId(rArgs) {
  * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
  * 2.AList
  * http://mydomain:5244/d/AList/xxx.mkv
+ * see: https://regex101.com/r/Gd3JUH/1
  * @param {String} url full url
  * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
  */
 function getFilePathPart(url) {
-  const matches = url.match(/\/False\/(.*)|\/d\/(.*)/);
-  return matches && matches[1] ? matches[1] : "";
+  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/g);
+  return matches ? matches[1] : "";
 }
 
 /**
@@ -578,7 +589,7 @@ export default {
   strMapping,
   strMatches,
   checkIsStrmByPath,
-  checkIsRemoteByPath,
+  isAbsolutePath,
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
   strmLinkFailback,
