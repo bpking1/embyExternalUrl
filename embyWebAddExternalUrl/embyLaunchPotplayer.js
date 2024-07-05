@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.8
+// @version      1.1.9
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -420,8 +420,8 @@
     // see https://greasyfork.org/zh-CN/scripts/443916
     async function embyDDPlay() {
         // 检查是否windows本地路径
-        const fullPathEle = document.querySelector(".mediaSources .mediaSource .sectionTitle");
-        let fullPath = fullPathEle ? fullPathEle.firstChild.innerText : "";
+        const fullPathEle = document.querySelector(".mediaSources .mediaSource .sectionTitle > div:not([class]):first-child");
+        let fullPath = fullPathEle ? fullPathEle.innerText : "";
         let ddplayUrl;
         if (new RegExp('^[a-zA-Z]:').test(fullPath)) {
             ddplayUrl = `ddplay:${encodeURIComponent(fullPath)}`;
