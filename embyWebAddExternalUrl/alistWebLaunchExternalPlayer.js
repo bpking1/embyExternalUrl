@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.7
+// @version      1.0.8
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -291,7 +291,7 @@
     // MPV
     function getMPVUrl(mediaInfo) {
         //桌面端需要额外设置,使用这个项目: https://github.com/akiirui/mpv-handler
-        let streamUrl64 = btoa(encodeURIComponent(mediaInfo.streamUrl))
+        let streamUrl64 = btoa(String.fromCharCode.apply(null, new Uint8Array(new TextEncoder().encode(mediaInfo.streamUrl))))
             .replace(/\//g, "_").replace(/\+/g, "-").replace(/\=/g, "");
         let MPVUrl = `mpv://play/${streamUrl64}`;
         if (mediaInfo.subUrl.length > 0) {

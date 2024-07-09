@@ -1,5 +1,8 @@
 ### CHANGELIST
 
+#### 1.0.8
+修复 mpv-handler 编码错误
+
 #### 1.0.7
 再次修复 URL 编码错误
 
