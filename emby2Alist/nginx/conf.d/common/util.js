@@ -178,12 +178,6 @@ function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
       ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
       return true;
     }
-    // indeterminate, regard notLocal and mediaMountPath empty default as local file
-    if (mountPath && Array.isArray(mountPath) 
-      && (mountPath.length === 0 || mountPath.every(p => p.length === 0)) && !notLocal) {
-      ngx.log(ngx.WARN, `hit proxy, maybe is localFile: ${JSON.stringify(mountPath)}`);
-      return true;
-    }
   }
   
   // old proxy, sigle rule length is 3 or 4(group)
