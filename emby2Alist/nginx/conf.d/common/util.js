@@ -317,15 +317,16 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
   let str = sourceValue;
-  if (type == 1) {
+  if (type == 0) {
+    str = str.replace(searchValue, replaceValue);
+    ngx.log(ngx.WARN, `strMapping replace: ${searchValue} => ${replaceValue}`);
+  } else if (type == 1) {
     str = searchValue + str;
     ngx.log(ngx.WARN, `strMapping append: ${searchValue}`);
-  }
-  if (type == 2) {
+  } else if (type == 2) {
     str += searchValue;
     ngx.log(ngx.WARN, `strMapping unshift: ${searchValue}`);
-  }
-  if (type == 0) {
+  } else if (type == 3) {
     str = str.replaceAll(searchValue, replaceValue);
     ngx.log(ngx.WARN, `strMapping replaceAll: ${searchValue} => ${replaceValue}`);
   }
