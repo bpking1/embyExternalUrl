@@ -203,6 +203,12 @@ const streamConfig = {
   useRealFileName: false,
 };
 
+// 搜索接口增强配置
+const searchConfig = {
+  // 开启脚本的部分交互性功能
+  interactiveEnable: false,
+};
+
 // for js_set
 function getEmbyHost(r) {
   return embyHost;
@@ -238,6 +244,7 @@ export default {
   embyRedirectSendMessage,
   itemHiddenRule,
   streamConfig,
+  searchConfig,
   getEmbyHost,
   getTranscodeEnable,
   getTranscodeType,

@@ -61,6 +61,7 @@ export default {
   embyRedirectSendMessage: extConfig.embyRedirectSendMessage,
   itemHiddenRule: extConfig.itemHiddenRule,
   streamConfig: extConfig.streamConfig,
+  searchConfig: extConfig.searchConfig,
 
   getEmbyHost,
   getTranscodeEnable,

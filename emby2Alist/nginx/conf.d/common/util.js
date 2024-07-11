@@ -379,7 +379,7 @@ function redirectStrmLastLinkRuleFilter(filePath) {
   });
 }
 
-function strmLinkFailback(url) {
+function lastLinkFailback(url) {
   if (!url) {
     return url;
   }
@@ -442,6 +442,15 @@ function getItemInfo(r) {
   return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
 }
 
+/**
+ * dictAdd, ngx.shared.SharedDict.add(key, value [,timeout])
+ * @since NJS 0.8.0
+ * @param {String} dictName 
+ * @param {String} key 
+ * @param {String|Number} value default is String, js_shared_dict_zone type=number
+ * @param {Number} timeout milliseconds,since NJS 0.8.5
+ * @returns undefined
+ */
 function dictAdd(dictName, key, value) {
   if (!dictName || !key || !value) {
     return;
@@ -586,7 +595,7 @@ export default {
   isAbsolutePath,
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
-  strmLinkFailback,
+  lastLinkFailback,
   getItemIdByUri,
   getItemInfo,
   dictAdd,
