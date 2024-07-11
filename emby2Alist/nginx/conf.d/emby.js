@@ -120,12 +120,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchStrmLastLink(mediaItemPath, rule[2], rule[3], ua);
+      let directUrl = await fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
         mediaItemPath = directUrl;
       } else {
-        r.warn(`warn: fetchStrmLastLink, not expected result, failback once`);
-        directUrl = await fetchStrmLastLink(util.strmLinkFailback(strmLink), rule[2], rule[3], ua);
+        r.warn(`warn: fetchLastLink, not expected result, failback once`);
+        directUrl = await fetchLastLink(util.lastLinkFailback(mediaItemPath), rule[2], rule[3], ua);
         if (!!directUrl) {
           mediaItemPath = directUrl;
         }
@@ -654,33 +654,33 @@ async function systemInfoHandler(r) {
 }
 
 /**
- * fetchStrmLastLink, actually this just once request,currently sufficient
- * @param {String} strmLink eg: "https://alist/d/file.xxx"
+ * fetchLastLink, actually this just once request,currently sufficient
+ * @param {String} oriLink eg: "https://alist/d/file.xxx" or "http(s)://xxx"
  * @param {String} authType eg: "sign"
  * @param {String} authInfo eg: "sign:token:expireTime"
  * @param {String} ua 
  * @returns redirect after link
  */
-async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
+async function fetchLastLink(oriLink, authType, authInfo, ua) {
   // this is for multiple instances alist add sign
   if (authType && authType === "sign" && authInfo) {
     const arr = authInfo.split(":");
-    strmLink = util.addAlistSign(strmLink, arr[0], parseInt(arr[1]));
+    oriLink = util.addAlistSign(oriLink, arr[0], parseInt(arr[1]));
   }
   // this is for current alist add sign
   if (!!config.alistSignEnable) {
-    strmLink = util.addAlistSign(strmLink, config.alistToken, config.alistSignExpireTime);
+    oriLink = util.addAlistSign(oriLink, config.alistToken, config.alistSignExpireTime);
   }
   try {
   	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
-    // const response = await util.cost(ngx.fetch, encodeURI(strmLink), {
+    // const response = await util.cost(ngx.fetch, encodeURI(oriLink), {
     //   method: "HEAD",
     //   headers: {
     //     "User-Agent": ua,
     //   },
     //   max_response_body_size: 1024
     // });
-    const response = await ngx.fetch(encodeURI(strmLink), {
+    const response = await ngx.fetch(encodeURI(oriLink), {
       method: "HEAD",
       headers: {
         "User-Agent": ua,
@@ -688,7 +688,7 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
       max_response_body_size: 1024
     });
     const contentType = response.headers["Content-Type"];
-    ngx.log(ngx.WARN, `fetchStrmLastLink response.status: ${response.status}, contentType: ${contentType}`);
+    ngx.log(ngx.WARN, `fetchLastLink response.status: ${response.status}, contentType: ${contentType}`);
     // response.redirected api error return false
     if ((response.status > 300 && response.status < 309) || response.status == 403) {
       // if handle really LastLink, modify here to recursive and return link on status 200
@@ -696,15 +696,15 @@ async function fetchStrmLastLink(strmLink, authType, authInfo, ua) {
     } else if (response.status == 200) {
       // alist 401 but return 200 status code
       if (contentType.includes("application/json")) {
-        ngx.log(ngx.ERR, `fetchStrmLastLink alist mayby return 401, check your alist sign or auth settings`);
+        ngx.log(ngx.ERR, `fetchLastLink alist mayby return 401, check your alist sign or auth settings`);
         return;
       }
-      ngx.log(ngx.ERR, `error: fetchStrmLastLink, not expected result`);
+      ngx.log(ngx.ERR, `error: fetchLastLink, not expected result`);
     } else {
-      ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${response.status} ${response.statusText}`);
+      ngx.log(ngx.ERR, `error: fetchLastLink: ${response.status} ${response.statusText}`);
     }
   } catch (error) {
-    ngx.log(ngx.ERR, `error: fetchStrmLastLink: ${error}`);
+    ngx.log(ngx.ERR, `error: fetchLastLink: ${error}`);
   }
 }
 
@@ -766,6 +766,55 @@ async function preload(r, url) {
     ngx.log(ngx.ERR, `error: preload: ${error}`);
   });
 }
+
+// searchHandle Start
+
+async function searchHandle(r) {
+  if (!config.searchConfig.interactiveEnable) {
+    r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
+    return internalRedirectExpect(r, r.variables.request_uri);
+  }
+
+  events.njsOnExit(`searchHandle: ${r.uri}`);
+
+  const searchTerm = r.args.SearchTerm;
+  if (searchTerm == "/nocache") {
+    r.return(200, cacheHandle(r));
+  } else if (searchTerm == "/nocache=0") {
+    r.return(200, cacheHandle(r, true));
+  } else {
+    r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
+    return internalRedirectExpect(r, r.variables.request_uri);
+  }
+}
+
+function cacheHandle(r, isDelete) {
+  const vItem = {
+    Name: "nocacheWith60Seconds",
+  }
+  const dictName = "tmpDict";
+  const cacheKey = "nocache";
+  if (isDelete) {
+    ngx.shared[dictName].delete(cacheKey);
+    vItem.Name = "nocacheCloseSuccess";
+  } else {
+    util.dictAdd(dictName, cacheKey, "1");
+  }
+  const body = {
+    Items: [vItem],
+    TotalRecordCount: 0
+  }
+  return JSON.stringify(body);
+}
+
+// for js_set
+function getNocache(r) {
+  const nocache = ngx.shared["tmpDict"].get("nocache") ?? "";
+  // r.log(`getNocache: ${nocache}`);
+  return nocache;
+}
+
+// searchHandle End
 
 async function redirectAfter(r, url, cachedRouteDictKey) {
   try {
@@ -899,6 +948,8 @@ export default {
   transferPlaybackInfo,
   itemsFilter,
   systemInfoHandler,
+  searchHandle,
+  getNocache,
   redirect,
   internalRedirect,
   internalRedirectExpect,

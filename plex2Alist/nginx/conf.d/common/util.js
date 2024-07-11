@@ -344,7 +344,7 @@ function redirectStrmLastLinkRuleFilter(filePath) {
   });
 }
 
-function strmLinkFailback(url) {
+function lastLinkFailback(url) {
   if (!url) {
     return url;
   }
@@ -371,6 +371,15 @@ function alistLinkFailback(url) {
   return rvt;
 }
 
+/**
+ * dictAdd, ngx.shared.SharedDict.add(key, value [,timeout])
+ * @since NJS 0.8.0
+ * @param {String} dictName 
+ * @param {String} key 
+ * @param {String|Number} value default is String, js_shared_dict_zone type=number
+ * @param {Number} timeout milliseconds,since NJS 0.8.5
+ * @returns undefined
+ */
 function dictAdd(dictName, key, value) {
   if (!dictName || !key || !value) {
     return;
@@ -515,7 +524,7 @@ export default {
   checkIsStrmByPath,
   isAbsolutePath,
   redirectStrmLastLinkRuleFilter,
-  strmLinkFailback,
+  lastLinkFailback,
   dictAdd,
   cost,
   getFilePathPart,

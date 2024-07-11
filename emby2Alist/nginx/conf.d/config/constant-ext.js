@@ -41,10 +41,17 @@ const streamConfig = {
   useRealFileName: false,
 };
 
+// 搜索接口增强配置
+const searchConfig = {
+  // 开启脚本的部分交互性功能
+  interactiveEnable: false,
+};
+
 export default {
   imageCachePolicy,
   embyNotificationsAdmin,
   embyRedirectSendMessage,
   itemHiddenRule,
   streamConfig,
+  searchConfig,
 }
