@@ -45,6 +45,12 @@ const streamConfig = {
 const searchConfig = {
   // 开启脚本的部分交互性功能
   interactiveEnable: false,
+  // 限定交互性功能的隔离,取值来源为带参数的 request_uri 字符串
+  // 不带协议与域名,仅作包含匹配,多个值为或的关系,空数组为不隔离
+  interactiveEnableRule: [
+    // "ac0d220d548f43bbb73cf9b44b2ddf0e", // request_uri path level userId
+    // "2d427412-43e1-49e4-a1db-fa17c04d49db", // X-Emby-Device-Id
+  ],
 };
 
 export default {

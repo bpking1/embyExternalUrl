@@ -770,7 +770,12 @@ async function preload(r, url) {
 // searchHandle Start
 
 async function searchHandle(r) {
-  if (!config.searchConfig.interactiveEnable) {
+  const searchConfig = config.searchConfig;
+  let hitFlag = searchConfig.interactiveEnableRule.length == 0;
+  if (searchConfig && !hitFlag) {
+    hitFlag = searchConfig.interactiveEnableRule.some(rule => r.variables.request_uri.includes(rule));
+  }
+  if (!searchConfig || !searchConfig.interactiveEnable || !hitFlag) {
     r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
     return internalRedirectExpect(r, r.variables.request_uri);
   }
