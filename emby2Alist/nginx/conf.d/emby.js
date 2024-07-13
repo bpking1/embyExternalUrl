@@ -767,60 +767,6 @@ async function preload(r, url) {
   });
 }
 
-// searchHandle Start
-
-async function searchHandle(r) {
-  const searchConfig = config.searchConfig;
-  let hitFlag = searchConfig.interactiveEnableRule.length == 0;
-  if (searchConfig && !hitFlag) {
-    hitFlag = searchConfig.interactiveEnableRule.some(rule => r.variables.request_uri.includes(rule));
-  }
-  if (!searchConfig || !searchConfig.interactiveEnable || !hitFlag) {
-    r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
-    return internalRedirectExpect(r, r.variables.request_uri);
-  }
-
-  events.njsOnExit(`searchHandle: ${r.uri}`);
-
-  const searchTerm = r.args.SearchTerm;
-  if (searchTerm == "/nocache") {
-    r.return(200, cacheHandle(r));
-  } else if (searchTerm == "/nocache=0") {
-    r.return(200, cacheHandle(r, true));
-  } else {
-    r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
-    return internalRedirectExpect(r, r.variables.request_uri);
-  }
-}
-
-function cacheHandle(r, isDelete) {
-  const vItem = {
-    Name: "nocacheWith60Seconds",
-  }
-  const dictName = "tmpDict";
-  const cacheKey = "nocache";
-  if (isDelete) {
-    ngx.shared[dictName].delete(cacheKey);
-    vItem.Name = "nocacheCloseSuccess";
-  } else {
-    util.dictAdd(dictName, cacheKey, "1");
-  }
-  const body = {
-    Items: [vItem],
-    TotalRecordCount: 0
-  }
-  return JSON.stringify(body);
-}
-
-// for js_set
-function getNocache(r) {
-  const nocache = ngx.shared["tmpDict"].get("nocache") ?? "";
-  // r.log(`getNocache: ${nocache}`);
-  return nocache;
-}
-
-// searchHandle End
-
 async function redirectAfter(r, url, cachedRouteDictKey) {
   try {
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -953,8 +899,6 @@ export default {
   transferPlaybackInfo,
   itemsFilter,
   systemInfoHandler,
-  searchHandle,
-  getNocache,
   redirect,
   internalRedirect,
   internalRedirectExpect,

@@ -450,18 +450,29 @@ function getItemInfo(r) {
  * @param {String} key 
  * @param {String|Number} value default is String, js_shared_dict_zone type=number
  * @param {Number} timeout milliseconds,since NJS 0.8.5
- * @returns undefined
+ * @returns Number "fail" -1: fail, 0: not expire, "success" 1: added, 2: added with timeout
  */
-function dictAdd(dictName, key, value) {
-  if (!dictName || !key || !value) {
-    return;
-  }
+function dictAdd(dictName, key, value, timeout) {
+  if (!dictName || !key || !value) return 0;
+
   const dict = ngx.shared[dictName];
   const preValue = dict.get(key);
-  if (!preValue || (!!preValue && preValue != value)) {
-    dict.add(key, value);
-    ngx.log(ngx.WARN, `${dictName} add: [${key}] : [${value}]`);
+  if (preValue === value) return 0;
+
+  const msgBase = `${dictName} add: [${key}] : [${value}]`;
+  // simple version string compare use Unicode, better use njs.version_number
+  if (njs.version >= "0.8.5" && timeout > 0) {
+    if (dict.add(key, value, timeout)) {
+      ngx.log(ngx.WARN, `${msgBase}, timeout: ${timeout}ms`);
+      return 2;
+    }
+  } else {
+    if (dict.add(key, value)) {
+      ngx.log(ngx.WARN, `${msgBase}, skip arguments: timeout: ${timeout}ms`);
+      return 1;
+    }
   }
+  return 0;
 }
 
 async function cost(func) {
