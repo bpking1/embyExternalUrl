@@ -1,9 +1,9 @@
 // @author: Ambitious
 // @date: 2023-09-04
-import config from "./constant.js";
-import util from "./common/util.js";
-import events from "./common/events.js";
-import Emby from "./emby.js";
+import config from "../constant.js";
+import util from "../common/util.js";
+import events from "../common/events.js";
+import Emby from "../emby.js";
 
 async function directLive(r) {
   events.njsOnExit(`directLive: ${r.uri}`);

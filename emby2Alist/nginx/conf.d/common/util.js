@@ -81,8 +81,8 @@ function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
 
 /**
  * groupBy
- * @param {Array} array original 2D array
- * @param {*} key groupBy key
+ * @param {Array} array original > 1D array
+ * @param {Number|Function} key groupBy key, Number is 1D array index, Function is custom key getter
  * @returns grouped Object Array, key is groupBy key, value is grouped 1D array
  */
 function groupBy(array, key) {
@@ -209,18 +209,18 @@ function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
  * getMatchedRuleGroupKey
  * @param {Object} r nginx objects, HTTP Request
  * @param {String} groupKey "115-alist"
- * @param {Array} groupRulesArr3D [["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]]]
+ * @param {Array} groupRuleArr3D [["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]]]
  * @param {String} filePath mediaFilePath or alistRes link
  * @returns "115-alist"
  */
-function getMatchedRuleGroupKey(r, groupKey, groupRulesArr3D, filePath) {
+function getMatchedRuleGroupKey(r, groupKey, groupRuleArr3D, filePath) {
   let rvt;
-  ngx.log(ngx.INFO, `getMatchedRuleGroupKey groupRulesArr3D: ${JSON.stringify(groupRulesArr3D)}`);
+  ngx.log(ngx.INFO, `getMatchedRuleGroupKey groupRuleArr3D: ${JSON.stringify(groupRuleArr3D)}`);
   // remove groupKey
-  const oldRulesArr3D = groupRulesArr3D.map(gRule => gRule.slice(1));
-  ngx.log(ngx.INFO, `getMatchedRuleGroupKey oldRulesArr3D: ${JSON.stringify(oldRulesArr3D)}`);
+  const ruleArr3D = groupRuleArr3D.map(gRule => gRule.slice(1));
+  ngx.log(ngx.INFO, `getMatchedRuleGroupKey ruleArr3D: ${JSON.stringify(ruleArr3D)}`);
   // one group inner "every" is logical "and"
-  if (oldRulesArr3D.every(rule => !!getMatchedRule(r, [rule], filePath))) {
+  if (ruleArr3D.every(rule => !!getMatchedRule(r, [rule], filePath))) {
     rvt = groupKey;
   }
   return rvt;
@@ -366,45 +366,31 @@ function getFileNameByPath(filePath) {
   return filePath ? filePath.replace(/.*[\\/]/, "") : "";
 }
 
-function redirectStrmLastLinkRuleFilter(filePath) {
-  return config.redirectStrmLastLinkRule.filter(rule => {
-    const matcher = rule[1];
-    let flag;
-    if (Array.isArray(matcher) 
-      && matcher.some(m => strMatches(rule[0], filePath, m))) {
-      flag = true;
+function redirectStrmLastLinkRuleFilter(r, filePath) {
+  let cRule = config.redirectStrmLastLinkRule;
+  // group current rules, old is true, new is false
+  const groupRulesObjArr = groupBy(cRule, rule => Number.isInteger(rule[0]));
+  for (const gKey in groupRulesObjArr) {
+    // convert params, old rules default add index 0 "filePath"
+    const oldRulesArr3D = groupRulesObjArr[gKey].map(rRule => {
+      const copy = rRule.slice();
+      copy.unshift("filePath");
+      return copy;
+    });
+    if (gKey) {
+      const matchedRule = getMatchedRule(r, oldRulesArr3D, filePath);
+      if (matchedRule) {
+        ngx.log(ngx.WARN, `hit redirectStrmLastLinkRule: ${JSON.stringify(matchedRule)}`);
+        return matchedRule;
+      }
     } else {
-      flag = strMatches(rule[0], filePath, matcher);
+      const matchedGroupKey = getMatchedRuleGroupKey(r, groupRulesObjArr[gKey][0][1], oldRulesArr3D, filePath);
+      if (matchedGroupKey) {
+        ngx.log(ngx.WARN, `hit redirectStrmLastLinkRule: ${gKey}, group: ${matchedGroupKey}`);
+        return groupRulesObjArr[gKey].find(gRule => gRule[0] === matchedGroupKey);
+      }
     }
-    return flag;
-  });
-}
-
-function lastLinkFailback(url) {
-  if (!url) {
-    return url;
   }
-  let rvt = alistLinkFailback(url);
-  return rvt;
-}
-
-function alistLinkFailback(url) {
-  let rvt = url;
-  const alistAddr = config.alistAddr;
-  const alistPublicAddr = config.alistPublicAddr;
-  let uri = url.replace(alistAddr, "");
-  if (!!alistAddr && url.startsWith(alistAddr) && !uri.startsWith("/d/")) {
-    rvt = `${alistAddr}/d${uri}`;
-    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
-    return rvt;
-  }
-  uri = url.replace(alistPublicAddr, "");
-  if (!!alistPublicAddr && url.startsWith(alistPublicAddr) && !uri.startsWith("/d/")) {
-    rvt = `${alistPublicAddr}/d${uri}`;
-    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
-    return rvt;
-  }
-  return rvt;
 }
 
 function getItemIdByUri(uri) {
@@ -450,18 +436,29 @@ function getItemInfo(r) {
  * @param {String} key 
  * @param {String|Number} value default is String, js_shared_dict_zone type=number
  * @param {Number} timeout milliseconds,since NJS 0.8.5
- * @returns undefined
+ * @returns Number "fail" -1: fail, 0: not expire, "success" 1: added, 2: added with timeout
  */
-function dictAdd(dictName, key, value) {
-  if (!dictName || !key || !value) {
-    return;
-  }
+function dictAdd(dictName, key, value, timeout) {
+  if (!dictName || !key || !value) return 0;
+
   const dict = ngx.shared[dictName];
   const preValue = dict.get(key);
-  if (!preValue || (!!preValue && preValue != value)) {
-    dict.add(key, value);
-    ngx.log(ngx.WARN, `${dictName} add: [${key}] : [${value}]`);
+  if (preValue === value) return 0;
+
+  const msgBase = `${dictName} add: [${key}] : [${value}]`;
+  // simple version string compare use Unicode, better use njs.version_number
+  if (njs.version >= "0.8.5" && timeout > 0) {
+    if (dict.add(key, value, timeout)) {
+      ngx.log(ngx.WARN, `${msgBase}, timeout: ${timeout}ms`);
+      return 2;
+    }
+  } else {
+    if (dict.add(key, value)) {
+      ngx.log(ngx.WARN, `${msgBase}${timeout ? `, skip arguments: timeout: ${timeout}ms` : ''}`);
+      return 1;
+    }
   }
+  return 0;
 }
 
 async function cost(func) {
@@ -565,6 +562,7 @@ const fs = require("fs");
 
 function checkAndGetRealpathSync(path) {
   try {
+    // this only check SymbolicLink file read permission, not target file
     fs.accessSync(path, fs.constants.R_OK);
     let symStats = fs.lstatSync(path);
     if (!symStats) throw new Error(`symStats is null`);
@@ -596,7 +594,6 @@ export default {
   isAbsolutePath,
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
-  lastLinkFailback,
   getItemIdByUri,
   getItemInfo,
   dictAdd,
