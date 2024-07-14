@@ -40,7 +40,7 @@ const routeCacheConfig = {
   // 总开关,是否开启路由缓存,此为一级缓存,添加阶段为 redirect 和 proxy 之前
   // 短时间内同客户端访问相同资源不会再做判断和请求 alist,有限的防抖措施,出现问题可以关闭此选项
   enable: true,
-  // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,cilentSelfAlistRule 中的和首页直接播放的不生效
+  // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,clientSelfAlistRule 中的和首页直接播放的不生效
   enableL2: false,
   // 缓存键表达式,默认值好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
   keyExpression: "r.uri:r.args.path:r.args.mediaIndex:r.args.partIndex", //"xxx:r.args.X-Plex-Client-Identifier"
@@ -117,7 +117,7 @@ const redirectStrmLastLinkRule = [
 // 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数2: 匹配目标,对象为 Alist 接口返回的链接 raw_url
 // 参数3: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
-const cilentSelfAlistRule = [
+const clientSelfAlistRule = [
   // "Emby for iOS"和"Infuse"对于115的进度条拖动依赖于此
   // 如果nginx为https,则此alist也必须https,浏览器行为客户端会阻止非https请求
   [2, strHead["115"], alistPublicAddr],
@@ -149,7 +149,7 @@ export default {
   alistSignExpireTime,
   alistPublicAddr,
   strHead,
-  cilentSelfAlistRule,
+  clientSelfAlistRule,
   mediaPathMapping,
   redirectStrmLastLinkRule,
   transcodeConfig,

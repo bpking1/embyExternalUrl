@@ -412,11 +412,11 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
 function handleAlistRawUrl(alistRes, alistFilePath) {
   let rawUrl = alistRes.data.raw_url;
   const alistSign = alistRes.data.sign;
-  const cilentSelfAlistRule = config.cilentSelfAlistRule;
-  if (cilentSelfAlistRule.length > 0) {
-    cilentSelfAlistRule.some(rule => {
+  const clientSelfAlistRule = config.clientSelfAlistRule;
+  if (clientSelfAlistRule.length > 0) {
+    clientSelfAlistRule.some(rule => {
       if (util.strMatches(rule[0], rawUrl, rule[1])) {
-        ngx.log(ngx.WARN, `hit cilentSelfAlistRule: ${JSON.stringify(rule)}`);
+        ngx.log(ngx.WARN, `hit clientSelfAlistRule: ${JSON.stringify(rule)}`);
         if (!rule[2]) {
           ngx.log(ngx.ERR, `alistPublicAddr is required`);
           return true;
