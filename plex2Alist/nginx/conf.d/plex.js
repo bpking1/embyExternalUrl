@@ -5,6 +5,7 @@
 import config from "./constant.js";
 import util from "./common/util.js";
 import events from "./common/events.js";
+import ngxExt from "./modules/ngx-ext.js";
 
 const xml = require("xml");
 
@@ -142,12 +143,12 @@ async function redirect2Pan(r) {
     const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
     if (!!rule && rule.length > 0) {
       r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
-      let directUrl = await fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
+      let directUrl = await ngxExt.fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
         mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchLastLink, not expected result, failback once`);
-        directUrl = await fetchLastLink(util.lastLinkFailback(mediaItemPath), rule[2], rule[3], ua);
+        directUrl = await ngxExt.fetchLastLink(ngxExt.lastLinkFailback(mediaItemPath), rule[2], rule[3], ua);
         if (!!directUrl) {
           mediaItemPath = directUrl;
         }
@@ -288,82 +289,6 @@ function handleAlistRawUrl(alistRes, alistFilePath) {
     });
   }
   return rawUrl;
-}
-
-async function fetchAlistAuthApi(url, username, password) {
-  const body = {
-    username: username,
-    password: password,
-  };
-  try {
-    const response = await ngx.fetch(url, {
-      method: "POST",
-      max_response_body_size: 1024,
-      body: JSON.stringify(body),
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (!result) {
-        return `error: alist_auth_api response is null`;
-      }
-      if (result.message == "success") {
-        return result.data.token;
-      }
-      return `error500: alist_auth_api ${result.code} ${result.message}`;
-    } else {
-      return `error: alist_auth_api ${response.status} ${response.statusText}`;
-    }
-  } catch (error) {
-    return `error: alist_auth_api filed ${error}`;
-  }
-}
-
-/**
- * fetchLastLink, actually this just once request,currently sufficient
- * @param {String} oriLink eg: "https://alist/d/file.xxx" or "http(s)://xxx"
- * @param {String} authType eg: "sign"
- * @param {String} authInfo eg: "sign:token:expireTime"
- * @param {String} ua 
- * @returns redirect after link
- */
-async function fetchLastLink(oriLink, authType, authInfo, ua) {
-  // this is for multiple instances alist add sign
-  if (authType && authType === "sign" && authInfo) {
-    const arr = authInfo.split(":");
-    oriLink = util.addAlistSign(oriLink, arr[0], parseInt(arr[1]));
-  }
-  // this is for current alist add sign
-  if (!!config.alistSignEnable) {
-    oriLink = util.addAlistSign(oriLink, config.alistToken, config.alistSignExpireTime);
-  }
-  try {
-  	// fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
-    const response = await ngx.fetch(encodeURI(oriLink), {
-      method: "HEAD",
-      headers: {
-        "User-Agent": ua,
-      },
-      max_response_body_size: 1024
-    });
-    const contentType = response.headers["Content-Type"];
-    ngx.log(ngx.WARN, `fetchLastLink response.status: ${response.status}, contentType: ${contentType}`);
-    // response.redirected api error return false
-    if ((response.status > 300 && response.status < 309) || response.status == 403) {
-      // if handle really LastLink, modify here to recursive and return link on status 200
-      return response.headers["Location"];
-    } else if (response.status == 200) {
-      // alist 401 but return 200 status code
-      if (contentType.includes("application/json")) {
-        ngx.log(ngx.ERR, `fetchLastLink alist mayby return 401, check your alist sign or auth settings`);
-        return;
-      }
-      ngx.log(ngx.ERR, `error: fetchLastLink, not expected result`);
-    } else {
-      ngx.log(ngx.ERR, `error: fetchLastLink: ${response.status} ${response.statusText}`);
-    }
-  } catch (error) {
-    ngx.log(ngx.ERR, `error: fetchLastLink: ${error}`);
-  }
 }
 
 async function cachePreload(r, url, cacheLevel) {

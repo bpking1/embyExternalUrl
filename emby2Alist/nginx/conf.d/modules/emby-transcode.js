@@ -1,11 +1,11 @@
 // @author: Chen3861229
 // @date: 2024-02-07
 
-import config from "./constant.js";
-import util from "./common/util.js";
-import events from "./common/events.js";
-import emby from "./emby.js";
-import embyApi from "./api/emby-api.js";
+import config from "../constant.js";
+import util from "../common/util.js";
+import events from "../common/events.js";
+import emby from "../emby.js";
+import embyApi from "../api/emby-api.js";
 
 import qs from "querystring";
 

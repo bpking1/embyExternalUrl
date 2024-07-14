@@ -380,33 +380,6 @@ function redirectStrmLastLinkRuleFilter(filePath) {
   });
 }
 
-function lastLinkFailback(url) {
-  if (!url) {
-    return url;
-  }
-  let rvt = alistLinkFailback(url);
-  return rvt;
-}
-
-function alistLinkFailback(url) {
-  let rvt = url;
-  const alistAddr = config.alistAddr;
-  const alistPublicAddr = config.alistPublicAddr;
-  let uri = url.replace(alistAddr, "");
-  if (!!alistAddr && url.startsWith(alistAddr) && !uri.startsWith("/d/")) {
-    rvt = `${alistAddr}/d${uri}`;
-    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
-    return rvt;
-  }
-  uri = url.replace(alistPublicAddr, "");
-  if (!!alistPublicAddr && url.startsWith(alistPublicAddr) && !uri.startsWith("/d/")) {
-    rvt = `${alistPublicAddr}/d${uri}`;
-    ngx.log(ngx.WARN, `hit alistLinkFailback, add /d: ${rvt}`);
-    return rvt;
-  }
-  return rvt;
-}
-
 function getItemIdByUri(uri) {
   const regex = /[A-Za-z0-9]+/g;
   return uri.replace("emby", "").replace("Sync", "").replace(/-/g, "").match(regex)[1];
@@ -468,7 +441,7 @@ function dictAdd(dictName, key, value, timeout) {
     }
   } else {
     if (dict.add(key, value)) {
-      ngx.log(ngx.WARN, `${msgBase}, skip arguments: timeout: ${timeout}ms`);
+      ngx.log(ngx.WARN, `${msgBase}${timeout ? `, skip arguments: timeout: ${timeout}ms` : ''}`);
       return 1;
     }
   }
@@ -576,6 +549,7 @@ const fs = require("fs");
 
 function checkAndGetRealpathSync(path) {
   try {
+    // this only check SymbolicLink file read permission, not target file
     fs.accessSync(path, fs.constants.R_OK);
     let symStats = fs.lstatSync(path);
     if (!symStats) throw new Error(`symStats is null`);
@@ -607,7 +581,6 @@ export default {
   isAbsolutePath,
   getFileNameByPath,
   redirectStrmLastLinkRuleFilter,
-  lastLinkFailback,
   getItemIdByUri,
   getItemInfo,
   dictAdd,
