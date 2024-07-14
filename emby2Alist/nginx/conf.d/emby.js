@@ -118,9 +118,13 @@ async function redirect2Pan(r) {
   // strm file inner remote link redirect,like: http,rtsp
   isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
-    const rule = util.redirectStrmLastLinkRuleFilter(mediaItemPath);
-    if (!!rule && rule.length > 0) {
-      r.warn(`filePath hit redirectStrmLastLinkRule: ${JSON.stringify(rule)}`);
+    let rule = util.redirectStrmLastLinkRuleFilter(r, mediaItemPath);
+    if (rule && rule.length > 0) {
+      if (!Number.isInteger(rule[0])) {
+        // convert groupRule remove groupKey and sourceValue
+        r.warn(`convert groupRule remove groupKey and sourceValue`);
+        rule = rule.slice(2);
+      }
       let directUrl = await ngxExt.fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
       if (!!directUrl) {
         mediaItemPath = directUrl;
@@ -306,7 +310,7 @@ async function transferPlaybackInfo(r) {
       return r.return(200, jsonBody);
     }
   }
-  r.warn("playbackinfo subrequest failed");
+  r.warn(`playbackinfo subrequest failed, status: ${response.status}`);
   return internalRedirect(r);
 }
 

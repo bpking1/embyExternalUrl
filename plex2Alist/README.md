@@ -5,6 +5,10 @@ date: 2023/11/04 22:00:00
 
 ### 文章更新记录 
 
+#### 2024-07-14
+
+1.redirectStrmLastLinkRule 添加分组
+
 #### 2024-07-09
 
 1.去除 mediaMountPath empty 情况的默认走源服务中转,具有二义性,无法区分是未填写还是需要 mediaPathMapping 手动处理,

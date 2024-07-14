@@ -36,6 +36,10 @@ const alistPublicAddr = "http://youralist.com:5244";
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
+  xEmbyClients: {
+    seekBug: ["Emby for iOS", "Infuse"],
+    maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
+  },
   "115": "115.com",
   ali: "aliyundrive.net",
 };
@@ -81,16 +85,16 @@ const routeRule = [
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
-  // 以下规则代表禁用["Emby Web", "Emby for iOS", "Infuse"]中的[本地挂载文件或 alist 返回的链接]的 115 直链功能
-  // ["115-alist", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]], // 链接入参,客户端类型
+  // 以下规则代表禁用 strHead.xEmbyClients.maybeProxy 中的[本地挂载文件或 alist 返回的链接]的 115 直链功能
+  // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy], // 链接入参,客户端类型
   // ["115-alist", "alistRes", 0, strHead["115"]],
-  // ["115-local", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]],
+  // ["115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
   // ["115-local", "filePath", 0, "/mnt/115"],
   // 注意非"proxy"无法使用"alistRes"条件,因为没有获取 alist 直链的过程
   // ["proxy", "filePath", 0, "/mnt/sda1"],
   // ["redirect", "filePath", 0, "/mnt/sda2"],
   // ["transcode", "filePath", 0, "/mnt/sda3"],
-  // ["transcode", "115-local", "r.args.X-Emby-Client", 0, ["Emby Web", "Emby for iOS", "Infuse"]],
+  // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
 ];
@@ -109,16 +113,24 @@ const mediaPathMapping = [
   // [2, 2, "?xxx"],
 ];
 
-// 指定是否转发由 njs 获取 strm 重定向后直链地址的规则,例如 strm 内部为局域网 ip 或链接需要验证
-// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// 参数2: 匹配目标,对象为 mediaPathMapping 映射后的 strm 内部链接
+// 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
+// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
+// 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": mediaPathMapping 映射后的 strm/远程链接 内部链接
+// ,有分组时不可省略填写,可为表达式
+// 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 const redirectStrmLastLinkRule = [
   [0, strHead.lanIp.map(s => "http://" + s)],
   // [0, alistAddr],
   // [0, "http:"],
-  // 参数3: 请求验证类型,当前 alistAddr 不需要此参数
-  // 参数4: 当前 alistAddr 不需要此参数,alistSignExpireTime
-  // [0, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
+  // 参数5: 请求验证类型,当前 alistAddr 不需要此参数
+  // 参数6: 当前 alistAddr 不需要此参数,alistSignExpireTime
+  // [3, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
+  // useGroup01 同时满足才命中
+  // ["useGroup01", "filePath", 0, strHead.lanIp.map(s => "http://" + s)], // 目标地址为内网
+  // ["useGroup01", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
+  // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
 ];
 
 // 指定客户端自己请求并获取 alist 直链的规则,代码优先级在 redirectStrmLastLinkRule 之后

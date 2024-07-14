@@ -19,7 +19,7 @@ async function itemsFilter(r) {
   if (subR.status === 200) {
   	body = JSON.parse(subR.responseText);
   } else {
-  	r.warn("itemsFilter subrequest failed");
+  	r.warn(`itemsFilter subrequest failed, status: ${subR.status}`);
 	  return emby.internalRedirect(r);
   }
   const itemHiddenRule = config.itemHiddenRule;

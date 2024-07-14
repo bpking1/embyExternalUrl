@@ -1,7 +1,7 @@
 // @author: chen3861229
 // @date: 2024-07-13
 
-// import config from "../constant.js";
+import config from "../constant.js";
 import util from "../common/util.js";
 import events from "../common/events.js";
 import emby from "../emby.js";
@@ -10,6 +10,7 @@ import emby from "../emby.js";
 async function systemInfoHandler(r) {
   events.njsOnExit(`systemInfoHandler: ${r.uri}`);
 
+  r.variables.request_uri = r.variables.request_uri.replace(r.args.api_key, config.embyApiKey);
   const subR = await r.subrequest(util.proxyUri(r.uri), {
     method: r.method,
   });
@@ -17,7 +18,7 @@ async function systemInfoHandler(r) {
   if (subR.status === 200) {
   	body = JSON.parse(subR.responseText);
   } else {
-  	r.warn(`systemInfoHandler subrequest failed`);
+  	r.warn(`systemInfoHandler subrequest failed, status: ${subR.status}`);
 	  return emby.internalRedirect(r);
   }
   const currentPort = parseInt(r.variables.server_port);

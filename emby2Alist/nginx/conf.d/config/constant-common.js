@@ -4,6 +4,10 @@
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
+  xEmbyClients: {
+    seekBug: ["Emby for iOS", "Infuse"],
+    maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
+  },
   "115": "115.com",
   ali: "aliyundrive.net",
 };
