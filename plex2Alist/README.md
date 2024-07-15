@@ -5,6 +5,10 @@ date: 2023/11/04 22:00:00
 
 ### 文章更新记录 
 
+#### 2024-07-15
+
+1.clientSelfAlistRule 添加分组,修复 redirectStrmLastLinkRule 分组
+
 #### 2024-07-14
 
 1.redirectStrmLastLinkRule 添加分组
