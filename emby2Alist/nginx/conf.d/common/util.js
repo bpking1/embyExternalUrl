@@ -23,6 +23,11 @@ const CHCHE_LEVEL_ENUM = {
   // L3: "L3",
 };
 
+const SOURCE_STR_ENUM = {
+  filePath: "filePath",
+  alistRes: "alistRes",
+};
+
 function proxyUri(uri) {
   return `/proxy${uri}`;
 }
@@ -83,7 +88,7 @@ function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
  * groupBy
  * @param {Array} array original > 1D array
  * @param {Number|Function} key groupBy key, Number is 1D array index, Function is custom key getter
- * @returns grouped Object Array, key is groupBy key, value is grouped 1D array
+ * @returns grouped Object Array, key is groupBy key(String), value is grouped 1D array
  */
 function groupBy(array, key) {
   return array.reduce((result, currentItem) => {
@@ -236,7 +241,7 @@ function getMatchedRuleGroupKey(r, groupKey, groupRuleArr3D, filePath) {
 function getMatchedRule(r, ruleArr3D, filePath) {
   return ruleArr3D.find(rule => {
     let sourceStr = filePath;
-    if (rule[0] !== "filePath" && rule[0] !== "alistRes") {
+    if (!Object.values(SOURCE_STR_ENUM).includes(rule[0])) {
       sourceStr = parseExpression(r, rule[0]);
     }
     let flag = false;
@@ -366,30 +371,74 @@ function getFileNameByPath(filePath) {
   return filePath ? filePath.replace(/.*[\\/]/, "") : "";
 }
 
-function redirectStrmLastLinkRuleFilter(r, filePath) {
-  let cRule = config.redirectStrmLastLinkRule;
+/**
+ * simpleRuleFilter
+ * 1.support old rule, index 0: match, index 1: matchTarget
+ * 2.support new rule, index 0: matchSource, index 1: match, index 2: matchTarget
+ * 3.support new rule, index 0: groupName, index 1: matchSource, index 2: match, index 3: matchTarget
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {Array}  ruleArr3D support group rule
+ * @param {String} filePath mediaFilePath or alistRes raw_url
+ * @param {String} firstSourceStr SOURCE_STR_ENUM String
+ * @param {String} mark log and tip keyword
+ * @returns undefined | matchedRule: old rule is single, group return first rule
+ */
+function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
+  if (!firstSourceStr) {
+    firstSourceStr = SOURCE_STR_ENUM.filePath;
+  }
+  if (!mark) {
+    mark = "simpleRule";
+  }
   // group current rules, old is true, new is false
-  const groupRulesObjArr = groupBy(cRule, rule => Number.isInteger(rule[0]));
-  for (const gKey in groupRulesObjArr) {
-    // convert params, old rules default add index 0 "filePath"
-    const oldRulesArr3D = groupRulesObjArr[gKey].map(rRule => {
-      const copy = rRule.slice();
-      copy.unshift("filePath");
-      return copy;
-    });
-    if (gKey) {
-      const matchedRule = getMatchedRule(r, oldRulesArr3D, filePath);
+  const onGroupRulesObjArr = groupBy(ruleArr3D, rule => Number.isInteger(rule[0]));
+  let onGroupItemRules;
+  let paramRulesArr3D;
+  for (const onKey in onGroupRulesObjArr) {
+    ngx.log(ngx.INFO, `${mark}Filter onKey: ${onKey}, typeof: ${typeof onKey}`);
+    onGroupItemRules = onGroupRulesObjArr[onKey];
+    if (onKey === "true") {
+      // convert params, old rules default add index 0
+      paramRulesArr3D = onGroupItemRules.map(rRule => {
+        const copy = rRule.slice();
+        copy.unshift(firstSourceStr);
+        return copy;
+      });
+      let matchedRule = getMatchedRule(r, paramRulesArr3D, filePath);
       if (matchedRule) {
-        ngx.log(ngx.WARN, `hit redirectStrmLastLinkRule: ${JSON.stringify(matchedRule)}`);
+        matchedRule = Object.values(SOURCE_STR_ENUM).includes(matchedRule[0]) ? matchedRule.slice(1) : matchedRule;
+        ngx.log(ngx.WARN, `hit ${mark}: ${JSON.stringify(matchedRule)}`);
         return matchedRule;
       }
     } else {
-      const matchedGroupKey = getMatchedRuleGroupKey(r, groupRulesObjArr[gKey][0][1], oldRulesArr3D, filePath);
-      if (matchedGroupKey) {
-        ngx.log(ngx.WARN, `hit redirectStrmLastLinkRule: ${gKey}, group: ${matchedGroupKey}`);
-        return groupRulesObjArr[gKey].find(gRule => gRule[0] === matchedGroupKey);
+      const keyGroupRulesObjArr = groupBy(onGroupItemRules, 0);
+      if (Object.keys(keyGroupRulesObjArr).length === 0) {
+        return;
+      }
+      for (const kgKey in keyGroupRulesObjArr) {
+        ngx.log(ngx.INFO, `${mark}Filter kgKey: ${kgKey}`);
+        paramRulesArr3D = keyGroupRulesObjArr[kgKey];
+        const matchedGroupKey = getMatchedRuleGroupKey(r, kgKey, paramRulesArr3D, filePath);
+        if (matchedGroupKey) {
+          ngx.log(ngx.WARN, `hit ${mark} group: ${matchedGroupKey}`);
+          return paramRulesArr3D.find(gRule => gRule[0] === matchedGroupKey);
+        }
       }
     }
+  }
+}
+
+function getClientSelfAlistLink(r, filePath, alistFilePath) {
+  let rule = simpleRuleFilter(r, config.clientSelfAlistRule, filePath, SOURCE_STR_ENUM.alistRes, "clientSelfAlistRule");
+  if (rule && rule.length > 0) {
+    if (!Number.isInteger(rule[0])) {
+      // convert groupRule remove groupKey and sourceValue
+      r.warn(`convert groupRule remove groupKey and sourceValue`);
+      rule = rule.slice(2);
+    }
+    const alistPublicAddr = rule.length === 3 ? rule[2] : config.alistPublicAddr;
+    //  @param {String} filePath mediaFilePath or alistRes link
+    return `${alistPublicAddr}/d${encodeURI(alistFilePath || filePath)}`;
   }
 }
 
@@ -593,7 +642,8 @@ export default {
   checkIsStrmByPath,
   isAbsolutePath,
   getFileNameByPath,
-  redirectStrmLastLinkRuleFilter,
+  simpleRuleFilter,
+  getClientSelfAlistLink,
   getItemIdByUri,
   getItemInfo,
   dictAdd,

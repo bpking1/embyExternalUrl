@@ -127,13 +127,22 @@ const redirectStrmLastLinkRule = [
 
 // 指定客户端自己请求并获取 alist 直链的规则,代码优先级在 redirectStrmLastLinkRule 之后
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
-// 参数1: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
-// 参数2: 匹配目标,对象为 Alist 接口返回的链接 raw_url
-// 参数3: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
+// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
+// 参数2: 匹配类型或来源(字符串参数类型),优先级高"filePath": 文件路径(Item.Path),默认为"alistRes": alist 返回的链接 raw_url
+// ,有分组时不可省略填写,可为表达式
+// 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
+// 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // "Emby for iOS"和"Infuse"对于115的进度条拖动依赖于此
-  // 如果nginx为https,则此alist也必须https,浏览器行为客户端会阻止非https请求
+  // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
+  // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
+  // [2, strHead.ali, alistPublicAddr],
+  // 优先使用 filePath,可省去一次查询 alist,如驱动为 alias,则应使用 alistRes
+  // ["115-local", "filePath", 0, "/mnt/115", alistPublicAddr],
+  // ["115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // ["115-alist", "alistRes", 2, strHead["115"], alistPublicAddr],
+  // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug],
 ];
 
 // 转码配置,默认 false,将按之前逻辑强制直接播放

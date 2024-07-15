@@ -138,9 +138,10 @@ async function redirect2Pan(r) {
   r.warn(`mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
+  // not only strm, mediaPathMapping maybe used remote link
   isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
-    let rule = util.redirectStrmLastLinkRuleFilter(r, mediaItemPath);
+    let rule = util.simpleRuleFilter(r, config.redirectStrmLastLinkRule, mediaItemPath, SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule");
     if (rule && rule.length > 0) {
       if (!Number.isInteger(rule[0])) {
         // convert groupRule remove groupKey and sourceValue
@@ -167,6 +168,10 @@ async function redirect2Pan(r) {
     return redirect(r, mediaItemPath);
   }
 
+  // clientSelfAlistRule, before fetch alist
+  const alistDUrl = util.getClientSelfAlistLink(r, mediaItemPath);
+  if (alistDUrl) { return redirect(r, alistDUrl); }
+
   // fetch alist direct link
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
@@ -188,7 +193,8 @@ async function redirect2Pan(r) {
     } else if (util.ROUTE_ENUM.block == routeMode) {
       return r.return(403, "blocked");
     }
-    return redirect(r, alistRes);
+    // clientSelfAlistRule, after fetch alist, cover raw_url
+    return redirect(r, util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes);
   }
   r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {
@@ -258,7 +264,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
       if (result.message == "success") {
         // alist /api/fs/get
         if (result.data.raw_url) {
-          return handleAlistRawUrl(result, alistFilePath);
+          return result.data.raw_url;
         }
         // alist /api/fs/list
         return result.data.content.map((item) => item.name).join(",");
@@ -273,26 +279,6 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
   } catch (error) {
     return `error: alist_path_api fetchAlistFiled ${error}`;
   }
-}
-
-function handleAlistRawUrl(alistRes, alistFilePath) {
-  let rawUrl = alistRes.data.raw_url;
-  const alistSign = alistRes.data.sign;
-  const clientSelfAlistRule = config.clientSelfAlistRule;
-  if (clientSelfAlistRule.length > 0) {
-    clientSelfAlistRule.some(rule => {
-      if (util.strMatches(rule[0], rawUrl, rule[1])) {
-        ngx.log(ngx.WARN, `hit clientSelfAlistRule: ${JSON.stringify(rule)}`);
-        if (!rule[2]) {
-          ngx.log(ngx.ERR, `alistPublicAddr is required`);
-          return true;
-        }
-        rawUrl = `${rule[2]}/d${encodeURI(alistFilePath)}${!alistSign ? "" : `?sign=${alistSign}`}`;
-        return true;
-      }
-    });
-  }
-  return rawUrl;
 }
 
 async function cachePreload(r, url, cacheLevel) {
