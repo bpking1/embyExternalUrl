@@ -18,15 +18,15 @@ const alistSignExpireTime = mountConfig.alistSignExpireTime;
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 const redirectStrmLastLinkRule = [
-  [0, strHead.lanIp.map(s => "http://" + s)],
+  // [0, strHead.lanIp.map(s => "http://" + s)],
   // [0, alistAddr],
   // [0, "http:"],
   // 参数5: 请求验证类型,当前 alistAddr 不需要此参数
   // 参数6: 当前 alistAddr 不需要此参数,alistSignExpireTime
   // [3, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
   // useGroup01 同时满足才命中
-  // ["useGroup01", "filePath", 0, strHead.lanIp.map(s => "http://" + s)], // 目标地址为内网
-  // ["useGroup01", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // ["useGroup01", "filePath", "startsWith", strHead.lanIp.map(s => "http://" + s)], // 目标地址为内网
+  // ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
   // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
 ];

@@ -28,6 +28,14 @@ const SOURCE_STR_ENUM = {
   alistRes: "alistRes",
 };
 
+const MATCHER_ENUM = {
+  startsWith: "startsWith",
+  endsWith: "endsWith",
+  includes: "includes",
+  match: "match",
+  not: "not",
+};
+
 function proxyUri(uri) {
   return `/proxy${uri}`;
 }
@@ -338,20 +346,50 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
   return str;
 }
 
+/**
+ * strMatches
+ * @param {Number|String} type 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+ * @param {String} searchValue
+ * @param {String|RegExp} matcher
+ * @returns boolean
+ */
 function strMatches(type, searchValue, matcher) {
-  if (0 == type && searchValue.startsWith(matcher)) {
-    return true;
+  let flag = false;
+  // old
+  if (Number.isInteger(type)) {
+    if (type === 0) {
+      flag =  searchValue.startsWith(matcher);
+    } else if (type === 1) {
+      flag =  searchValue.endsWith(matcher);
+    } else if (type === 2) {
+      flag =  searchValue.includes(matcher);
+    } else if (type === 3) {
+      flag =  !!searchValue.match(matcher);
+    }
+    return flag;
   }
-  if (1 == type && searchValue.endsWith(matcher)) {
-    return true;
+  // new
+  if (typeof type == "string") {
+    const parts = type.split(":");
+    const typeStr = parts[0];
+    const negateStr = parts[1];
+
+    if (typeStr == MATCHER_ENUM.startsWith) {
+      flag = searchValue.startsWith(matcher);
+    } else if (typeStr == MATCHER_ENUM.endsWith) {
+      flag = searchValue.endsWith(matcher);
+    } else if (typeStr == MATCHER_ENUM.includes) {
+      flag = searchValue.includes(matcher);
+    } else if (typeStr == MATCHER_ENUM.match) {
+      flag = !!searchValue.match(matcher);
+    } else {
+      throw new Error("Unknown type: " + typeStr);
+    }
+
+    return negateStr == MATCHER_ENUM.not ? !flag : flag;
   }
-  if (2 == type && searchValue.includes(matcher)) {
-    return true;
-  }
-  if (3 == type && !!searchValue.match(matcher)) {
-    return true;
-  }
-  return false;
+
+  throw new Error("Invalid type provided");
 }
 
 function checkIsStrmByPath(filePath) {
@@ -391,12 +429,15 @@ function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
     mark = "simpleRule";
   }
   // group current rules, old is true, new is false
-  const onGroupRulesObjArr = groupBy(ruleArr3D, rule => Number.isInteger(rule[0]));
+  const onGroupRulesObjArr = groupBy(ruleArr3D, 
+    rule => Number.isInteger(rule[0]) || Object.values(MATCHER_ENUM).includes(rule[0])
+  );
   let onGroupItemRules;
   let paramRulesArr3D;
   for (const onKey in onGroupRulesObjArr) {
     ngx.log(ngx.INFO, `${mark}Filter onKey: ${onKey}, typeof: ${typeof onKey}`);
     onGroupItemRules = onGroupRulesObjArr[onKey];
+    // old new group
     if (onKey === "true") {
       // convert params, old rules default add index 0
       paramRulesArr3D = onGroupItemRules.map(rRule => {
@@ -411,13 +452,16 @@ function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
         return matchedRule;
       }
     } else {
+      // new rules groupBy group name
       const keyGroupRulesObjArr = groupBy(onGroupItemRules, 0);
       if (Object.keys(keyGroupRulesObjArr).length === 0) {
         return;
       }
       for (const kgKey in keyGroupRulesObjArr) {
+        // key group after single group
         ngx.log(ngx.INFO, `${mark}Filter kgKey: ${kgKey}`);
         paramRulesArr3D = keyGroupRulesObjArr[kgKey];
+        // single group logical "and"
         const matchedGroupKey = getMatchedRuleGroupKey(r, kgKey, paramRulesArr3D, filePath);
         if (matchedGroupKey) {
           ngx.log(ngx.WARN, `hit ${mark} group: ${matchedGroupKey}`);
