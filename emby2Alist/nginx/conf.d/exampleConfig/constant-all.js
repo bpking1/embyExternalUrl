@@ -127,8 +127,8 @@ const redirectStrmLastLinkRule = [
   // 参数6: 当前 alistAddr 不需要此参数,alistSignExpireTime
   // [3, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
   // useGroup01 同时满足才命中
-  // ["useGroup01", "filePath", 0, strHead.lanIp.map(s => "http://" + s)], // 目标地址为内网
-  // ["useGroup01", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // ["useGroup01", "filePath", "startsWith", strHead.lanIp.map(s => "http://" + s)], // 目标地址为内网
+  // ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
   // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
 ];
@@ -235,6 +235,23 @@ const searchConfig = {
   ],
 };
 
+// nginx 配置 Start
+
+const nginxConfig = {
+  // 禁用上游服务的 docs 页面
+  disableDocs: true,
+};
+
+// for js_set
+function getDisableDocs(r) {
+  const value = nginxConfig.disableDocs 
+    && !ngx.shared["tmpDict"].get("opendocs");
+  // r.log(`getDisableDocs: ${value}`);
+  return value;
+}
+
+// nginx 配置 End
+
 // for js_set
 function getEmbyHost(r) {
   return embyHost;
@@ -275,4 +292,6 @@ export default {
   getTranscodeEnable,
   getTranscodeType,
   getImageCachePolicy,
+  nginxConfig,
+  getDisableDocs,
 }

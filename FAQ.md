@@ -14,8 +14,10 @@
 // 所以我的 mediaMountPath 填,也就是挂载工具多出来的目录所代表的 alist 的根目录的 / 的路径
 const mediaMountPath = ["/AList"];
 ```
-如果挂载的路径映射情况比这更加复杂,就需要这个参数来做路径字符串的映射了
+如果挂载的路径映射情况比这更加复杂,就需要这个参数来做路径字符串的映射了,然后 mediaMountPath 置空
 ```javascript
+const mediaMountPath = [];
+
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠
 // 参数1: 0: 默认做字符串替换, 1: 前插, 2: 尾插
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
@@ -492,7 +494,7 @@ location ~* /videos/(.*)/(stream|original) {
 首先需要持久性配置文件中开启,searchConfig.interactiveEnable = true,然后客户端搜索栏中输入特定指令即可,
 实现的目的是快捷临时性操作,不建议实现持久性功能,目前仅支持临时跳过缓存,
 注意指令为[]内的字符串,开启/关闭结果会返回虚拟搜索结果来简单提示,
-未作权限校验~~和用户隔离~~,因为只有一个跳过缓存指令,影响不大,后期如果实现其他临时操作,需要校验上游接口返回 200 后再执行操作,
+未作权限校验~~和用户隔离,因为只有一个跳过缓存指令,影响不大~~,后期如果实现其他临时操作,需要校验上游接口返回 200 后再执行操作,
 已做用户隔离参数,参照 searchConfig.interactiveEnableRule 注释配置
 
 0.全指令和值默认均为字符串,不用考虑单/双引号包裹,客户端输入框停止 1 秒后会自动触发搜索,假如指令输完没响应,手动加个空格再删除空格再次搜索
@@ -504,6 +506,10 @@ location ~* /videos/(.*)/(stream|original) {
 1.[/nocache]: 默认在 60 秒内跳过 nginx 缓存,到期自动关闭,注意此行为只影响 nginx,客户端/上游服务缓存属于外部系统,无法干预
 
 1.1 [/nocache:整数]: 整数 < 1 手动关闭跳过 nginx 缓存, 整数 > 0 设定跳过 nginx 缓存持续秒数,到期自动关闭
+
+2.[/opendocs]: 默认在 60 秒内允许上游服务 docs 访问,此参数到期自动失效,此时的值取决于 config 中的持久化配置
+
+2.1 [/opendocs:整数]: 整数 < 1 手动失效此临时参数, 整数 > 0 设定此参数持续秒数
 
 #### 29.软链接注意点?
 1.指定需要获取符号链接真实路径的规则,优先级在 mediaMountPath 和 routeRule 之间,
@@ -546,6 +552,50 @@ location ~* /videos/(.*)/(stream|original) {
 2.7 客户端推荐设置,下载位置 => 外部存储器(Downloads),不要用默认的内部存储器,高版本安卓非 root 应用无法读取下载后的文件
 
 参考: https://github.com/bpking1/embyExternalUrl/issues/284
+
+#### 30.redirectStrmLastLinkRule?
+历史遗留原因,包括所有非 / 开头的远程链接,且只获取了一次重定向地址,没有进行跟随重定向,跟随重定向由客户端自己完成,
+这个规则不仅限于控制 STRM 文件内部的链接,在经过 mediaPathMapping 映射后,
+目标远程链接地址可能为任意,例如自行拼接的 cd2 访问链接,其它 alist 访问链接,其它种类直链提供服务...
+
+0.这里存在一个小歧义, 所有的示例参数中 X-Emby-Client 为 emby 兼容客户端才会上报,为空时将会导致判断结果出错,
+使用这个纯粹是因为找匹配值比较简单,直接在 emby 设置 => 设备,页面中可视化查找,
+出错时需要手动改为"r.headersIn.User-Agent"使用通用的客户端标识判断,UA 匹配值在日志中找或互联网搜索
+
+1.默认开启了检测到待响应的目标链接为内网字符串头开始的,命中此规则,不需要或有 bug 的手动注释关闭
+```js
+// 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
+// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
+// 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": mediaPathMapping 映射后的 strm/远程链接 内部链接
+// ,有分组时不可省略填写,可为表达式
+// 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
+const redirectStrmLastLinkRule = [
+  [0, strHead.lanIp.map(s => "http://" + s)],
+  // [0, alistAddr],
+  // [0, "http:"],
+  // 参数5: 请求验证类型,当前 alistAddr 不需要此参数
+  // 参数6: 当前 alistAddr 不需要此参数,alistSignExpireTime
+  // [3, "http://otheralist1.com", "sign", `${alistToken}:${alistSignExpireTime}`],
+  // useGroup01 同时满足才命中
+  // ["useGroup01", "filePath", "startsWith", strHead.lanIp.map(s => "http://" + s)], // 目标地址
+  // ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
+  // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
+];
+```
+
+2.针对 strHead.xEmbyClients.seekBug 数组中的特定客户端类型标识开头的,注意此条做了取反逻辑,
+同时满足目标地址为内网开头,则脚本获取该重定向后地址响应给客户端进行重定向
+```js
+const redirectStrmLastLinkRule = [
+  // useGroup01 同时满足才命中
+  ["useGroup01", "filePath", "startsWith", strHead.lanIp.map(s => "http://" + s)], // 目标地址
+  ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
+  // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
+];
+```
 
 # embyAddExternalUrl
 

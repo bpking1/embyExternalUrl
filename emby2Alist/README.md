@@ -9,6 +9,8 @@ date: 2021/09/06 22:00:00
 
 1.clientSelfAlistRule 添加分组,修复 redirectStrmLastLinkRule 分组
 
+2.升级 util.strMatches 以支持字符串形式指定取反操作,不影响历史的数字类型参数,但后续建议使用字符串形式以增强可读性
+
 #### 2024-07-14
 
 1.redirectStrmLastLinkRule 添加分组
