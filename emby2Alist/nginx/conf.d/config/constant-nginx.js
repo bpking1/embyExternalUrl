@@ -1,4 +1,4 @@
-import embySearch from "../modules/emby-search";
+import embySearch from "../modules/emby-search.js";
 
 // 选填项,用不到保持默认即可
 
