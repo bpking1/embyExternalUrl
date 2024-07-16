@@ -560,7 +560,8 @@ location ~* /videos/(.*)/(stream|original) {
 
 0.这里存在一个小歧义, 所有的示例参数中 X-Emby-Client 为 emby 兼容客户端才会上报,为空时将会导致判断结果出错,
 使用这个纯粹是因为找匹配值比较简单,直接在 emby 设置 => 设备,页面中可视化查找,
-出错时需要手动改为"r.headersIn.User-Agent"使用通用的客户端标识判断,UA 匹配值在日志中找或互联网搜索
+出错时需要手动改为"r.headersIn.User-Agent"使用通用的客户端标识判断,UA 匹配值在日志中找或互联网搜索,
+emby2Alist/nginx/conf.d/config/UA.txt 中记录了一些简单的 UA 值,可自行添加或修改
 
 1.默认开启了检测到待响应的目标链接为内网字符串头开始的,命中此规则,不需要或有 bug 的手动注释关闭
 ```js
@@ -585,8 +586,8 @@ const redirectStrmLastLinkRule = [
 ];
 ```
 
-2.针对 strHead.xEmbyClients.seekBug 数组中的特定客户端类型标识开头的,注意此条做了取反逻辑,
-同时满足目标地址为内网开头,则脚本获取该重定向后地址响应给客户端进行重定向
+2.emby/jellyfin 针对 strHead.xEmbyClients.seekBug 数组中的特定客户端类型标识开头的,注意此条做了取反逻辑,
+同时满足目标地址开头,则脚本获取该重定向后地址响应给客户端进行重定向
 ```js
 const redirectStrmLastLinkRule = [
   // useGroup01 同时满足才命中
@@ -596,6 +597,17 @@ const redirectStrmLastLinkRule = [
   // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
 ];
 ```
+
+3.plex 针对 Infuse seekBug 的特定客户端类型标识开头的,注意此条做了取反逻辑,
+同时满足目标地址开头,则脚本获取该重定向后地址响应给客户端进行重定向
+```js
+const redirectStrmLastLinkRule = [
+  // useGroup01 同时满足才命中
+  ["useGroup01", "filePath", "startsWith", ["https://youdomain.xxx.com:88"]], // 目标地址
+  ["useGroup01", "r.headersIn.User-Agent", "startsWith:not", ["Infuse"]], // 链接入参,客户端 UA
+  // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
+  // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
+];
 
 # embyAddExternalUrl
 
