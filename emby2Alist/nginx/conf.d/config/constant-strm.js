@@ -18,7 +18,7 @@ const alistSignExpireTime = mountConfig.alistSignExpireTime;
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 const redirectStrmLastLinkRule = [
-  // [0, strHead.lanIp.map(s => "http://" + s)],
+  [0, strHead.lanIp.map(s => "http://" + s)],
   // [0, alistAddr],
   // [0, "http:"],
   // 参数5: 请求验证类型,当前 alistAddr 不需要此参数

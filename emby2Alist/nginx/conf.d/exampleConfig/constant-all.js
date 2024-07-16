@@ -235,6 +235,23 @@ const searchConfig = {
   ],
 };
 
+// nginx 配置 Start
+
+const nginxConfig = {
+  // 禁用上游服务的 docs 页面
+  disableDocs: true,
+};
+
+// for js_set
+function getDisableDocs(r) {
+  const value = nginxConfig.disableDocs 
+    && !ngx.shared["tmpDict"].get("opendocs");
+  // r.log(`getDisableDocs: ${value}`);
+  return value;
+}
+
+// nginx 配置 End
+
 // for js_set
 function getEmbyHost(r) {
   return embyHost;
@@ -275,4 +292,6 @@ export default {
   getTranscodeEnable,
   getTranscodeType,
   getImageCachePolicy,
+  nginxConfig,
+  getDisableDocs,
 }

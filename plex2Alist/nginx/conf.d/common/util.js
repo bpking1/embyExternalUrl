@@ -600,6 +600,7 @@ export default {
   ARGS,
   ROUTE_ENUM,
   CHCHE_LEVEL_ENUM,
+  SOURCE_STR_ENUM,
   proxyUri,
   appendUrlArg,
   getCurrentRequestUrlPrefix,

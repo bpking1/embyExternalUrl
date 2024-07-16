@@ -12,7 +12,9 @@ const ARGS = {
   valueSplit: "=",
   timeSplit: ":",
   dictName: "tmpDict",
+  // directive key
   nocacheKey: "nocache",
+  openDocsKey: "opendocs",
 }
 
 async function searchHandle(r) {
@@ -30,28 +32,37 @@ async function searchHandle(r) {
 
   const searchTerm = r.args.SearchTerm;
   if (searchTerm.includes(ARGS.directive + ARGS.nocacheKey)) {
-    r.return(200, cacheHandle(r, searchTerm));
+    r.return(200, handleWithTimeout(r, searchTerm, ARGS.nocacheKey));
+  } else if (searchTerm.includes(ARGS.directive + ARGS.openDocsKey)) {
+    r.return(200, handleWithTimeout(r, searchTerm, ARGS.openDocsKey));
   } else {
     r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
     return emby.internalRedirectExpect(r, r.variables.request_uri);
   }
 }
 
-function cacheHandle(r, searchTerm) {
-  let msg = ARGS.nocacheKey;
+/**
+ * handleWithTimeout
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {String} searchTerm 
+ * @param {String} directiveKey not with /
+ * @returns 
+ */
+function handleWithTimeout(r, searchTerm, directiveKey) {
+  let msg = directiveKey;
   let timeoutS = parseInt(searchTerm.split(ARGS.timeSplit)[1]);
-  r.warn(`cacheHandle input timeoutS: ${timeoutS}`);
+  r.warn(`${directiveKey} input timeoutS: ${timeoutS}`);
   if (isNaN(timeoutS)) {
     timeoutS = 60;
-    r.warn(`cacheHandle handle default timeoutS: ${timeoutS}`);
+    r.warn(`${directiveKey} handle default timeoutS: ${timeoutS}`);
   }
   if (timeoutS < 1) {
-    msg += ngx.shared[ARGS.dictName].delete(ARGS.nocacheKey) ? "CloseSuccess" : "CloseFail";
+    msg += ngx.shared[ARGS.dictName].delete(directiveKey) ? "CloseSuccess" : "CloseFail";
   } else {
-    const flag = util.dictAdd(ARGS.dictName, ARGS.nocacheKey, "1", timeoutS ? timeoutS * 1000 : -1);
+    const flag = util.dictAdd(ARGS.dictName, directiveKey, "1", timeoutS ? timeoutS * 1000 : -1);
     msg += ["AddFail", "NotExpire", `With60Seconds`, `With${timeoutS}Seconds`][flag + 1];
   }
-  r.warn(`cacheHandle msg: ${msg}`);
+  r.warn(`${directiveKey} msg: ${msg}`);
   return JSON.stringify({
     Items: [{
       Name: `${msg}`,
@@ -62,9 +73,9 @@ function cacheHandle(r, searchTerm) {
 
 // for js_set
 function getNocache(r) {
-  const nocache = ngx.shared["tmpDict"].get("nocache") ?? "";
-  // r.log(`getNocache: ${nocache}`);
-  return nocache;
+  const value = ngx.shared[ARGS.dictName].get(ARGS.nocacheKey) ?? "";
+  // r.log(`getNocache: ${value}`);
+  return value;
 }
 
 export default {

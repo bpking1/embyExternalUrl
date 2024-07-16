@@ -119,7 +119,10 @@ async function redirect2Pan(r) {
   // not only strm, mediaPathMapping maybe used remote link
   isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
-    let rule = util.simpleRuleFilter(r, config.redirectStrmLastLinkRule, mediaItemPath, SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule");
+    let rule = util.simpleRuleFilter(
+      r, config.redirectStrmLastLinkRule, mediaItemPath, 
+      util.SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule"
+    );
     if (rule && rule.length > 0) {
       if (!Number.isInteger(rule[0])) {
         // convert groupRule remove groupKey and sourceValue
