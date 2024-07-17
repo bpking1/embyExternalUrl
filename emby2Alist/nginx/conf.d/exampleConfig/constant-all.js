@@ -167,26 +167,27 @@ const transcodeConfig = {
   redirectTransOptEnable: true, // 是否保留码率选择,不保留官方客户端将无法手动切换至转码
   targetItemMatchFallback: "redirect", // 目标服务媒体匹配失败后的降级后路由措施,可选值, ["redirect", "proxy"]
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
-  // server: [],
+  server: [],
   // 负载的服务组,需要分离转码时才使用,注意下列 host 必须全部为公网地址,会 302 给客户端访问,若参与负载下边手动添加
-  server: [
-    {
-      type: "emby",
-      host: "http://yourdomain.com:8096",
-      apiKey: "f839390f50a648fd92108bc11ca6730a",
-    },
-    {
-      type: "jellyfin",
-      host: "http://yourdomain.com:8097",
-      apiKey: "f839390f50a648fd92108bc11ca6730a",
-    },
-  ]
+  // server: [
+  //   {
+  //     type: "emby",
+  //     host: "http://yourdomain.com:8096",
+  //     apiKey: "f839390f50a648fd92108bc11ca6730a",
+  //   },
+  //   {
+  //     type: "jellyfin",
+  //     host: "http://yourdomain.com:8097",
+  //     apiKey: "f839390f50a648fd92108bc11ca6730a",
+  //   },
+  // ]
 };
 
 // 图片缓存策略,包括主页、详情页、图片库的原图,路由器 nginx 请手动调小 conf 中 proxy_cache_path 的 max_size
 // 0: 不同尺寸设备共用一份缓存,先访问先缓存,空间占用最小但存在小屏先缓存大屏看的图片模糊问题
 // 1: 不同尺寸设备分开缓存,空间占用适中,命中率低下,但契合 emby 的图片缩放处理
 // 2: 不同尺寸设备共用一份缓存,空间占用最大,移除 emby 的缩放参数,直接原图高清显示
+// 3: 关闭 nginx 缓存功能,已缓存文件不做处理
 const imageCachePolicy = 0;
 
 // 对接 emby 通知管理员设置,目前只发送是否直链成功,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
