@@ -144,17 +144,18 @@ const redirectStrmLastLinkRule = [
 
 #### 8.允许转码功能但不需要分离转码负载,该如何配置?
 ```javascript
-// 目前路由规则可以不用配置了,默认遵循客户端自己的上报结果
-// const routeRule = [
-//   ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
-// ];
+// 还是需要手动指定下,默认遵循客户端自己的上报结果走转码,但无上报且无配置默认还是直链行为
+const routeRule = [
+  ["transcode", "filePath", 0, "/mnt/sda3"], // 允许转码的文件路径开头
+];
+
 const transcodeConfig = {
   enable: true, // 允许转码功能的总开关
   type: "distributed-media-server", // 负载类型,只有这个实现了路由规则
   redirectTransOptEnable: false, // 302 的直链文件是否保留码率选择
   targetItemMatchFallback: "redirect", // 目标服务媒体匹配失败后的降级后路由措施
   // 如果只需要当前服务转码,enable 改为 true,server 改为下边的空数组
-  server: []
+  server: [],
 };
 ```
 
@@ -598,8 +599,12 @@ const redirectStrmLastLinkRule = [
 ];
 ```
 
-3.plex 针对 Infuse seekBug 的特定客户端类型标识开头的,注意此条做了取反逻辑,
-同时满足目标地址开头,则脚本获取该重定向后地址响应给客户端进行重定向
+3.plex 针对 Infuse seekBug 的特定 User-Agent 标识开头的,注意此条做了取反逻辑,
+同时满足目标地址开头,则脚本获取该重定向后地址响应给客户端进行重定向,
+这里注意其实客户端最终都是跟随重定向后到网盘商公网直链上的,区别仅在第一次访问的链接不同,
+虽然理论上一样的,但 Infuse 避免拖动进度条报错 bug 就是首次只能访问非网盘商公网直链上,
+暂不清楚原因,且这样配置了偶尔还是会有拖动进度条 bug,
+这个暂时无解,可能属于 Infuse 内部对于播放链接的多线程或 Range 头的的 bytes
 ```js
 const redirectStrmLastLinkRule = [
   // useGroup01 同时满足才命中
@@ -608,6 +613,7 @@ const redirectStrmLastLinkRule = [
   // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 远程客户端为内网
 ];
+```
 
 # embyAddExternalUrl
 
