@@ -639,7 +639,7 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
     }
-    path = path.substring(startIndex + 2).replaceAll('//','/')
+    path = decodeURIComponent(path.substring(startIndex + 2).replaceAll('//','/'))
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
     const sign = calculateHMAC(signData, alistToken)
