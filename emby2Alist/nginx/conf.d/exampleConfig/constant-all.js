@@ -228,6 +228,8 @@ const streamConfig = {
 const searchConfig = {
   // 开启脚本的部分交互性功能
   interactiveEnable: false,
+  // 快速交互,启用后将根据指令头匹配,直接返回虚拟搜索结果,不经过回源查询,优化搜索栏失焦的自动搜索
+  interactiveFast: false,
   // 限定交互性功能的隔离,取值来源为带参数的 request_uri 字符串
   // 不带协议与域名,仅作包含匹配,多个值为或的关系,空数组为不隔离
   interactiveEnableRule: [
