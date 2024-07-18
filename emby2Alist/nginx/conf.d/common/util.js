@@ -156,7 +156,8 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
     routeRules = routeRulesObjArr[rKey];
     // remove routeMode
     const oldRulesArr3D = routeRules.map(rRule => rRule.slice(1));
-    if (routeRules.length > 4) {
+    // routeRules is 3D array
+    if (routeRules[0].length > 4) {
       let matchedGroupKey = getMatchedRuleGroupKey(r, routeRules[0][1], oldRulesArr3D, filePath);
       if (matchedGroupKey) {
         ngx.log(ngx.WARN, `hit ${rKey}, group: ${matchedGroupKey}`);
