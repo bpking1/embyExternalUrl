@@ -516,7 +516,7 @@ location ~* /videos/(.*)/(stream|original) {
 
 4.[/show dict zone stat]: 展示 ningx 内存共享缓存各字典数目,即路由缓存/直链缓存
 
-4.1 [/clear dict zone[:字典名]]: 清空路由缓存/直链缓存,不加 :字典名 同时清空多级路由缓存,只允许指定路由缓存字典名
+4.1 [/clear dict zone[=字典名]]: 清空路由缓存/直链缓存,不加 =字典名 同时清空多级路由缓存,只允许指定路由缓存字典名
 
 #### 29.软链接注意点?
 1.指定需要获取符号链接真实路径的规则,优先级在 mediaMountPath 和 routeRule 之间,
