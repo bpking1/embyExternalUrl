@@ -529,6 +529,39 @@ function getFilePathPart(url) {
 }
 
 /**
+ * Parses the URL and returns an object with various components.
+ * @param {string} url The URL string to parse.
+ * @returns {Object} An object containing protocol, username, password, host, port, pathname, search, and hash.
+ */
+function parseUrl(url) {
+  const regex = /^(?:(\w+)?:\/\/)?(?:(\w+):(\w+)@)?(?:www\.)?([^:\/\n?#]+)(?::(\d+))?(\/[^?\n]*)?(\?[^#\n]*)?(#.*)?$/i;
+  const match = url.match(regex);
+  if (match) {
+      const protocol = match[1] || 'http';
+      const username = match[2] || '';
+      const password = match[3] || '';
+      const host = match[4];
+      const port = match[5] || '';
+      const pathname = match[6] || '';
+      const search = match[7] || '';
+      const hash = match[8] || '';
+      const fullProtocol = `${protocol}:`;
+      const fullPort = port || (fullProtocol === 'https:' ? '443' : '80');
+      return {
+          protocol: fullProtocol,
+          username,
+          password,
+          host,
+          port: fullPort,
+          pathname,
+          search,
+          hash
+      };
+  }
+  return null;
+}
+
+/**
  * Crypto
  */
 const crypto = require('crypto');
@@ -617,6 +650,7 @@ export default {
   dictAdd,
   cost,
   getFilePathPart,
+  parseUrl,
   calculateHMAC,
   addAlistSign,
   checkAndGetRealpathSync,

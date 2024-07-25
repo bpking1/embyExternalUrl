@@ -24,7 +24,7 @@ async function fetchLastLink(oriLink, authType, authInfo, ua) {
     oriLink = util.addAlistSign(oriLink, config.alistToken, config.alistSignExpireTime);
   }
   try {
-      // fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
+    // fetch Api ignore nginx locations,ngx.ferch,redirects are not handled
     // const response = await util.cost(ngx.fetch, encodeURI(oriLink), {
     //   method: "HEAD",
     //   headers: {
@@ -32,10 +32,15 @@ async function fetchLastLink(oriLink, authType, authInfo, ua) {
     //   },
     //   max_response_body_size: 1024
     // });
-    const response = await ngx.fetch(encodeURI(oriLink), {
+    const url = encodeURI(oriLink);
+    const urlParts = util.parseUrl(url);
+    const hostValue = `${urlParts.host}:${urlParts.port}`;
+    ngx.log(ngx.WARN, `fetchLastLink add Host: ${hostValue}`);
+    const response = await ngx.fetch(url, {
       method: "HEAD",
       headers: {
         "User-Agent": ua,
+        Host: hostValue,
       },
       max_response_body_size: 1024
     });
