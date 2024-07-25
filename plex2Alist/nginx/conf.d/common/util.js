@@ -524,7 +524,7 @@ async function cost(func) {
  * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
  */
 function getFilePathPart(url) {
-  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/g);
+  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/);
   return matches ? matches[1] : "";
 }
 
