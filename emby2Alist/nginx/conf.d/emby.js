@@ -387,12 +387,16 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
     password: "",
   };
   try {
+    const urlParts = util.parseUrl(alistApiPath);
+    const hostValue = `${urlParts.host}:${urlParts.port}`;
+    ngx.log(ngx.WARN, `fetchAlistPathApi add Host: ${hostValue}`);
     const response = await ngx.fetch(alistApiPath, {
       method: "POST",
       headers: {
         "Content-Type": "application/json;charset=utf-8",
         Authorization: alistToken,
         "User-Agent": ua,
+        Host: hostValue,
       },
       max_response_body_size: 65535,
       body: JSON.stringify(alistRequestBody),
