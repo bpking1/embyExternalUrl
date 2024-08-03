@@ -188,8 +188,8 @@ function isProxy(r, proxyRules, filePath, isAlistRes, notLocal) {
   const mountPath = config.mediaMountPath;
   if (!isAlistRes) {
     // exact, local file not mediaMountPath first
-    if (mountPath && mountPath.every(path => path && !filePath.startsWith(path) && !notLocal)) {
-      ngx.log(ngx.WARN, `hit proxy, not mountPath first: ${JSON.stringify(mountPath)}`);
+    if (!notLocal && mountPath && mountPath.every(path => path && !filePath.startsWith(path))) {
+      ngx.log(ngx.WARN, `hit proxy, localFile not mountPath first: ${JSON.stringify(mountPath)}`);
       return true;
     }
   }
