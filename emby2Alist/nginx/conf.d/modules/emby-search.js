@@ -31,7 +31,7 @@ const DIRECTIVE_KEY_ENUM = {
   help: "help",
   nocache: "nocache",
   openDocs: "open docs",
-  showDictZoneStats: "show dict zone stats",
+  showDictZoneState: "show dict zone state",
   clearDictZone: "clear dict zone",
 }
 
