@@ -17,6 +17,9 @@ const embyHost = "http://172.17.0.1:8096";
 // emby/jellyfin api key, 在 emby/jellyfin 后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 
+// 115网盘web cookie，会覆盖从alist获取到的cookie
+const webCookie115 = ""
+
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理,不用重复填写至 disableRedirectRule
 // 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
@@ -48,6 +51,8 @@ export default {
   alistSignExpireTime: mountConfig.alistSignExpireTime,
   alistPublicAddr: mountConfig.alistPublicAddr,
   clientSelfAlistRule: mountConfig.clientSelfAlistRule,
+
+  webCookie115,
 
   routeCacheConfig: proConfig.routeCacheConfig,
   routeRule: proConfig.routeRule,

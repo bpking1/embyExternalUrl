@@ -702,6 +702,70 @@ function checkAndGetRealpathSync(path) {
   }
 }
 
+// extract audio, video and subtitles
+function parseM3U8(content) {
+  const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+  const streams = [];
+  const audios = [];
+  const subtitles = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
+      const resolutionMatch = lines[i].match(/RESOLUTION=\d+x(\d+)/);
+      const nameMatch = lines[i].match(/NAME="([^"]+)"/);
+      const url = lines[i + 1];
+
+      if (resolutionMatch && nameMatch && url) {
+        const resolution = resolutionMatch[1];
+        const name = nameMatch[1];
+        streams.push({
+          resolution,
+          url,
+          quality: name
+        });
+      }
+    } else if (lines[i].startsWith('#EXT-X-MEDIA:TYPE=AUDIO')) {
+      const nameMatch = lines[i].match(/NAME="([^"]+)"/);
+      const languageMatch = lines[i].match(/LANGUAGE="([^"]+)"/);
+      const defaultMatch = lines[i].match(/DEFAULT=(YES|NO)/);
+      const uriMatch = lines[i].match(/URI="([^"]+)"/);
+
+      if (nameMatch && languageMatch && defaultMatch && uriMatch) {
+        const name = nameMatch[1];
+        const language = languageMatch[1];
+        const isDefault = defaultMatch[1] === 'YES';
+        const url = uriMatch[1];
+        audios.push({
+          name,
+          language,
+          isDefault,
+          url
+        });
+      }
+    }
+  }
+
+  return { streams, audios, subtitles };
+}
+
+function extractQueryValue(url, key) {
+  let dKey = key + "=";
+  let startIndex = url.indexOf(dKey);
+  if (startIndex === -1) {
+    return null;
+  }
+
+  startIndex += dKey.length;
+  let endIndex = startIndex;
+
+  // 寻找 "&" 符号，或字符串结尾
+  while (endIndex < url.length && url[endIndex] !== '&') {
+    endIndex++;
+  }
+
+  return url.slice(startIndex, endIndex);
+}
+
 export default {
   ARGS,
   ROUTE_ENUM,
@@ -733,4 +797,6 @@ export default {
   calculateHMAC,
   addAlistSign,
   checkAndGetRealpathSync,
+  parseM3U8,
+  extractQueryValue,
 };
