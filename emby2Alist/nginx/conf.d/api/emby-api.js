@@ -11,27 +11,27 @@ const PlayMethodEnum = {
 };
 
 async function fetchNotificationsAdmin(Name, Description) {
-    const body = {
-      Name: Name,
-      Description: Description
-    }
-    try {
-      ngx.fetch(`${config.embyHost}/Notifications/Admin?api_key=${config.embyApiKey}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json;charset=utf-8"
-        },
-        body: JSON.stringify(body),
-      }).then(res => {
-        if (res.ok) {
-          ngx.log(ngx.WARN, `success: fetchNotificationsAdmin: ${JSON.stringify(body)}`);
-        } else {
-          ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${res.status} ${res.statusText}`);
-        }
-      });
-    } catch (error) {
-      ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${error}`);
-    }
+  const body = {
+    Name: Name,
+    Description: Description
+  }
+  try {
+    ngx.fetch(`${config.embyHost}/Notifications/Admin?api_key=${config.embyApiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8"
+      },
+      body: JSON.stringify(body),
+    }).then(res => {
+      if (res.ok) {
+        ngx.log(ngx.WARN, `success: fetchNotificationsAdmin: ${JSON.stringify(body)}`);
+      } else {
+        ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${res.status} ${res.statusText}`);
+      }
+    });
+  } catch (error) {
+    ngx.log(ngx.ERR, `error: fetchNotificationsAdmin: ${error}`);
+  }
 }
 
 async function fetchSessionsMessage(Id, Header, Text, TimeoutMs) {
@@ -124,6 +124,24 @@ async function fetchVideosActiveEncodingsDelete(host, apiKey, queryParams) {
   });
 }
 
+async function fetchBaseHtmlPlayer(host, queryParams) {
+  let url = `${host}/web/modules/htmlvideoplayer/basehtmlplayer.js`;
+  for (const key in queryParams) {
+    url = util.appendUrlArg(url, key, queryParams[key]);
+    if (key === "v") {
+      ngx.log(ngx.WARN, `warn: fetchBaseHtmlPlayer version: ${queryParams[key]}`);
+    }
+  }
+  ngx.log(ngx.WARN, `warn: fetchBaseHtmlPlayer url: ${url}`);
+  return ngx.fetch(url, {
+    method: "GET",
+    headers: {
+      "accept:": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      "Accept-Encoding": "gzip, deflate",
+    }
+  });
+}
+
 export default {
   PlayMethodEnum,
   fetchNotificationsAdmin,
@@ -132,4 +150,5 @@ export default {
   fetchPlaybackInfo,
   fetchItems,
   fetchVideosActiveEncodingsDelete,
+  fetchBaseHtmlPlayer,
 };
