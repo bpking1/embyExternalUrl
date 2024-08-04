@@ -48,9 +48,9 @@ async function redirect2Pan(r) {
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
   let embyRes = await util.cost(fetchEmbyFilePath,
-    itemInfo.itemInfoUri, 
-    itemInfo.itemId, 
-    itemInfo.Etag, 
+    itemInfo.itemInfoUri,
+    itemInfo.itemId,
+    itemInfo.Etag,
     itemInfo.mediaSourceId);
   r.log(`embyRes: ${JSON.stringify(embyRes)}`);
   if (embyRes.message.startsWith("error")) {
@@ -102,7 +102,7 @@ async function redirect2Pan(r) {
     if ((arr[1] == 0 && embyRes.notLocal)
       || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
       || (arr[1] == 2 && (!embyRes.notLocal || !isRemote))) {
-        return;
+      return;
     }
     if (mediaPathMappingRule) {
       let hitRule = util.simpleRuleFilter(
@@ -119,13 +119,13 @@ async function redirect2Pan(r) {
     mediaItemPath = mediaItemPath.replaceAll("\\", "/");
   }
   r.warn(`mapped emby file path: ${mediaItemPath}`);
-  
+
   // strm file inner remote link redirect,like: http,rtsp
   // not only strm, mediaPathMapping maybe used remote link
   isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
     let rule = util.simpleRuleFilter(
-      r, config.redirectStrmLastLinkRule, mediaItemPath, 
+      r, config.redirectStrmLastLinkRule, mediaItemPath,
       util.SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule"
     );
     if (rule && rule.length > 0) {
@@ -162,7 +162,7 @@ async function redirect2Pan(r) {
   const alistToken = config.alistToken;
   const alistAddr = config.alistAddr;
   const alistFsGetApiPath = `${alistAddr}/api/fs/get`;
-  const alistRes = await util.cost(fetchAlistPathApi, 
+  const alistRes = await util.cost(fetchAlistPathApi,
     alistFsGetApiPath,
     alistFilePath,
     alistToken,
@@ -276,9 +276,9 @@ async function transferPlaybackInfo(r) {
               && source.SupportsTranscoding && source.TranscodingUrl
               && (
                 // https://dev.emby.media/reference/pluginapi/MediaBrowser.Model.Session.TranscodeReason.html
-                source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit") 
-                ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
-                : true
+                source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit")
+                  ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
+                  : true
               )
             ) {
               r.warn(`client reported and server judgment to transcode, cover routeMode`);
@@ -309,7 +309,7 @@ async function transferPlaybackInfo(r) {
         modifyDirecPlayInfo(r, source, body.PlaySessionId);
 
         // async cachePreload
-        if (routeCacheConfig.enable && routeCacheConfig.enableL2 
+        if (routeCacheConfig.enable && routeCacheConfig.enableL2
           && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
           cachePreload(r, `${util.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
         }
@@ -330,7 +330,7 @@ async function transferPlaybackInfo(r) {
 function modifyDirecPlayInfo(r, source, playSessionId) {
   source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
   let localtionPath = source.IsInfiniteStream ? "master" : "stream";
-  const fileExt = source.IsInfiniteStream 
+  const fileExt = source.IsInfiniteStream
     && (!source.Container || source.Container === "hls")
     ? "m3u8" : source.Container;
   let streamPart = `${localtionPath}.${fileExt}`;
@@ -383,6 +383,25 @@ function modifyDirecPlaySupports(source, flag) {
     msg += ", and add useProxyKey"
   }
   ngx.log(ngx.WARN, msg);
+}
+
+async function modifyBaseHtmlPlayer(r) {
+  events.njsOnExit(`modifyBaseHtmlPlayer: ${r.uri}`);
+  try {
+    // 获取响应
+    const res = await embyApi.fetchBaseHtmlPlayer(config.embyHost, r.args);
+    // 读取响应体
+    let body = await res.text();
+    // 替换指定内容
+    body = body.replace(/mediaSource\.IsRemote\s*&&\s*"DirectPlay"\s*===\s*playMethod\s*\?\s*null\s*:\s*"anonymous"/g, 'null');
+    // 复制响应头
+    util.copyHeaders(res.headers, r.headersOut);
+    // 构造新的响应
+    r.return(res.status, body);
+  } catch (error) {
+    r.warn(`fetchBaseHtmlPlayer: ${error}, skip, ${r.uri}`);
+    return internalRedirectExpect(r);
+  }
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
@@ -512,7 +531,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
     ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: deviceId is required, skip`);
     return;
   }
-  embyApi.fetchSessions(config.embyHost, config.embyApiKey, {DeviceId:deviceId}).then(sessionResPromise => {
+  embyApi.fetchSessions(config.embyHost, config.embyApiKey, { DeviceId: deviceId }).then(sessionResPromise => {
     if (sessionResPromise.status !== 200) {
       ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice sessionRes.status: ${sessionResPromise.status}`);
       return;
@@ -580,14 +599,14 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
       // cachePreload added args in url
       const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;
       let flag = !ngx.shared["routeL2Dict"].has(cacheKey);
-        // && !ngx.shared["routeL3Dict"].has(cacheKey);
+      // && !ngx.shared["routeL3Dict"].has(cacheKey);
       let routeDictKey = "routeL1Dict";
       if (util.CHCHE_LEVEL_ENUM.L2 === cacheLevle) {
         routeDictKey = "routeL2Dict";
         flag = !ngx.shared["routeL1Dict"].has(cacheKey);
-      // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
-      //   routeDictKey = "routeL3Dict";
-      //   flag = !ngx.shared["routeL1Dict"].has(cacheKey) && !ngx.shared["routeL2Dict"].has(cacheKey);
+        // } else if (util.CHCHE_LEVEL_ENUM.L3 === cacheLevle) {
+        //   routeDictKey = "routeL3Dict";
+        //   flag = !ngx.shared["routeL1Dict"].has(cacheKey) && !ngx.shared["routeL2Dict"].has(cacheKey);
       }
       if (flag) {
         util.dictAdd(routeDictKey, cacheKey, url);
@@ -601,9 +620,9 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
     if (config.embyNotificationsAdmin.enable && !idemVal) {
       embyApi.fetchNotificationsAdmin(
         config.embyNotificationsAdmin.name,
-        config.embyNotificationsAdmin.includeUrl ? 
-        `${cachedMsg}original link: ${r.uri}\nredirect to: ${url}` :
-        `${cachedMsg}redirect: success`
+        config.embyNotificationsAdmin.includeUrl ?
+          `${cachedMsg}original link: ${r.uri}\nredirect to: ${url}` :
+          `${cachedMsg}redirect: success`
       );
       util.dictAdd("idemDict", deviceId, "1");
     }
@@ -638,9 +657,9 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
     if (config.embyNotificationsAdmin.enable && !idemVal) {
       embyApi.fetchNotificationsAdmin(
         config.embyNotificationsAdmin.name,
-        config.embyNotificationsAdmin.includeUrl ? 
-        msgPrefix + r.uri :
-        `${msgPrefix}success`
+        config.embyNotificationsAdmin.includeUrl ?
+          msgPrefix + r.uri :
+          `${msgPrefix}success`
       );
       util.dictAdd("idemDict", deviceId, "1");
     }
@@ -696,6 +715,7 @@ export default {
   redirect2Pan,
   fetchEmbyFilePath,
   transferPlaybackInfo,
+  modifyBaseHtmlPlayer,
   redirect,
   internalRedirect,
   internalRedirectExpect,
