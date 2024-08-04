@@ -56,8 +56,8 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 更正,感谢 @lixuemin13 [#236](https://github.com/bpking1/embyExternalUrl/issues/236) 
 提供的新思路,干预 htmlvideoplayer 的 <video> 标签可以实现
 
-一.新版 conf 中已经默认反代替换实现了,首次需要 二.3 中类似的清空下缓存再试 
-https://github.com/chen3861229/embyExternalUrl/issues/64
+一.新版 conf 中已经默认反代替换实现了,首次需要 二.3 中类似的清空下缓存再试,
+感谢 @Akimio521 [#64](https://github.com/chen3861229/embyExternalUrl/issues/64) 
 
 二.以下服务端持久化修改
 
