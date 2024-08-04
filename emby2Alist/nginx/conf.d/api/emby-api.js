@@ -133,13 +133,14 @@ async function fetchBaseHtmlPlayer(host, queryParams) {
     }
   }
   ngx.log(ngx.WARN, `warn: fetchBaseHtmlPlayer url: ${url}`);
-  return ngx.fetch(url, {
-    method: "GET",
-    headers: {
-      "accept:": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-      "Accept-Encoding": "gzip, deflate",
-    }
-  });
+  return ngx.fetch(url);
+  // return ngx.fetch(url, {
+  //   method: "GET",
+  //   headers: {
+  //     "Accept:": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  //     "Accept-Encoding": "gzip, deflate",
+  //   }
+  // });
 }
 
 export default {

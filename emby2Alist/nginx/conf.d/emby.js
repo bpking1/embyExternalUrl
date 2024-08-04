@@ -327,30 +327,6 @@ async function transferPlaybackInfo(r) {
   return internalRedirect(r);
 }
 
-async function modifyBaseHtmlPlayer(r) {
-  events.njsOnExit(`modifyBaseHtmlPlayer: ${r.uri}`);
-  try {
-    // 获取响应
-    const res = await embyApi.fetchBaseHtmlPlayer(server.host, new URLSearchParams(r.uri.split('?')[1]));
-
-    // 读取响应体
-    let body = await res.text();
-
-    // 替换指定内容
-    body = body.replace(/mediaSource\.IsRemote\s*&&\s*"DirectPlay"\s*===\s*playMethod\s*\?\s*null\s*:\s*"anonymous"/g, 'null');
-
-    // 构造新的响应
-    r.return(res.status, body, (r) => {
-      // 复制响应头
-      util.copyHeaders(res.headers, r.headersOut);
-    });
-  } catch (error) {
-    r.warn(`fetchBaseHtmlPlayer: ${error}, skip, ${uri}`);
-    return emby.internalRedirectExpect(r);
-  }
-
-}
-
 function modifyDirecPlayInfo(r, source, playSessionId) {
   source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
   let localtionPath = source.IsInfiniteStream ? "master" : "stream";
@@ -407,6 +383,25 @@ function modifyDirecPlaySupports(source, flag) {
     msg += ", and add useProxyKey"
   }
   ngx.log(ngx.WARN, msg);
+}
+
+async function modifyBaseHtmlPlayer(r) {
+  events.njsOnExit(`modifyBaseHtmlPlayer: ${r.uri}`);
+  try {
+    // 获取响应
+    const res = await embyApi.fetchBaseHtmlPlayer(config.embyHost, r.args);
+    // 读取响应体
+    let body = await res.text();
+    // 替换指定内容
+    body = body.replace(/mediaSource\.IsRemote\s*&&\s*"DirectPlay"\s*===\s*playMethod\s*\?\s*null\s*:\s*"anonymous"/g, 'null');
+    // 复制响应头
+    util.copyHeaders(res.headers, r.headersOut);
+    // 构造新的响应
+    r.return(res.status, body);
+  } catch (error) {
+    r.warn(`fetchBaseHtmlPlayer: ${error}, skip, ${r.uri}`);
+    return internalRedirectExpect(r);
+  }
 }
 
 async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
