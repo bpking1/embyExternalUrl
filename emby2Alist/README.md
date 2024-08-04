@@ -5,6 +5,12 @@ date: 2021/09/06 22:00:00
 
 ### 文章更新记录 
 
+#### 2024-08-04
+
+1.为 mediaPathMapping 添加生效分组规则,需要注意假如规则中有 UserId 或 X-Emby-Device-Id 之类缩小了范围的,
+此时 routeCacheConfig.keyExpression 路由缓存表达式也需酌情缩小范围,区别为直链缓存范围大命中率高,默认仅按媒体版本区分,
+不缩小范围会导致头一个设备访问添加了直链缓存后,后续该相同版本的媒体将跳过 mediaPathMapping 处理直接返回缓存的直链
+
 #### 2024-07-25
 
 1.修复 ngx.fetch API 没传递 Host 头导致的端口丢失
