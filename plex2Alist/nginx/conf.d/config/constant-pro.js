@@ -2,6 +2,7 @@ import commonConfig from "./constant-common.js";
 import mountConfig from "./constant-mount.js";
 
 const strHead = commonConfig.strHead;
+const ruleRef = commonConfig.ruleRef;
 const alistPublicAddr = mountConfig.alistPublicAddr;
 
 // 选填项,高级配置,用不到保持默认即可
@@ -52,6 +53,7 @@ const routeRule = [
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
@@ -63,6 +65,7 @@ const mediaPathMapping = [
   // [0, 0, /blue/g, "red"], // 此处正则不要加引号
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
+  // [ruleRef.mediaPathMappingGroup01, 0, 0, "/aliyun-01", "/aliyun-02"],
 ];
 
 export default {

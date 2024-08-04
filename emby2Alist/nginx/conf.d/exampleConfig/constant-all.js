@@ -33,6 +33,7 @@ const alistSignExpireTime = 12;
 
 // alist 公网地址,用于需要 alist server 代理流量的情况,按需填写
 const alistPublicAddr = "http://youralist.com:5244";
+
 // 字符串头,用于特殊匹配判断
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
@@ -42,6 +43,29 @@ const strHead = {
   },
   "115": "115.com",
   ali: "aliyundrive.net",
+  userIds: {
+    mediaPathMappingGroup01: ["ac0d220d548f43bbb73cf9b44b2ddf0e"],
+    allowInteractiveSearch: [],
+  },
+  filePaths: {
+    mediaMountPath: [],
+    redirectStrmLastLinkRule: [],
+    mediaPathMappingGroup01: [],
+  },
+};
+// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配)
+// 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": 本地文件为路径,strm 为远程链接
+// ,有分组时不可省略填写,可为表达式
+// 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+// ,分组时建议写 "startsWith" 这样的字符串,方便日志中排错
+// 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
+const ruleRef = {
+  // 这个 key 值仅仅只是代码中引用的可读性标识,需见名知意,可自定义
+  // mediaPathMappingGroup01: [
+  //   ["useGroup01", "filePath", "startsWith", strHead.filePaths.mediaPathMappingGroup01], // 目标地址
+  //   ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  //   ["useGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
+  // ],
 };
 
 // 路由缓存配置
@@ -100,6 +124,7 @@ const routeRule = [
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
 // 参数2: 0: 默认只处理/开头的路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
 // 参数3: 来源, 参数4: 目标
@@ -111,6 +136,7 @@ const mediaPathMapping = [
   // [0, 0, /blue/g, "red"], // 此处正则不要加引号
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
+  // [ruleRef.mediaPathMappingGroup01, 0, 0, "/aliyun-01", "/aliyun-02"],
 ];
 
 // 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证

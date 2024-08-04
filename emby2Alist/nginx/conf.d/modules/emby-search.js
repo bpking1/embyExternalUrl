@@ -55,7 +55,7 @@ async function searchHandle(r) {
     r.return(200, handleWithTimeout(r, searchTerm, DIRECTIVE_KEY_ENUM.nocache));
   } else if (searchTerm.startsWith(DIRECTIVE_SPLIT_ENUM.directive + DIRECTIVE_KEY_ENUM.openDocs)) {
     r.return(200, handleWithTimeout(r, searchTerm, DIRECTIVE_KEY_ENUM.openDocs));
-  } else if (searchTerm.startsWith(DIRECTIVE_SPLIT_ENUM.directive + DIRECTIVE_KEY_ENUM.showDictZoneStats)) {
+  } else if (searchTerm.startsWith(DIRECTIVE_SPLIT_ENUM.directive + DIRECTIVE_KEY_ENUM.showDictZoneState)) {
     r.return(200, handleShowDictZoneStat(r, searchTerm));
   } else if (searchTerm.startsWith(DIRECTIVE_SPLIT_ENUM.directive + DIRECTIVE_KEY_ENUM.clearDictZone)) {
     r.return(200, handleClearDictZone(r, searchTerm));

@@ -93,18 +93,23 @@ async function redirect2Pan(r) {
   let isRemote = !util.isAbsolutePath(embyRes.path);
   // file path mapping
   let mediaPathMapping = config.mediaPathMapping;
-  config.mediaMountPath.map(s => {
-    if (!!s) {
-      mediaPathMapping.unshift([0, 0 , s, ""]);
-    }
-  });
+  config.mediaMountPath.map(s => s && mediaPathMapping.unshift([0, 0, s, ""]));
   r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
   let mediaItemPath = embyRes.path;
+  let mediaPathMappingRule;
   mediaPathMapping.map(arr => {
+    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
     if ((arr[1] == 0 && embyRes.notLocal)
       || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
       || (arr[1] == 2 && (!embyRes.notLocal || !isRemote))) {
         return;
+    }
+    if (mediaPathMappingRule) {
+      let hitRule = util.simpleRuleFilter(
+        r, mediaPathMappingRule, mediaItemPath, 
+        util.SOURCE_STR_ENUM.filePath, "mediaPathMappingRule"
+      );
+      if (!(hitRule && hitRule.length > 0)) { return; }
     }
     mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
   });
@@ -125,7 +130,6 @@ async function redirect2Pan(r) {
     );
     if (rule && rule.length > 0) {
       if (!Number.isInteger(rule[0])) {
-        // convert groupRule remove groupKey and sourceValue
         r.warn(`convert groupRule remove groupKey and sourceValue`);
         rule = rule.slice(2);
       }
