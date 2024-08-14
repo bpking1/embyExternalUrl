@@ -631,6 +631,19 @@ conf 配置文件中默认写的 15 分钟,关键字 routeL1Dict 有三层缓存
 所以需要换为路由器等稳定设备的局域网 ip, 例如小米路由器是 192.168.31.1 网段, NAS 分配的是 192.168.31.200,
 所以 const embyHost = "http://192.168.31.200:8096"; 会更加稳定
 
+#### 33.匹配表达式?
+1.注释中的匹配表达式非 r 开头的均为特殊来源,例如"filePath": 文件路径(Item.Path), "alistRes": alist返回的链接
+
+2.1 匹配表达式取值来源均位于 {Object} r nginx objects, HTTP Request, 具体可参考 nginx docs 的 NJS 章节
+
+2.2 新增的 r.xMediaSource 为自定义拓展对象,代表 emby 的 MediaSource 单个对象,注意不是数组,
+具体取值可查看 PlaybackInfo 接口的返回值,注意此变量对于路由规则仅支持判断 PlaybackInfo,
+假如非官方客户端不遵守 PlaybackInfo 返回结果,直接访问串流接口,此条路由规则将失效
+
+3.匹配符原始为一个简单的数字类型索引,仅支持字符串匹配,后续因新增了数值比较,匹配符变为了字符串类型,
+为方便排查日志,历史配置的匹配符也建议改为字符串类型,支持的匹配符见: util.js => MATCHER_ENUM,
+"startsWith:not": 为结果取反逻辑
+
 # embyAddExternalUrl
 
 #### 1.支持 plex 吗?

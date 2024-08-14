@@ -263,6 +263,7 @@ async function transferPlaybackInfo(r) {
         // routeRule
         source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
         if (transcodeConfig.enable) {
+          r["xMediaSource"] = source;
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
           source.XRouteMode = routeMode; // for debug
@@ -298,7 +299,7 @@ async function transferPlaybackInfo(r) {
         } else {
           source.SupportsTranscoding = false;
           if (!transcodeConfig.redirectTransOptEnable) {
-            r.warn(`transcodeConfig.enable && redirectTransOptEnable all false, remove origin transcode var`);
+            r.warn(`transcodeConfig.enable && redirectTransOptEnable all false, remove origin transcode vars`);
             delete source.TranscodingUrl;
             delete source.TranscodingSubProtocol;
             delete source.TranscodingContainer;
@@ -345,7 +346,7 @@ function modifyDirecPlayInfo(r, source, playSessionId) {
     r,
     util
       .generateUrl(r, "", r.uri, ["StartTimeTicks"])
-      // official clients hava /emby virtual path, like fileball not hava, both worked
+      // official clients hava /emby web context path, like fileball not hava, both worked
       .replace(/^.*\/items/i, "/videos")
       .replace("PlaybackInfo", streamPart)
   );
