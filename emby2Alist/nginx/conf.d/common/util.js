@@ -29,11 +29,18 @@ const SOURCE_STR_ENUM = {
 };
 
 const MATCHER_ENUM = {
-  startsWith: "startsWith",
-  endsWith: "endsWith",
-  includes: "includes",
-  match: "match",
-  not: "not",
+  startsWith: { id: "startsWith", fn: (s, t) => s.startsWith(t) },
+  endsWith: { id: "endsWith", fn: (s, t) => s.endsWith(t) },
+  includes: { id: "includes", fn: (s, t) => s.includes(t) },
+  match: { id: "match", fn: (s, t) => !!s.match(t) },
+  // before is old@declare index not modify
+  ">": { id: ">", name: "greaterThan", fn: (s, t) => s > t },
+  "<": { id: "<", name: "lessThan", fn: (s, t) => s < t },
+  "==": { id: "==", name: "equal", fn: (s, t) => s == t },
+  "!=": { id: "!=", name: "notEqual", fn: (s, t) => s != t },
+  ">=": { id: ">=", name: "greaterThanOrEqual", fn: (s, t) => s >= t },
+  "<=": { id: "<=", name: "lessThanOrEqual", fn: (s, t) => s <= t },
+  not: { id: "not", fn: (flag) => !flag }, // special
 };
 
 function proxyUri(uri) {
@@ -274,8 +281,8 @@ function getMatchedRule(r, ruleArr3D, filePath) {
  * @param {Object} rootObj like r
  * @param {String} expression like "r.args.MediaSourceId", notice skipped "r."
  * @param {String} propertySplit like "."
- * @param {String} groupSplit like ":"
- * @returns parsed string
+ * @param {String} groupSplit like ":", group will return string type
+ * @returns parsed value or string
  */
 function parseExpression(rootObj, expression, propertySplit, groupSplit) {
   if (arguments.length < 4) {
@@ -286,8 +293,8 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
       propertySplit = ".";
       groupSplit = ":";
     } else {
-      groupSplit = propertySplit;
       propertySplit = ".";
+      groupSplit = propertySplit;
     }
   }
 
@@ -326,7 +333,8 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
     values.push(val);
   });
 
-  return values.filter(item => item).join(groupSplit);
+  values = values.filter(item => item);
+  return expGroups.length > 1 ? values.join(groupSplit) : values[0];
 }
 
 function strMapping(type, sourceValue, searchValue, replaceValue) {
@@ -349,48 +357,42 @@ function strMapping(type, sourceValue, searchValue, replaceValue) {
 
 /**
  * strMatches
- * @param {Number|String} type 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
- * @param {String} searchValue
- * @param {String|RegExp} matcher
+ * @param {Number|String} type MATCHER_ENUM
+ * @param {String|Number|Boolean} source
+ * @param {String|RegExp|Number|Boolean} target
  * @returns boolean
  */
-function strMatches(type, searchValue, matcher) {
+function strMatches(type, source, target) {
   let flag = false;
-  // old
+  // old, @declare, 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
   if (Number.isInteger(type)) {
-    if (type === 0) {
-      flag =  searchValue.startsWith(matcher);
-    } else if (type === 1) {
-      flag =  searchValue.endsWith(matcher);
-    } else if (type === 2) {
-      flag =  searchValue.includes(matcher);
-    } else if (type === 3) {
-      flag =  !!searchValue.match(matcher);
+    const typeStr = MATCHER_ENUM[Object.keys(MATCHER_ENUM)[type]].id;
+    if (typeStr) {
+      const matcherFunction = MATCHER_ENUM[typeStr].fn;
+      flag = matcherFunction(source, target);
+    } else {
+      throw new Error("Unknown type: " + type);
     }
-    return flag;
-  }
-  // new
-  if (typeof type == "string") {
+  } else if (typeof type == "string") {
+    // new, type is string, support negate matcher
     const parts = type.split(":");
     const typeStr = parts[0];
     const negateStr = parts[1];
 
-    if (typeStr == MATCHER_ENUM.startsWith) {
-      flag = searchValue.startsWith(matcher);
-    } else if (typeStr == MATCHER_ENUM.endsWith) {
-      flag = searchValue.endsWith(matcher);
-    } else if (typeStr == MATCHER_ENUM.includes) {
-      flag = searchValue.includes(matcher);
-    } else if (typeStr == MATCHER_ENUM.match) {
-      flag = !!searchValue.match(matcher);
+    const matcherFunction = MATCHER_ENUM[typeStr].fn;
+    if (matcherFunction) {
+      flag = matcherFunction(source, target);
+      if (negateStr === MATCHER_ENUM.not.id) {
+        flag = MATCHER_ENUM.not.fn(flag);
+      }
     } else {
       throw new Error("Unknown type: " + typeStr);
     }
-
-    return negateStr == MATCHER_ENUM.not ? !flag : flag;
+  } else {
+    throw new Error("Invalid type: " + type);
   }
-
-  throw new Error("Invalid type provided");
+  ngx.log(ngx.WARN, `strMatches result: ${flag}, type: ${type}, ${typeof source} source: ${source}, ${typeof target} target: ${target}`);
+  return flag;
 }
 
 function checkIsStrmByPath(filePath) {

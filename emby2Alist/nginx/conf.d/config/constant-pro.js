@@ -51,6 +51,8 @@ const routeRule = [
   // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
+  // 此条规则代表大于等于 3Mbps 码率的走转码,xMediaSource 为固定值,平方使用双星号表示,无意义减加仅为示例
+  // ["transcode", "r.xMediaSource.Bitrate", ">=", 3 * 1024 ** 2 -(1 * 1024 ** 2) + (1 * 1024 ** 2)],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
