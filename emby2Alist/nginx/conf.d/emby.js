@@ -390,7 +390,7 @@ async function modifyBaseHtmlPlayer(r) {
   events.njsOnExit(`modifyBaseHtmlPlayer: ${r.uri}`);
   try {
     // 获取响应
-    const res = await embyApi.fetchBaseHtmlPlayer(config.embyHost, r.args);
+    const res = await util.cost(embyApi.fetchBaseHtmlPlayer, config.embyHost, r.args);
     // 读取响应体
     let body = await res.text();
     // 替换指定内容
