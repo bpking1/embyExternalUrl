@@ -62,10 +62,15 @@ const strHead = {
 const ruleRef = {
   // 这个 key 值仅仅只是代码中引用的可读性标识,需见名知意,可自定义
   // mediaPathMappingGroup01: [
-  //   ["useGroup01", "filePath", "startsWith", strHead.filePaths.mediaPathMappingGroup01], // 目标地址
-  //   ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
-  //   ["useGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
+  //   ["mediaPathMappingGroup01", "filePath", "startsWith", strHead.filePaths.mediaPathMappingGroup01], // 目标地址
+  //   ["mediaPathMappingGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  //   ["mediaPathMappingGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
   // ],
+  // directHlsEnable: [
+  //   // 此条规则代表大于等于 4Mbps 码率时生效,xMediaSource 为固定值,平方使用双星号表示
+  //   ["directHlsEnable", "r.xMediaSource.Bitrate", ">=", 4 * 1024 ** 2],
+  //   ["directHlsEnable", "r.args.UserId", "==", "ac0d220d548f43bbb73cf9b44b2ddf0e"],
+  // ]
 };
 
 // 路由缓存配置
@@ -266,6 +271,17 @@ const searchConfig = {
   ],
 };
 
+// 115网盘 web cookie, 会覆盖从 alist 获取到的 cookie
+const webCookie115 = "";
+// 网盘转码直链配置,当前仅支持 115(必填 webCookie115) 和 emby 挂载媒体环境
+const directHlsConfig = {
+  enable: false,
+  // 仅在首次占位未获取清晰度时,默认播放最小,开启后默认播放最大,版本缓存有效期内客户端自行选择
+  defaultPlayMax: false,
+  // 启用规则,仅在 enable = true 时生效
+  enableRule: ruleRef.directHlsEnable ?? [],
+};
+
 // nginx 配置 Start
 
 const nginxConfig = {
@@ -319,6 +335,8 @@ export default {
   itemHiddenRule,
   streamConfig,
   searchConfig,
+  webCookie115,
+  directHlsConfig,
   getEmbyHost,
   getTranscodeEnable,
   getTranscodeType,

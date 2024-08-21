@@ -21,7 +21,7 @@ async function transcodeBalance(r) {
   }
   events.njsOnExit(`transcodeBalance: ${r.uri}`);
 
-  // const routeInternalDictKey = `${r.args.MediaSourceId}:${util.getDeviceId(r.args)}`;
+  // const routeInternalDictKey = `${r.args.MediaSourceId}:${urlUtil.getDeviceId(r.args)}`;
 
   // getCurrentItemInfo
   const currentItem = await getCurrentItemInfo(r);
@@ -114,7 +114,7 @@ async function getTransServer(r) {
     r.warn(`fetchSessions res.status: ${transSessions.status}`);
     transSessions = await transSessions.json();
     r.log(`fetchSessions res: ${JSON.stringify(transSessions)}`);
-    transSessions = transSessions.filter(s => embyApi.PlayMethodEnum.Transcode == s.PlayState.PlayMethod);
+    transSessions = transSessions.filter(s => embyApi.PLAY_METHOD_ENUM.Transcode == s.PlayState.PlayMethod);
     serverTmp.transcodeNum = transSessions.length;
     if (transSessions.length > maxNum) {
       r.warn(`hit maxNum, skip this server: ${serverTmp.host}`);
@@ -373,7 +373,7 @@ async function syncPlayState(r) {
   }
   reqBody["ItemId"] = cacheObj.TargetItemId;
   reqBody["MediaSourceId"] = cacheObj.TargetItemSourceId;
-  reqBody["PlayMethod"] = embyApi.PlayMethodEnum.Transcode;
+  reqBody["PlayMethod"] = embyApi.PLAY_METHOD_ENUM.Transcode;
   let rArgs = r.args;
   if (server.type == "jellyfin") {
     delete rArgs["X-Emby-Token"];

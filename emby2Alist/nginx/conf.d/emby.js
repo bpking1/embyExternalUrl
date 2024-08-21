@@ -5,9 +5,11 @@
 
 import config from "./constant.js";
 import util from "./common/util.js";
+import urlUtil from "./common/url-util.js";
 import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 import ngxExt from "./modules/ngx-ext.js";
+import embyVMedia from "./modules/emby-v-media.js";
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
@@ -20,7 +22,7 @@ async function redirect2Pan(r) {
   if (routeCacheConfig.enable) {
     // webClient download only have itemId on pathParam
     let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
-    r.log(`redirect2Pan cacheKey: ${cacheKey}`);
+    r.log(`redirect2Pan routeCacheKey: ${cacheKey}`);
     let routeDictKey;
     let cachedLink;
     for (let index = 1; index < 3; index++) {
@@ -90,39 +92,13 @@ async function redirect2Pan(r) {
     return r.return(403, "blocked");
   }
 
-  let isRemote = !util.isAbsolutePath(embyRes.path);
   // file path mapping
-  let mediaPathMapping = config.mediaPathMapping;
-  config.mediaMountPath.map(s => s && mediaPathMapping.unshift([0, 0, s, ""]));
-  r.warn(`mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
-  let mediaItemPath = embyRes.path;
-  let mediaPathMappingRule;
-  mediaPathMapping.map(arr => {
-    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
-    if ((arr[1] == 0 && embyRes.notLocal)
-      || (arr[1] == 1 && (!embyRes.notLocal || isRemote))
-      || (arr[1] == 2 && (!embyRes.notLocal || !isRemote))) {
-      return;
-    }
-    if (mediaPathMappingRule) {
-      let hitRule = util.simpleRuleFilter(
-        r, mediaPathMappingRule, mediaItemPath, 
-        util.SOURCE_STR_ENUM.filePath, "mediaPathMappingRule"
-      );
-      if (!(hitRule && hitRule.length > 0)) { return; }
-    }
-    mediaItemPath = util.strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
-  });
-  // windows filePath to URL path, warn: markdown log text show \\ to \
-  if (mediaItemPath.startsWith("\\")) {
-    r.warn(`windows filePath to URL path \\ => /`);
-    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
-  }
-  r.warn(`mapped emby file path: ${mediaItemPath}`);
+  let mediaItemPath = util.doMediaPathMapping(embyRes.path, embyRes.notLocal);
+  ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
   // not only strm, mediaPathMapping maybe used remote link
-  isRemote = !util.isAbsolutePath(mediaItemPath);
+  const isRemote = !util.isAbsolutePath(mediaItemPath);
   if (isRemote) {
     let rule = util.simpleRuleFilter(
       r, config.redirectStrmLastLinkRule, mediaItemPath,
@@ -145,7 +121,7 @@ async function redirect2Pan(r) {
       }
     }
     // need careful encode filePathPart, other don't encode
-    const filePathPart = util.getFilePathPart(mediaItemPath);
+    const filePathPart = urlUtil.getFilePathPart(mediaItemPath);
     if (filePathPart) {
       r.warn(`is CloudDrive/AList link, encodeURIComponent filePathPart before: ${mediaItemPath}`);
       mediaItemPath = mediaItemPath.replace(filePathPart, encodeURIComponent(filePathPart));
@@ -228,17 +204,43 @@ async function redirect2Pan(r) {
 async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
+  // const ua = r.headersIn["User-Agent"];
+  // ngx.log(ngx.INFO, `transferPlaybackInfo, UA: ${ua}`);
+
+  const isPlayback = r.args.IsPlayback === "true";
+  // virtualMediaSources
+  if (isPlayback) {
+    // PlaybackInfo UA and Real Playback UA is not same, do't use UA filter
+    const vMediaSource = embyVMedia.getVMediaSourceChcheById(r.args.MediaSourceId);
+    if (vMediaSource) {
+      r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+      // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
+      return r.return(200, JSON.stringify({ MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId }));
+    }
+  }
+  // if (isPlayback) {
+  //   try {
+  //     const vMediaSource = await util.cost(embyVMedia.fetchHlsByPlh, r);
+  //     if (vMediaSource) {
+  //       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+  //       // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
+  //       return r.return(200, JSON.stringify({ MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId }));
+  //     }
+  //   } catch (error) {
+  //     ngx.log(ngx.ERR, `fetchHlsByPlh: ${error}`);
+  //   }
+  // }
+
   let start = Date.now();
   // replay the request
-  const proxyUri = util.proxyUri(r.uri);
+  const proxyUri = urlUtil.proxyUri(r.uri);
   r.warn(`playbackinfo proxy uri: ${proxyUri}`);
-  const query = util.generateUrl(r, "", "").substring(1);
+  const query = urlUtil.generateUrl(r, "", "").substring(1);
   r.warn(`playbackinfo proxy query string: ${query}`);
   const response = await r.subrequest(proxyUri, {
     method: r.method,
     args: query
   });
-  const isPlayback = r.args.IsPlayback === "true";
   if (response.status === 200) {
     const body = JSON.parse(response.responseText);
     if (body.MediaSources && body.MediaSources.length > 0) {
@@ -247,6 +249,7 @@ async function transferPlaybackInfo(r) {
       r.warn(`origin playbackinfo: ${response.responseText}`);
       const transcodeConfig = config.transcodeConfig; // routeRule
       const routeCacheConfig = config.routeCacheConfig;
+      let extMediaSources = []; // virtualMediaSources
       for (let i = 0; i < body.MediaSources.length; i++) {
         const source = body.MediaSources[i];
         // if (source.IsRemote) {
@@ -254,16 +257,34 @@ async function transferPlaybackInfo(r) {
         //   // return r.return(200, response.responseText);
         // }
         // 防止客户端转码（转容器）
-        modifyDirecPlaySupports(source, true);
+        modifyDirectPlaySupports(source, true);
 
-        const isStrm = (!source.IsRemote && source.MediaStreams.length == 0) // strm inner local path
-          || (source.IsRemote && !source.IsInfiniteStream) // strm after first playback
-          || source.Container == "strm"; // strm before first playback
+        r["xMediaSource"] = source;
+        const isStrm = util.checkIsStrmByMediaSource(source);
         const notLocal = source.IsRemote || isStrm;
+        // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
+        const directHlsConfig = config.directHlsConfig;
+        if (directHlsConfig.enable && !isPlayback) {
+          const mediaItemPath = util.doMediaPathMapping(source.Path, notLocal);
+          ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
+          let realEnable = true;
+          if (directHlsConfig.enableRule && directHlsConfig.enableRule.length > 0) {
+            const rule = util.simpleRuleFilter(r, directHlsConfig.enableRule, mediaItemPath, null, "directHlsEnableRule");
+            realEnable = rule && rule.length > 0;
+          }
+          if (realEnable) {
+            const sourceCopy = Object.assign({}, source);
+            sourceCopy.Path = mediaItemPath;
+            try {
+              extMediaSources = await util.cost(embyVMedia.fetchHlsWithCache, r, sourceCopy, body.PlaySessionId);
+            } catch (error) {
+              ngx.log(ngx.ERR, `fetchHlsWithCache: ${error}`);
+            }
+          }
+        }
         // routeRule
         source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
         if (transcodeConfig.enable) {
-          r["xMediaSource"] = source;
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
           source.XRouteMode = routeMode; // for debug
@@ -284,13 +305,13 @@ async function transferPlaybackInfo(r) {
             ) {
               r.warn(`client reported and server judgment to transcode, cover routeMode`);
               source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
-              modifyDirecPlaySupports(source, false);
+              modifyDirectPlaySupports(source, false);
               continue;
             }
           } else if (util.ROUTE_ENUM.transcode == routeMode) {
             r.warn(`routeMode modify playback supports`);
             // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
-            modifyDirecPlaySupports(source, false);
+            modifyDirectPlaySupports(source, false);
             continue;
           } else if (util.ROUTE_ENUM.block == routeMode) {
             return r.return(403, "blocked");
@@ -307,15 +328,16 @@ async function transferPlaybackInfo(r) {
         }
 
         r.warn(`modify direct play info`);
-        modifyDirecPlayInfo(r, source, body.PlaySessionId);
+        modifyDirecPlayInfo(r, source);
 
         // async cachePreload
         if (routeCacheConfig.enable && routeCacheConfig.enableL2
           && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
-          cachePreload(r, `${util.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
+          cachePreload(r, `${urlUtil.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
         }
       }
 
+      body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
       util.copyHeaders(response.headersOut, r.headersOut);
       const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
@@ -328,54 +350,32 @@ async function transferPlaybackInfo(r) {
   return internalRedirect(r);
 }
 
-function modifyDirecPlayInfo(r, source, playSessionId) {
+function modifyDirecPlayInfo(r, source) {
   source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
   let localtionPath = source.IsInfiniteStream ? "master" : "stream";
   const fileExt = source.IsInfiniteStream
     && (!source.Container || source.Container === "hls")
     ? "m3u8" : source.Container;
-  let streamPart = `${localtionPath}.${fileExt}`;
+  let resourceKey = `${localtionPath}.${fileExt}`;
   // only not live check use real filename
   if (!source.IsInfiniteStream && config.streamConfig.useRealFileName) {
     // origin link: /emby/videos/401929/stream.xxx?xxx
     // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
     // this is not important, hit "/emby/videos/401929/" path level still worked
-    streamPart = `${localtionPath}/${util.getFileNameByPath(source.Path)}`;
+    resourceKey = `${localtionPath}/${util.getFileNameByPath(source.Path)}`;
   }
-  source.DirectStreamUrl = util.addDefaultApiKey(
-    r,
-    util
-      .generateUrl(r, "", r.uri, ["StartTimeTicks"])
-      // official clients hava /emby web context path, like fileball not hava, both worked
-      .replace(/^.*\/items/i, "/videos")
-      .replace("PlaybackInfo", streamPart)
-  );
-  source.DirectStreamUrl = util.appendUrlArg(
-    source.DirectStreamUrl,
-    "MediaSourceId",
-    source.Id
-  );
-  source.DirectStreamUrl = util.appendUrlArg(
-    source.DirectStreamUrl,
-    "PlaySessionId",
-    playSessionId
-  );
-  source.DirectStreamUrl = util.appendUrlArg(
-    source.DirectStreamUrl,
-    "Static",
-    "true"
-  );
+  source.DirectStreamUrl = urlUtil.generateDirectStreamUrl(r, source.Id, resourceKey);
   // a few players not support special character
   source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
   source.XModifyDirectStreamUrlSuccess = true; // for debug
 }
 
-function modifyDirecPlaySupports(source, flag) {
+function modifyDirectPlaySupports(source, flag) {
   source.SupportsDirectPlay = flag;
   source.SupportsDirectStream = flag;
   let msg = `modify direct play supports all ${flag}`;
   if (!flag && source.TranscodingUrl) {
-    source.TranscodingUrl = util.appendUrlArg(
+    source.TranscodingUrl = urlUtil.appendUrlArg(
       source.TranscodingUrl,
       util.ARGS.useProxyKey,
       "1"
@@ -390,7 +390,7 @@ async function modifyBaseHtmlPlayer(r) {
   events.njsOnExit(`modifyBaseHtmlPlayer: ${r.uri}`);
   try {
     // 获取响应
-    const res = await embyApi.fetchBaseHtmlPlayer(config.embyHost, r.args);
+    const res = await util.cost(embyApi.fetchBaseHtmlPlayer, config.embyHost, r.args);
     // 读取响应体
     let body = await res.text();
     // 替换指定内容
@@ -411,7 +411,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
     password: "",
   };
   try {
-    const urlParts = util.parseUrl(alistApiPath);
+    const urlParts = urlUtil.parseUrl(alistApiPath);
     const hostValue = `${urlParts.host}:${urlParts.port}`;
     ngx.log(ngx.WARN, `fetchAlistPathApi add Host: ${hostValue}`);
     const response = await ngx.fetch(alistApiPath, {
@@ -437,7 +437,7 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
         }
         // alist /api/fs/link
         if (result.data.header.Cookie) {
-            return result.data
+          return result.data;
         }
         // alist /api/fs/list
         return result.data.content.map((item) => item.name).join(",");
@@ -451,85 +451,6 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
     }
   } catch (error) {
     return `error: alist_path_api fetchAlistFiled ${error}`;
-  }
-}
-
-async function fetch115Transcode(alistFilePath, alistToken, ua, r) {
-  try {
-    let customCookie = ''
-    const alistAddr = config.alistAddr;
-    const alistLinkApi = `${alistAddr}/api/fs/link`;
-    const alistLinkRes = await fetchAlistPathApi(alistLinkApi, alistFilePath, alistToken, ua);
-    if (JSON.stringify(alistLinkRes).startsWith("error")) {
-      return {
-        'error': 'cannot access alist link'
-      };
-    }
-    const url = alistLinkRes.url
-    if (config.webCookie115.length > 0){
-      customCookie = config.webCookie115
-    }else {
-      customCookie = alistLinkRes.header.Cookie
-    }
-    if (customCookie === undefined || customCookie === null || customCookie === ''){
-      return {
-        'error': 'cannot found any cookie. please check your alist or constant.js'
-      }
-    }
-    const d = util.extractQueryValue(url, "d")
-    // try to get pickcode through search param d
-    let pickCode = '';
-    let m3u8file = '';
-    // maybe these are pickcodes too.
-    let backup = [];
-    // suppose only pickcode contains both English and numbers
-    d.split('-').forEach(segment => {
-      if (/[a-zA-Z]/.test(segment) && /\d/.test(segment)) {
-        pickCode = segment;
-      } else if (segment.length > 6) {
-        // but who knows
-        backup.push(segment);
-      }
-    })
-    backup.unshift(pickCode);
-    for (let i = 0; i < backup.length; i++) {
-      let backupElement = backup[i];
-      const m3u8Test = await ngx.fetch(`https://v.anxia.com/site/api/video/m3u8/${backupElement}.m3u8`, {
-        method: "GET",
-        headers: {
-          "Referer": "https://v.anxia.com/?pickcode=" + backupElement + "&share_id=0",
-          "User-Agent": ua,
-          "Cookie": customCookie
-        },
-        max_response_body_size: 65535
-      });
-      let text = await m3u8Test.text()
-      r.warn(text)
-      if (text.startsWith("#EXTM3U")) {
-        m3u8file = text;
-        break
-      }
-    }
-    if (m3u8file === '') {
-      return {
-        'error': 'cannot get any transcode. If transcode can be played normally on the official 115 disk, the cookies configured in the alist or configuration file are non-web cookies and need to be corrected.'
-      }
-    }
-    let parsedM3u8 = util.parseM3U8(m3u8file)
-    const subtitle = await ngx.fetch(`https://v.anxia.com/webapi/movies/subtitle?pickcode=${pickCode}`, {
-      method: "GET",
-      headers: {
-        "Referer": `https://v.anxia.com/?pickcode=${pickCode}&share_id=0`,
-        "User-Agent": ua,
-        "Cookie": customCookie
-      },
-      max_response_body_size: 65535
-    });
-    parsedM3u8.subtitles = await subtitle.json()['data']
-
-    return parsedM3u8
-  }catch (e) {
-    return e
   }
 }
 
@@ -640,7 +561,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
 }
 
 async function cachePreload(r, url, cacheLevel) {
-  url = util.appendUrlArg(url, util.ARGS.cacheLevleKey, cacheLevel);
+  url = urlUtil.appendUrlArg(url, util.ARGS.cacheLevleKey, cacheLevel);
   ngx.log(ngx.WARN, `cachePreload Level: ${cacheLevel}`);
   preload(r, url);
 }
@@ -648,7 +569,7 @@ async function cachePreload(r, url, cacheLevel) {
 async function preload(r, url) {
   events.njsOnExit(`preload`);
 
-  url = util.appendUrlArg(url, util.ARGS.internalKey, "1");
+  url = urlUtil.appendUrlArg(url, util.ARGS.internalKey, "1");
   const ua = r.headersIn["User-Agent"];
   ngx.fetch(url, {
     method: "HEAD",
@@ -698,7 +619,7 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
       cachedMsg = cachedRouteDictKey ? `hit cache ${cachedRouteDictKey}, ` : cachedMsg;
     }
 
-    const deviceId = util.getDeviceId(r.args);
+    const deviceId = urlUtil.getDeviceId(r.args);
     const idemVal = ngx.shared.idemDict.get(deviceId);
     if (config.embyNotificationsAdmin.enable && !idemVal) {
       embyApi.fetchNotificationsAdmin(
@@ -734,7 +655,7 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
       util.dictAdd("routeL1Dict", cacheKey, uri);
     }
 
-    const deviceId = util.getDeviceId(r.args);
+    const deviceId = urlUtil.getDeviceId(r.args);
     const idemVal = ngx.shared.idemDict.get(deviceId);
     const msgPrefix = `${cachedMsg}use original link: `;
     if (config.embyNotificationsAdmin.enable && !idemVal) {

@@ -1,13 +1,26 @@
 // @author: Ambitious
 // @date: 2023-09-04
+
 import config from "../constant.js";
 import util from "../common/util.js";
 import events from "../common/events.js";
 import Emby from "../emby.js";
+import embyVMedia from "../modules/emby-v-media.js";
 
 async function directLive(r) {
   events.njsOnExit(`directLive: ${r.uri}`);
-  
+
+  // check virtualMediaSources, versionDict cache range > routeLXDict, so ignore routeLXDict
+  const vMediaUrl = await embyVMedia.getUrlByVMediaSources(r);
+  // if (vMediaUrl === 1) {
+  //   ngx.log(ngx.WARN, `fetchHlsWithCache success, but pre IsPlayback true not ready Streams Array`);
+  //   return r.return(500, "need retry playback");
+  //   // return r.return(449, "need retry playback");
+  // } else 
+  if (vMediaUrl) {
+    return Emby.redirect(r, vMediaUrl);
+  }
+
   const embyHost = config.embyHost;
   const itemInfo = util.getItemInfo(r);
   // 1 get the ItemId

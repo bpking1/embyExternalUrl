@@ -1,3 +1,7 @@
+import commonConfig from "./constant-common.js";
+
+const strHead = commonConfig.strHead;
+const ruleRef = commonConfig.ruleRef;
 
 // 选填项,特定平台功能,用不到保持默认即可
 
@@ -56,6 +60,17 @@ const searchConfig = {
   ],
 };
 
+// 115网盘 web cookie, 会覆盖从 alist 获取到的 cookie
+const webCookie115 = "";
+// 网盘转码直链配置,当前仅支持 115(必填 webCookie115) 和 emby 挂载媒体环境
+const directHlsConfig = {
+  enable: false,
+  // 仅在首次占位未获取清晰度时,默认播放最小,开启后默认播放最大,版本缓存有效期内客户端自行选择
+  defaultPlayMax: false,
+  // 启用规则,仅在 enable = true 时生效
+  enableRule: ruleRef.directHlsEnable ?? [],
+};
+
 export default {
   imageCachePolicy,
   embyNotificationsAdmin,
@@ -63,4 +78,6 @@ export default {
   itemHiddenRule,
   streamConfig,
   searchConfig,
+  webCookie115,
+  directHlsConfig,
 }

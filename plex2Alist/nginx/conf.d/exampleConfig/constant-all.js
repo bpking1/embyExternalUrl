@@ -58,9 +58,9 @@ const strHead = {
 const ruleRef = {
   // 这个 key 值仅仅只是代码中引用的可读性标识,需见名知意,可自定义
   // mediaPathMappingGroup01: [
-  //   ["useGroup01", "filePath", "startsWith", strHead.filePaths.mediaPathMappingGroup01], // 目标地址
-  //   ["useGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
-  //   ["useGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
+  //   ["mediaPathMappingGroup01", "filePath", "startsWith", strHead.filePaths.mediaPathMappingGroup01], // 目标地址
+  //   ["mediaPathMappingGroup01", "r.args.X-Emby-Client", "startsWith:not", strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  //   ["mediaPathMappingGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
   // ],
 };
 

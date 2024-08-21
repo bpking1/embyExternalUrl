@@ -3,6 +3,7 @@
 
 import config from "../constant.js";
 import util from "../common/util.js";
+import urlUtil from "../common/url-util.js";
 // import events from "../common/events.js";
 
 /**
@@ -33,7 +34,7 @@ async function fetchLastLink(oriLink, authType, authInfo, ua) {
     //   max_response_body_size: 1024
     // });
     const url = encodeURI(oriLink);
-    const urlParts = util.parseUrl(url);
+    const urlParts = urlUtil.parseUrl(url);
     const hostValue = `${urlParts.host}:${urlParts.port}`;
     ngx.log(ngx.WARN, `fetchLastLink add Host: ${hostValue}`);
     const response = await ngx.fetch(url, {
