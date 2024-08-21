@@ -13,6 +13,7 @@ const routeCacheConfig = {
   // 短时间内同客户端访问相同资源不会再做判断和请求 alist,有限的防抖措施,出现问题可以关闭此选项
   enable: true,
   // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,clientSelfAlistRule 中的和首页直接播放的不生效
+  // 非 web 端且限 UA 的不建议使用,生效率太低,因部分客户端详情页 UA 和播放器 UA 存在不同的情况
   enableL2: false,
   // 缓存键表达式,默认值好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
   // 注意 jellyfin 是小写开头 mediaSourceId
