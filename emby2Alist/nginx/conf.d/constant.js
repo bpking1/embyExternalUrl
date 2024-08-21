@@ -67,6 +67,8 @@ export default {
   itemHiddenRule: extConfig.itemHiddenRule,
   streamConfig: extConfig.streamConfig,
   searchConfig: extConfig.searchConfig,
+  webCookie115: extConfig.webCookie115,
+  directHlsConfig: extConfig.directHlsConfig,
 
   getEmbyHost,
   getTranscodeEnable,

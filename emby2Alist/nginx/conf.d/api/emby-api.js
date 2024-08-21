@@ -2,9 +2,9 @@
 // @date: 2024-03-31
 
 import config from "../constant.js";
-import util from "../common/util.js";
+import urlUtil from "../common/url-util.js";
 
-const PlayMethodEnum = {
+const PLAY_METHOD_ENUM = {
   DirectPlay: "DirectPlay",
   DirectStream: "DirectStream",
   Transcode: "Transcode"
@@ -66,7 +66,7 @@ async function fetchSessions(host, apiKey, queryParams) {
   }
   let url = `${host}/Sessions?api_key=${apiKey}`;
   for (const key in queryParams) {
-    url = util.appendUrlArg(url, key, queryParams[key]);
+    url = urlUtil.appendUrlArg(url, key, queryParams[key]);
   }
   return ngx.fetch(url, {
     method: "GET",
@@ -93,7 +93,7 @@ async function fetchItems(host, apiKey, queryParams) {
   }
   let url = `${host}/Items?api_key=${apiKey}`;
   for (const key in queryParams) {
-    url = util.appendUrlArg(url, key, queryParams[key]);
+    url = urlUtil.appendUrlArg(url, key, queryParams[key]);
   }
   ngx.log(ngx.WARN, `warn: fetchItems url: ${url}`);
   return ngx.fetch(url, {
@@ -112,7 +112,7 @@ async function fetchVideosActiveEncodingsDelete(host, apiKey, queryParams) {
   }
   let url = `${host}/Videos/ActiveEncodings?api_key=${apiKey}`;
   for (const key in queryParams) {
-    url = util.appendUrlArg(url, key, queryParams[key]);
+    url = urlUtil.appendUrlArg(url, key, queryParams[key]);
   }
   ngx.log(ngx.WARN, `warn: fetchVideosActiveEncodingsDelete url: ${url}`);
   return ngx.fetch(url, {
@@ -127,7 +127,7 @@ async function fetchVideosActiveEncodingsDelete(host, apiKey, queryParams) {
 async function fetchBaseHtmlPlayer(host, queryParams) {
   let url = `${host}/web/modules/htmlvideoplayer/basehtmlplayer.js`;
   for (const key in queryParams) {
-    url = util.appendUrlArg(url, key, queryParams[key]);
+    url = urlUtil.appendUrlArg(url, key, queryParams[key]);
     if (key === "v") {
       ngx.log(ngx.WARN, `fetchBaseHtmlPlayer version: ${queryParams[key]}`);
     }
@@ -137,7 +137,7 @@ async function fetchBaseHtmlPlayer(host, queryParams) {
 }
 
 export default {
-  PlayMethodEnum,
+  PLAY_METHOD_ENUM,
   fetchNotificationsAdmin,
   fetchSessionsMessage,
   fetchSessions,

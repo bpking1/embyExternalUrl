@@ -25,6 +25,7 @@ const DICT_ZONE_EMUN = {
   // routeL3Dict: "routeL3Dict",
   idemDict: "idemDict",
   tmpDict: "tmpDict",
+  versionDict: "versionDict",
 }
 
 const DIRECTIVE_KEY_ENUM = {

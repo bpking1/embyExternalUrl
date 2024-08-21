@@ -39,19 +39,48 @@ const MATCHER_ENUM = {
 };
 
 // copy from emby2Alist/nginx/conf.d/util.js
-function proxyUri(uri) {
-  return `/proxy${uri}`;
-}
 
-function appendUrlArg(u, k, v) {
-  if (u.includes(k)) {
-    return u;
+/**
+ * doMediaPathMapping, config.mediaMountPath and config.mediaPathMapping
+ * @param {String} mediaItemPath media server item path
+ * @param {Boolean} notLocal Http or strm link
+ * @param {Boolean} isVMedia VMedia used, others null
+ * @returns mapped path
+ */
+function doMediaPathMapping(mediaItemPath, notLocal, isVMedia) {
+  // isRemote range > notLocal, there is overlap, which can be optimized
+  const isRemote = !isAbsolutePath(mediaItemPath);
+  let mediaPathMapping = config.mediaPathMapping;
+  config.mediaMountPath.filter(s => s).map(s => {
+    mediaPathMapping.unshift([0, 0, s, ""]);
+    if (isVMedia) {
+      mediaPathMapping.unshift([0, 1, s, ""]);
+    }
+  });
+  ngx.log(ngx.WARN, `mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
+  let mediaPathMappingRule;
+  mediaPathMapping.map(arr => {
+    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
+    if ((arr[1] == 0 && notLocal)
+      || (arr[1] == 1 && (!notLocal || isRemote))
+      || (arr[1] == 2 && (!notLocal || !isRemote))) {
+      return;
+    }
+    if (mediaPathMappingRule) {
+      let hitRule = simpleRuleFilter(
+        r, mediaPathMappingRule, mediaItemPath, 
+        SOURCE_STR_ENUM.filePath, "mediaPathMappingRule"
+      );
+      if (!(hitRule && hitRule.length > 0)) { return; }
+    }
+    mediaItemPath = strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
+  });
+  // windows filePath to URL path, warn: markdown log text show \\ to \
+  if (mediaItemPath.startsWith("\\")) {
+    ngx.log(ngx.WARN, `windows filePath to URL path \\ => /`);
+    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
   }
-  return u + (u.includes("?") ? "&" : "?") + `${k}=${v}`;
-}
-
-function getCurrentRequestUrlPrefix(r) {
-  return `${r.variables.scheme}://${r.headersIn["Host"]}`;
+  return mediaItemPath;
 }
 
 function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
@@ -399,6 +428,7 @@ function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
   const onGroupRulesObjArr = groupBy(ruleArr3D, 
     rule => Number.isInteger(rule[0]) || Object.values(MATCHER_ENUM).includes(rule[0])
   );
+  ngx.log(ngx.INFO, `onGroupRulesObjArr: ${JSON.stringify(onGroupRulesObjArr)}`);
   let onGroupItemRules;
   let paramRulesArr3D;
   for (const onKey in onGroupRulesObjArr) {
@@ -456,24 +486,28 @@ function getClientSelfAlistLink(r, filePath, alistFilePath) {
  * @param {String} key 
  * @param {String|Number} value default is String, js_shared_dict_zone type=number
  * @param {Number} timeout milliseconds,since NJS 0.8.5
+ * @param {Boolean} isSet switch dict.set to cover preValue
  * @returns Number "fail" -1: fail, 0: not expire, "success" 1: added, 2: added with timeout
  */
-function dictAdd(dictName, key, value, timeout) {
+function dictAdd(dictName, key, value, timeout, isSet) {
   if (!dictName || !key || !value) return 0;
 
   const dict = ngx.shared[dictName];
-  const preValue = dict.get(key);
-  if (preValue === value) return 0;
-
-  const msgBase = `${dictName} add: [${key}] : [${value}]`;
+  let methodName = isSet ? "set" : "add";
+  if (!isSet) {
+    const preValue = dict.get(key);
+    if (preValue === value) return 0;
+  }
+  
+  const msgBase = `${dictName} ${methodName}: [${key}] : [${value}]`;
   // simple version string compare use Unicode, better use njs.version_number
-  if (njs.version >= "0.8.5" && timeout > 0) {
-    if (dict.add(key, value, timeout)) {
+  if (njs.version >= "0.8.5" && timeout && timeout > 0) {
+    if (dict[methodName].call(dict, key, value, timeout)) {
       ngx.log(ngx.WARN, `${msgBase}, timeout: ${timeout}ms`);
       return 2;
     }
   } else {
-    if (dict.add(key, value)) {
+    if (dict[methodName].call(dict, key, value)) {
       ngx.log(ngx.WARN, `${msgBase}${timeout ? `, skip arguments: timeout: ${timeout}ms` : ''}`);
       return 1;
     }
@@ -514,53 +548,6 @@ async function cost(func) {
     throw error;
   }
   return rvt;
-}
-
-/**
- * 1.CloudDrive
- * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
- * 2.AList
- * http://mydomain:5244/d/AList/xxx.mkv
- * see: https://regex101.com/r/Gd3JUH/1
- * @param {String} url full url
- * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
- */
-function getFilePathPart(url) {
-  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/);
-  return matches ? matches[1] : "";
-}
-
-/**
- * Parses the URL and returns an object with various components.
- * @param {string} url The URL string to parse.
- * @returns {Object} An object containing protocol, username, password, host, port, pathname, search, and hash.
- */
-function parseUrl(url) {
-  const regex = /^(?:(\w+)?:\/\/)?(?:(\w+):(\w+)@)?(?:www\.)?([^:\/\n?#]+)(?::(\d+))?(\/[^?\n]*)?(\?[^#\n]*)?(#.*)?$/i;
-  const match = url.match(regex);
-  if (match) {
-      const protocol = match[1] || 'http';
-      const username = match[2] || '';
-      const password = match[3] || '';
-      const host = match[4];
-      const port = match[5] || '';
-      const pathname = match[6] || '';
-      const search = match[7] || '';
-      const hash = match[8] || '';
-      const fullProtocol = `${protocol}:`;
-      const fullPort = port || (fullProtocol === 'https:' ? '443' : '80');
-      return {
-          protocol: fullProtocol,
-          username,
-          password,
-          host,
-          port: fullPort,
-          pathname,
-          search,
-          hash
-      };
-  }
-  return null;
 }
 
 /**
@@ -637,9 +624,7 @@ export default {
   ROUTE_ENUM,
   CHCHE_LEVEL_ENUM,
   SOURCE_STR_ENUM,
-  proxyUri,
-  appendUrlArg,
-  getCurrentRequestUrlPrefix,
+  doMediaPathMapping,
   copyHeaders,
   strMapping,
   strMatches,
@@ -651,8 +636,6 @@ export default {
   getClientSelfAlistLink,
   dictAdd,
   cost,
-  getFilePathPart,
-  parseUrl,
   calculateHMAC,
   addAlistSign,
   checkAndGetRealpathSync,

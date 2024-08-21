@@ -3,6 +3,7 @@
 
 import config from "../constant.js";
 import util from "../common/util.js";
+import urlUtil from "../common/url-util.js";
 import events from "../common/events.js";
 import emby from "../emby.js";
 // import embyApi from "../api/emby-api.js";
@@ -11,7 +12,7 @@ async function systemInfoHandler(r) {
   events.njsOnExit(`systemInfoHandler: ${r.uri}`);
 
   r.variables.request_uri = r.variables.request_uri.replace(r.args.api_key, config.embyApiKey);
-  const subR = await r.subrequest(util.proxyUri(r.uri), {
+  const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
     method: r.method,
   });
   let body;

@@ -3,6 +3,7 @@
 
 import config from "../constant.js";
 import util from "../common/util.js";
+import urlUtil from "../common/url-util.js";
 import events from "../common/events.js";
 import emby from "../emby.js";
 // import embyApi from "../api/emby-api.js";
@@ -11,8 +12,8 @@ async function itemsFilter(r) {
   events.njsOnExit(`itemsFilter: ${r.uri}`);
 
   r.variables.request_uri += "&Fields=Path";
-  // util.appendUrlArg(r.variables.request_uri, "Fields", "Path");
-  const subR = await r.subrequest(util.proxyUri(r.uri), {
+  // urlUtil.appendUrlArg(r.variables.request_uri, "Fields", "Path");
+  const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
     method: r.method,
   });
   let body;
