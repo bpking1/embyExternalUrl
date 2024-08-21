@@ -4,6 +4,7 @@ const ARGS = {
   plexTokenKey: "X-Plex-Token",
   internalKey: "internal",
   cacheLevleKey: "cacheLevel",
+  rXMediaKey: "XMedia",
 }
 
 const ROUTE_ENUM = {

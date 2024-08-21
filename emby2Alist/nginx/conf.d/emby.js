@@ -82,6 +82,11 @@ async function redirect2Pan(r) {
   }
   r.warn(`mount emby file path: ${embyRes.path}`);
 
+  // add Expression Context to r
+  r[util.ARGS.rXMediaKey] = embyRes.mediaSource;
+  ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
+
+  // diff from PlaybackInfo routeRule, because depends on current playback 
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
   r.warn(`getRouteMode: ${routeMode}`);
@@ -259,7 +264,7 @@ async function transferPlaybackInfo(r) {
         // 防止客户端转码（转容器）
         modifyDirectPlaySupports(source, true);
 
-        r["xMediaSource"] = source;
+        r[util.ARGS.rXMediaKey] = source;
         const isStrm = util.checkIsStrmByMediaSource(source);
         const notLocal = source.IsRemote || isStrm;
         // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
@@ -460,6 +465,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
     path: "",
     itemName: "",
     notLocal: false,
+    mediaSource: null,
   };
   try {
     const res = await ngx.fetch(itemInfoUri, {
@@ -514,6 +520,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           rvt.notLocal = mediaSource.IsInfiniteStream
             || mediaSource.IsRemote
             || util.checkIsStrmByPath(item.Path);
+          rvt.mediaSource = mediaSource;
         } else {
           // "MediaType": "Photo"... not have "MediaSources" field
           rvt.path = item.Path;

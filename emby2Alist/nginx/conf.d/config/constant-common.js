@@ -35,8 +35,8 @@ const ruleRef = {
   //   ["mediaPathMappingGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
   // ],
   // directHlsEnable: [
-  //   // 此条规则代表大于等于 4Mbps 码率时生效,xMediaSource 为固定值,平方使用双星号表示
-  //   ["directHlsEnable", "r.xMediaSource.Bitrate", ">=", 4 * 1024 ** 2],
+  //   // 此条规则代表大于等于 4Mbps 码率时生效,XMedia 为固定值,平方使用双星号表示
+  //   ["directHlsEnable", "r.XMedia.Bitrate", ">=", 4 * 1024 ** 2],
   //   ["directHlsEnable", "r.args.UserId", "==", "ac0d220d548f43bbb73cf9b44b2ddf0e"],
   // ]
 };
