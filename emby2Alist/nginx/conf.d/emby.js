@@ -435,6 +435,10 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
         if (result.data.raw_url) {
           return result.data.raw_url;
         }
+        // alist /api/fs/link
+        if (result.data.header.Cookie) {
+            return result.data
+        }
         // alist /api/fs/list
         return result.data.content.map((item) => item.name).join(",");
       }
@@ -450,6 +454,84 @@ async function fetchAlistPathApi(alistApiPath, alistFilePath, alistToken, ua) {
   }
 }
 
+async function fetch115Transcode(alistFilePath, alistToken, ua, r) {
+  try {
+    let customCookie = ''
+    const alistAddr = config.alistAddr;
+    const alistLinkApi = `${alistAddr}/api/fs/link`;
+    const alistLinkRes = await fetchAlistPathApi(alistLinkApi, alistFilePath, alistToken, ua);
+    if (JSON.stringify(alistLinkRes).startsWith("error")) {
+      return {
+        'error': 'cannot access alist link'
+      };
+    }
+    const url = alistLinkRes.url
+    if (config.webCookie115.length > 0){
+      customCookie = config.webCookie115
+    }else {
+      customCookie = alistLinkRes.header.Cookie
+    }
+    if (customCookie === undefined || customCookie === null || customCookie === ''){
+      return {
+        'error': 'cannot found any cookie. please check your alist or constant.js'
+      }
+    }
+    const d = util.extractQueryValue(url, "d")
+    // try to get pickcode through search param d
+    let pickCode = '';
+    let m3u8file = '';
+    // maybe these are pickcodes too.
+    let backup = [];
+    // suppose only pickcode contains both English and numbers
+    d.split('-').forEach(segment => {
+      if (/[a-zA-Z]/.test(segment) && /\d/.test(segment)) {
+        pickCode = segment;
+      } else if (segment.length > 6) {
+        // but who knows
+        backup.push(segment);
+      }
+    })
+    backup.unshift(pickCode);
+    for (let i = 0; i < backup.length; i++) {
+      let backupElement = backup[i];
+      const m3u8Test = await ngx.fetch(`https://v.anxia.com/site/api/video/m3u8/${backupElement}.m3u8`, {
+        method: "GET",
+        headers: {
+          "Referer": "https://v.anxia.com/?pickcode=" + backupElement + "&share_id=0",
+          "User-Agent": ua,
+          "Cookie": customCookie
+        },
+        max_response_body_size: 65535
+      });
+      let text = await m3u8Test.text()
+      r.warn(text)
+      if (text.startsWith("#EXTM3U")) {
+        m3u8file = text;
+        break
+      }
+    }
+    if (m3u8file === '') {
+      return {
+        'error': 'cannot get any transcode. If transcode can be played normally on the official 115 disk, the cookies configured in the alist or configuration file are non-web cookies and need to be corrected.'
+      }
+    }
+    let parsedM3u8 = util.parseM3U8(m3u8file)
+    const subtitle = await ngx.fetch(`https://v.anxia.com/webapi/movies/subtitle?pickcode=${pickCode}`, {
+      method: "GET",
+      headers: {
+        "Referer": `https://v.anxia.com/?pickcode=${pickCode}&share_id=0`,
+        "User-Agent": ua,
+        "Cookie": customCookie
+      },
+      max_response_body_size: 65535
+    });
+    parsedM3u8.subtitles = await subtitle.json()['data']
+
+    return parsedM3u8
+  }catch (e) {
+    return e
+  }
+}
 
 async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
   let rvt = {
