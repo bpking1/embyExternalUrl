@@ -67,8 +67,8 @@ const ruleRef = {
   //   ["mediaPathMappingGroup01", "r.args.UserId", "startsWith", strHead.userIds.mediaPathMappingGroup01],
   // ],
   // directHlsEnable: [
-  //   // 此条规则代表大于等于 4Mbps 码率时生效,xMediaSource 为固定值,平方使用双星号表示
-  //   ["directHlsEnable", "r.xMediaSource.Bitrate", ">=", 4 * 1024 ** 2],
+  //   // 此条规则代表大于等于 4Mbps 码率时生效,XMedia 为固定值,平方使用双星号表示
+  //   ["directHlsEnable", "r.XMedia.Bitrate", ">=", 4 * 1024 ** 2],
   //   ["directHlsEnable", "r.args.UserId", "==", "ac0d220d548f43bbb73cf9b44b2ddf0e"],
   // ]
 };
@@ -126,8 +126,8 @@ const routeRule = [
   // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
-  // 此条规则代表大于等于 3Mbps 码率的走转码,xMediaSource 为固定值,平方使用双星号表示,无意义减加仅为示例
-  // ["transcode", "r.xMediaSource.Bitrate", ">=", 3 * 1024 ** 2 -(1 * 1024 ** 2) + (1 * 1024 ** 2)],
+  // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例
+  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1024 ** 2 -(1 * 1024 ** 2) + (1 * 1024 ** 2)],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了

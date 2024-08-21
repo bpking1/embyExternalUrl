@@ -57,7 +57,7 @@ async function redirect2Pan(r) {
   const itemInfo = await util.cost(getPlexItemInfo, r);
   let mediaServerRes;
   if (itemInfo.filePath) {
-    mediaServerRes = {path: itemInfo.filePath};
+    mediaServerRes = { path: itemInfo.filePath };
     r.warn(`get filePath from cache partInfoDict`);
   } else {
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
@@ -95,6 +95,11 @@ async function redirect2Pan(r) {
     }
   }
   r.warn(`mount plex file path: ${mediaServerRes.path}`);
+
+  // add Expression Context to r
+  // because plex PartInfo cache only has path, not implemented temporarily
+  r[util.ARGS.rXMediaKey] = mediaServerRes.media;
+  ngx.log(ngx.WARN, `add plex Media to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
 
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
@@ -304,8 +309,9 @@ async function preload(r, url) {
 
 async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
   let rvt = {
-    "message": "success",
-    "path": ""
+    message: "success",
+    path: "",
+    media: null,
   };
   try {
     const res = await ngx.fetch(itemInfoUri, {
@@ -324,13 +330,15 @@ async function fetchPlexFilePath(itemInfoUri, mediaIndex, partIndex) {
         return rvt;
       }
       if (!result.MediaContainer.Metadata) {
-        rvt.message = `error: plex_api No search results found`;
+        rvt.message = `error: plex_api not found search results`;
         return rvt;
       }
       // location ~* /library/parts/(\d+)/(\d+)/file, not hava mediaIndex and partIndex
       mediaIndex = mediaIndex ? mediaIndex : 0;
       partIndex = partIndex ? partIndex : 0;
-      rvt.path = result.MediaContainer.Metadata[0].Media[mediaIndex].Part[partIndex].file;
+      const media = result.MediaContainer.Metadata[0].Media[mediaIndex];
+      rvt.path = media.Part[partIndex].file;
+      rvt.media = media;
       return rvt;
     } else {
       rvt.message = `error: plex_api ${res.status} ${res.statusText}`;
@@ -424,6 +432,11 @@ async function fetchStrmInnerText(r) {
 async function plexApiHandler(r) {
   events.njsOnExit(`plexApiHandler: ${r.uri}`);
 
+  if (!config.transcodeConfig.enable && r.variables.isDecision === "1") {
+    // default modify direct play supports all true
+    r.variables.request_uri += "&directPlay=1&directStream=1";
+    r.headersOut["X-Modify-DirectPlay-Success"] = true;
+  }
   const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
     method: r.method,
   });

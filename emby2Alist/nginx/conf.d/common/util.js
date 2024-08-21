@@ -8,6 +8,7 @@ const ARGS = {
   useRedirectKey: "useRedirect",
   internalKey: "internal",
   cacheLevleKey: "cacheLevel",
+  rXMediaKey: "XMedia",
 }
 
 const ROUTE_ENUM = {
