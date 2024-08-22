@@ -15,7 +15,7 @@ import qs from "querystring";
 const ARGS = {
   idSplit: "_",
   virtualPrefix: "virtual",
-}
+};
 
 async function vSubtitlesAdepter(r) {
   events.njsOnExit(`vSubtitlesAdepter: ${r.uri}`);
@@ -166,24 +166,25 @@ function toVMediaSources(parsedM3U8) {
     const MediaStreams = [];
     if (parsedM3U8.subtitles) {
       parsedM3U8.subtitles.map((subtitle, subtitleI) => {
+        // !!!important, Protocol: "Http", IsExternalUrl: true, maybe only support web client
         MediaStreams.push({
           Codec: subtitle.type,
           // Language: "chi",
           // Title: "简体",
           DisplayTitle: subtitle.title,
-          // IsDefault: false,
-          // IsForced: false,
+          IsDefault: subtitle.isDefault,
+          // IsForced: subtitleI === 0,
           Type: "Subtitle",
           Index: subtitleI,
           IsExternal: true,
           DeliveryMethod: "External",
           // Unsafe attempt to load URL xxx from frame with URL xxx Domains, protocols and ports must match.
           DeliveryUrl: `/Videos/${parsedM3U8.ItemId}/${Id}/Subtitles/${subtitleI}/0/Stream.${subtitle.type}?api_key=${config.embyApiKey}`,
-          IsExternalUrl: true,
+          IsExternalUrl: false,
           IsTextSubtitleStream: true,
           SupportsExternalStream: true,
           // Path: `Stream.${subtitle.type}`,
-          Protocol: "Http",
+          Protocol: "File",
           // SubtitleLocationType: "InternalStream",
           XUrl: subtitle.url,
         })

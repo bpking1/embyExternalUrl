@@ -9,7 +9,7 @@ const ARGS = {
   internalKey: "internal",
   cacheLevleKey: "cacheLevel",
   rXMediaKey: "XMedia",
-}
+};
 
 const ROUTE_ENUM = {
   proxy: "proxy",
