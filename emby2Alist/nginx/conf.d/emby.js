@@ -209,32 +209,23 @@ async function redirect2Pan(r) {
 async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
-  // const ua = r.headersIn["User-Agent"];
-  // ngx.log(ngx.INFO, `transferPlaybackInfo, UA: ${ua}`);
-
   const isPlayback = r.args.IsPlayback === "true";
   // virtualMediaSources
   if (isPlayback) {
     // PlaybackInfo UA and Real Playback UA is not same, do't use UA filter
     const vMediaSource = embyVMedia.getVMediaSourceChcheById(r.args.MediaSourceId);
     if (vMediaSource) {
+      // r.args.AudioStreamIndex; DefaultAudioStreamIndex
+      let subtitleStreamIndex = parseInt(r.args.SubtitleStreamIndex);
+      if (!subtitleStreamIndex || subtitleStreamIndex === -1) {
+        subtitleStreamIndex = vMediaSource.MediaStreams.findIndex(s => s.Type === "Subtitle" && s.IsDefault);
+      }
+      vMediaSource.DefaultSubtitleStreamIndex = subtitleStreamIndex;
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
       return r.return(200, JSON.stringify({ MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId }));
     }
   }
-  // if (isPlayback) {
-  //   try {
-  //     const vMediaSource = await util.cost(embyVMedia.fetchHlsByPlh, r);
-  //     if (vMediaSource) {
-  //       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-  //       // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
-  //       return r.return(200, JSON.stringify({ MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId }));
-  //     }
-  //   } catch (error) {
-  //     ngx.log(ngx.ERR, `fetchHlsByPlh: ${error}`);
-  //   }
-  // }
 
   let start = Date.now();
   // replay the request
@@ -282,6 +273,7 @@ async function transferPlaybackInfo(r) {
             sourceCopy.Path = mediaItemPath;
             try {
               extMediaSources = await util.cost(embyVMedia.fetchHlsWithCache, r, sourceCopy, body.PlaySessionId);
+              ngx.log(ngx.WARN, `extMediaSources: ${JSON.stringify(extMediaSources)}`);
             } catch (error) {
               ngx.log(ngx.ERR, `fetchHlsWithCache: ${error}`);
             }
@@ -342,7 +334,10 @@ async function transferPlaybackInfo(r) {
         }
       }
 
-      body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
+      // virtualMediaSources
+      if (extMediaSources && extMediaSources.length > 0) {
+        body.MediaSources = body.MediaSources.concat(extMediaSources);
+      }
       util.copyHeaders(response.headersOut, r.headersOut);
       const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";

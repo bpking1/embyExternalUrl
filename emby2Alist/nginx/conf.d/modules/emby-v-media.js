@@ -15,7 +15,7 @@ import qs from "querystring";
 const ARGS = {
   idSplit: "_",
   virtualPrefix: "virtual",
-}
+};
 
 async function vSubtitlesAdepter(r) {
   events.njsOnExit(`vSubtitlesAdepter: ${r.uri}`);
@@ -172,8 +172,8 @@ function toVMediaSources(parsedM3U8) {
           // Language: "chi",
           // Title: "简体",
           DisplayTitle: subtitle.title,
-          // IsDefault: false,
-          // IsForced: false,
+          IsDefault: subtitle.isDefault,
+          // IsForced: subtitleI === 0,
           Type: "Subtitle",
           Index: subtitleI,
           IsExternal: true,
