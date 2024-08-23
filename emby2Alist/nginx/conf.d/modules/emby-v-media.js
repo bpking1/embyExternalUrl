@@ -108,6 +108,9 @@ async function fetch115Hls(dParam, customCookie, ua) {
         },
         max_response_body_size: 65535
       });
+      if (masterPlRes.status === 403) {
+        throw new Error('fetch115Hls masterUrl 403, Cookie expired');
+      }
       const text = await masterPlRes.text();
       ngx.log(ngx.WARN, `fetch115Hls masterPlaylistText: \n${text}`);
       if (text.startsWith("#EXTM3U")) {
@@ -190,7 +193,7 @@ function toVMediaSources(parsedM3U8) {
         })
       })
     }
-    let Name = "网盘转码直链";
+    let Name = `网盘转码直链[${parsedM3U8.ItemId}]`;
     if (parsedM3U8.namePrefix) {
       Name = parsedM3U8.namePrefix + Name;
     }
@@ -241,7 +244,7 @@ async function fetchHlsWithCache(r, source, playSessionId) {
   } else {
     let parsedM3U8 = null;
     if (!isVirtual) {
-      parsedM3U8 = { streams: [ { url: sourcePath } ], audios: [], subtitles: [] };
+      parsedM3U8 = { streams: [{ url: sourcePath }], audios: [], subtitles: [] };
       ngx.log(ngx.WARN, `fetchHlsWithCache used fast placeholder version`);
     } else {
       const ua = r.headersIn["User-Agent"];
@@ -275,23 +278,6 @@ async function fetchHlsWithCache(r, source, playSessionId) {
     util.dictAdd("versionDict", cacheKey, JSON.stringify(vMediaSources), null, true);
   }
   return vMediaSources;
-}
-
-async function fetchHlsByPlh(r) {
-  const ua = r.headersIn["User-Agent"];
-  ngx.log(ngx.INFO, `fetchHlsByPlh, UA: ${ua}`);
-  const placeholderVSourceId = r.args.MediaSourceId;
-  const directHlsConfig = config.directHlsConfig;
-  if (!directHlsConfig.enable) { return; }
-  let vMediaSource = getVMediaSourceChcheById(placeholderVSourceId, ua);
-  if (!vMediaSource || !vMediaSource.XIsPlaceholder) { return; }
-  const extMediaSources = await fetchHlsWithCache(r, vMediaSource, vMediaSource.XPlaySessionId);
-  if (directHlsConfig.defaultPlayMax) {
-    vMediaSource = extMediaSources[extMediaSources.length - 1];
-  } else {
-    vMediaSource = extMediaSources[0];
-  }
-  return vMediaSource;
 }
 
 function getVMediaSourceChcheById(vSourceId, ua) {
@@ -330,6 +316,7 @@ function delVMediaSourceChcheById(vSourceId, ua) {
   }
 }
 
+// only for emby-live.js
 async function getUrlByVMediaSources(r) {
   const ua = r.headersIn["User-Agent"];
   r.warn(`getUrlByVMediaSources, UA: ${ua}`);
@@ -372,14 +359,74 @@ async function getUrlByVMediaSources(r) {
   return rvt;
 }
 
+// only for PlaybackInfo
+async function fetchHlsByPlh(r) {
+  const ua = r.headersIn["User-Agent"];
+  ngx.log(ngx.INFO, `fetchHlsByPlh, UA: ${ua}`);
+  const placeholderVSourceId = r.args.MediaSourceId;
+  const directHlsConfig = config.directHlsConfig;
+  if (!directHlsConfig.enable) { return; }
+  let vMediaSource = getVMediaSourceChcheById(placeholderVSourceId, ua);
+  if (!vMediaSource || !vMediaSource.XIsPlaceholder) { return; }
+  const extMediaSources = await fetchHlsWithCache(r, vMediaSource, vMediaSource.XPlaySessionId);
+  if (directHlsConfig.defaultPlayMax) {
+    vMediaSource = extMediaSources[extMediaSources.length - 1];
+  } else {
+    vMediaSource = extMediaSources[0];
+  }
+  return vMediaSource;
+}
+
+function getVMediaSourcesIsPlayback(rArgs) {
+  const isPlayback = rArgs.IsPlayback === "true";
+  if (!isPlayback) { return; }
+  // PlaybackInfo UA and Real Playback UA is not same, do't use UA filter
+  const vMediaSource = embyVMedia.getVMediaSourceChcheById(rArgs.MediaSourceId);
+  if (vMediaSource) {
+    // rArgs.AudioStreamIndex; DefaultAudioStreamIndex
+    let subtitleStreamIndex = parseInt(rArgs.SubtitleStreamIndex);
+    if (!subtitleStreamIndex || subtitleStreamIndex === -1) {
+      subtitleStreamIndex = vMediaSource.MediaStreams.findIndex(s => s.Type === "Subtitle" && s.IsDefault);
+    }
+    vMediaSource.DefaultSubtitleStreamIndex = subtitleStreamIndex;
+    // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
+    return { MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId };
+  }
+}
+
+async function getVMediaSourcesByHls(r, source, notLocal, playSessionId) {
+  const isPlayback = r.args.IsPlayback === "true";
+  if (isPlayback) { return; }
+  const directHlsConfig = config.directHlsConfig;
+  if (!directHlsConfig.enable) { return; }
+  const mediaItemPath = util.doMediaPathMapping(source.Path, notLocal);
+  ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
+  let realEnable = true;
+  if (directHlsConfig.enableRule && directHlsConfig.enableRule.length > 0) {
+    const rule = util.simpleRuleFilter(r, directHlsConfig.enableRule, mediaItemPath, null, "directHlsEnableRule");
+    realEnable = rule && rule.length > 0;
+  }
+  if (realEnable) {
+    const sourceCopy = Object.assign({}, source);
+    sourceCopy.Path = mediaItemPath;
+    try {
+      return await util.cost(fetchHlsWithCache, r, sourceCopy, playSessionId);
+    } catch (error) {
+      ngx.log(ngx.ERR, `getVMediaSourcesByHls: ${error}`);
+    }
+  }
+}
+
 export default {
   ARGS,
   vSubtitlesAdepter,
   fetchHls,
   checkVirtual,
   fetchHlsWithCache,
-  // fetchHlsByPlh,
   getVMediaSourceChcheById,
   delVMediaSourceChcheById,
+  // fetchHlsByPlh,
   getUrlByVMediaSources,
+  getVMediaSourcesIsPlayback,
+  getVMediaSourcesByHls,
 };
