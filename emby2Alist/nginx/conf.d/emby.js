@@ -209,25 +209,15 @@ async function redirect2Pan(r) {
 async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
-  const isPlayback = r.args.IsPlayback === "true";
   // virtualMediaSources
-  if (isPlayback) {
-    // PlaybackInfo UA and Real Playback UA is not same, do't use UA filter
-    const vMediaSource = embyVMedia.getVMediaSourceChcheById(r.args.MediaSourceId);
-    if (vMediaSource) {
-      // r.args.AudioStreamIndex; DefaultAudioStreamIndex
-      let subtitleStreamIndex = parseInt(r.args.SubtitleStreamIndex);
-      if (!subtitleStreamIndex || subtitleStreamIndex === -1) {
-        subtitleStreamIndex = vMediaSource.MediaStreams.findIndex(s => s.Type === "Subtitle" && s.IsDefault);
-      }
-      vMediaSource.DefaultSubtitleStreamIndex = subtitleStreamIndex;
-      r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-      // PlaySessionId is important, will error in /emby/Sessions/Playing/Progress
-      return r.return(200, JSON.stringify({ MediaSources: [vMediaSource], PlaySessionId: vMediaSource.XPlaySessionId }));
-    }
+  const vMediaSources = embyVMedia.getVMediaSourcesIsPlayback(r.args);
+  if (vMediaSources) {
+    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+    return r.return(200, JSON.stringify(vMediaSources));
   }
-
+  
   let start = Date.now();
+  const isPlayback = r.args.IsPlayback === "true";
   // replay the request
   const proxyUri = urlUtil.proxyUri(r.uri);
   r.warn(`playbackinfo proxy uri: ${proxyUri}`);
@@ -259,25 +249,9 @@ async function transferPlaybackInfo(r) {
         const isStrm = util.checkIsStrmByMediaSource(source);
         const notLocal = source.IsRemote || isStrm;
         // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
-        const directHlsConfig = config.directHlsConfig;
-        if (directHlsConfig.enable && !isPlayback) {
-          const mediaItemPath = util.doMediaPathMapping(source.Path, notLocal);
-          ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
-          let realEnable = true;
-          if (directHlsConfig.enableRule && directHlsConfig.enableRule.length > 0) {
-            const rule = util.simpleRuleFilter(r, directHlsConfig.enableRule, mediaItemPath, null, "directHlsEnableRule");
-            realEnable = rule && rule.length > 0;
-          }
-          if (realEnable) {
-            const sourceCopy = Object.assign({}, source);
-            sourceCopy.Path = mediaItemPath;
-            try {
-              extMediaSources = await util.cost(embyVMedia.fetchHlsWithCache, r, sourceCopy, body.PlaySessionId);
-              ngx.log(ngx.WARN, `extMediaSources: ${JSON.stringify(extMediaSources)}`);
-            } catch (error) {
-              ngx.log(ngx.ERR, `fetchHlsWithCache: ${error}`);
-            }
-          }
+        const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
+        if (vMediaSources && vMediaSources.length > 0) {
+          extMediaSources = extMediaSources.concat(vMediaSources);
         }
         // routeRule
         source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
@@ -334,10 +308,8 @@ async function transferPlaybackInfo(r) {
         }
       }
 
-      // virtualMediaSources
-      if (extMediaSources && extMediaSources.length > 0) {
-        body.MediaSources = body.MediaSources.concat(extMediaSources);
-      }
+      body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
+      
       util.copyHeaders(response.headersOut, r.headersOut);
       const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";

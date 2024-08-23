@@ -47,19 +47,14 @@ const MATCHER_ENUM = {
  * doMediaPathMapping, config.mediaMountPath and config.mediaPathMapping
  * @param {String} mediaItemPath media server item path
  * @param {Boolean} notLocal Http or strm link
- * @param {Boolean} isVMedia VMedia used, others null
  * @returns mapped path
  */
-function doMediaPathMapping(mediaItemPath, notLocal, isVMedia) {
+function doMediaPathMapping(mediaItemPath, notLocal) {
   // isRemote range > notLocal, there is overlap, which can be optimized
   const isRemote = !isAbsolutePath(mediaItemPath);
-  let mediaPathMapping = config.mediaPathMapping;
-  config.mediaMountPath.filter(s => s).map(s => {
-    mediaPathMapping.unshift([0, 0, s, ""]);
-    if (isVMedia) {
-      mediaPathMapping.unshift([0, 1, s, ""]);
-    }
-  });
+  // warnning config.XX Objects is current VM shared variable
+  let mediaPathMapping = config.mediaPathMapping.slice();
+  config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
   ngx.log(ngx.WARN, `mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
   let mediaPathMappingRule;
   mediaPathMapping.map(arr => {
