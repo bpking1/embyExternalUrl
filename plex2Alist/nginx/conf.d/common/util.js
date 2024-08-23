@@ -36,6 +36,8 @@ const MATCHER_ENUM = {
   "!=": { id: "!=", name: "notEqual", fn: (s, t) => s != t },
   ">=": { id: ">=", name: "greaterThanOrEqual", fn: (s, t) => s >= t },
   "<=": { id: "<=", name: "lessThanOrEqual", fn: (s, t) => s <= t },
+  "===": { id: "===", name: "strictEqual", fn: (s, t) => s === t },
+  "!==": { id: "!==", name: "strictNotEqual", fn: (s, t) => s !== t },
   not: { id: "not", fn: (flag) => !flag }, // special
 };
 
