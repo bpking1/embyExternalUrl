@@ -13,7 +13,7 @@ const embyHost = "http://172.17.0.1:8096";
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
-// 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理,不用重复填写至 disableRedirectRule
+// 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理
 // 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
 const mediaMountPath = ["/mnt"];
 
@@ -186,6 +186,9 @@ const clientSelfAlistRule = [
   // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug],
 ];
 
+// 响应重定向链接前是否检测有效性,无效链接时转给媒体服务器回源中转处理
+const redirectCheckEnable = false;
+
 // 转码配置,默认 false,将按之前逻辑禁止转码处理并移除转码选项参数,与服务端允许转码配置有相关性
 const transcodeConfig = {
   enable: false, // 此大多数情况下为允许转码的总开关
@@ -329,6 +332,7 @@ export default {
   mediaPathMapping,
   redirectStrmLastLinkRule,
   clientSelfAlistRule,
+  redirectCheckEnable,
   transcodeConfig,
   embyNotificationsAdmin,
   embyRedirectSendMessage,

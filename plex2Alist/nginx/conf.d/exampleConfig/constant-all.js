@@ -10,7 +10,7 @@
 const plexHost = "http://172.17.0.1:32400";
 
 // rclone 的挂载目录, 例如将od, gd挂载到/mnt目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
-// 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 plex 处理,不用重复填写至 disableRedirectRule
+// 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 plex 处理
 const mediaMountPath = ["/mnt"];
 
 // 访问宿主机上 5244 端口的 alist 地址, 要注意 iptables 给容器放行端口
@@ -171,6 +171,9 @@ const clientSelfAlistRule = [
   // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug],
 ];
 
+// 响应重定向链接前是否检测有效性,无效链接时转给媒体服务器回源中转处理
+const redirectCheckEnable = false;
+
 // 转码配置,默认 false,将按之前逻辑强制直接播放
 // plex 只能用自身服务转码,只有下面一个参数,多填写没用
 const transcodeConfig = {
@@ -198,6 +201,7 @@ export default {
   alistPublicAddr,
   strHead,
   clientSelfAlistRule,
+  redirectCheckEnable,
   mediaPathMapping,
   redirectStrmLastLinkRule,
   transcodeConfig,

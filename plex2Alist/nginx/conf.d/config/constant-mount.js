@@ -40,6 +40,9 @@ const clientSelfAlistRule = [
   // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug],
 ];
 
+// 响应重定向链接前是否检测有效性,无效链接时转给媒体服务器回源中转处理
+const redirectCheckEnable = false;
+
 export default {
   alistAddr,
   alistToken,
@@ -47,4 +50,5 @@ export default {
   alistSignExpireTime,
   alistPublicAddr,
   clientSelfAlistRule,
+  redirectCheckEnable,
 }
