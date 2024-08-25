@@ -391,7 +391,7 @@ function strMatches(type, source, target) {
 }
 
 function checkIsStrmByPath(filePath) {
-  if (!!filePath) {
+  if (filePath) {
     // strm: filePath1-itemPath like: /xxx/xxx.strm
     return filePath.toLowerCase().endsWith(".strm");
   }

@@ -95,7 +95,7 @@ function checkEnable(r) {
 async function getTransServer(r) {
   const transcodeConfig = config.transcodeConfig;
   let serverArr = transcodeConfig.server;
-  if (!serverArr || (!!serverArr && serverArr.length === 0)) {
+  if (!serverArr || (serverArr && serverArr.length === 0)) {
     return r.warn(`no transServer, will use current server transcode`);
   }
   const maxNum = transcodeConfig.maxNum;
@@ -245,7 +245,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
     });
   });
   r.warn(`media item match targetItem: ${JSON.stringify(targetItem)}`);
-  if (!targetItem || (!!targetItem && !targetItem.Id)) {
+  if (!targetItem || (targetItem && !targetItem.Id)) {
     return r.error(`media item match not found`);
   }
 
@@ -320,7 +320,7 @@ async function syncDelete(r) {
     return emby.internalRedirectExpect(r);
   }
   const server = cacheObj.Server;
-  if (!server || (!!server && !server.host)) {
+  if (!server || (server && !server.host)) {
     r.warn(`syncDelete targetServer not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }
@@ -367,7 +367,7 @@ async function syncPlayState(r) {
     return emby.internalRedirectExpect(r);
   }
   const server = cacheObj.Server;
-  if (!server || (!!server && !server.host)) {
+  if (!server || (server && !server.host)) {
     r.warn(`syncPlayState targetServer not exist, skip, ${uri}`);
     return emby.internalRedirectExpect(r);
   }

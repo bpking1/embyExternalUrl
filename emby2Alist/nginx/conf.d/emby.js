@@ -32,7 +32,7 @@ async function redirect2Pan(r) {
         // 115 must use ua
         cachedLink = ngx.shared[routeDictKey].get(`${cacheKey}:${ua}`);
       }
-      if (!!cachedLink) {
+      if (cachedLink) {
         r.warn(`hit cache ${routeDictKey}: ${cachedLink}`);
         if (cachedLink.startsWith("@")) {
           // use original link
@@ -115,12 +115,12 @@ async function redirect2Pan(r) {
         rule = rule.slice(2);
       }
       let directUrl = await ngxExt.fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
-      if (!!directUrl) {
+      if (directUrl) {
         mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchLastLink, not expected result, failback once`);
         directUrl = await ngxExt.fetchLastLink(ngxExt.lastLinkFailback(mediaItemPath), rule[2], rule[3], ua);
-        if (!!directUrl) {
+        if (directUrl) {
           mediaItemPath = directUrl;
         }
       }
@@ -210,11 +210,13 @@ async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
 
   // virtualMediaSources
-  const vMediaSources = embyVMedia.getVMediaSourcesIsPlayback(r.args);
-  if (vMediaSources) {
-    r.headersOut["Content-Type"] = "application/json;charset=utf-8";
-    return r.return(200, JSON.stringify(vMediaSources));
-  }
+  if (config.directHlsConfig && config.directHlsConfig.enable) {
+    const vMediaSources = embyVMedia.getVMediaSourcesIsPlayback(r.args);
+    if (vMediaSources) {
+      r.headersOut["Content-Type"] = "application/json;charset=utf-8";
+      return r.return(200, JSON.stringify(vMediaSources));
+    }
+  }  
   
   let start = Date.now();
   const isPlayback = r.args.IsPlayback === "true";
@@ -249,9 +251,11 @@ async function transferPlaybackInfo(r) {
         const isStrm = util.checkIsStrmByMediaSource(source);
         const notLocal = source.IsRemote || isStrm;
         // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
-        const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
-        if (vMediaSources && vMediaSources.length > 0) {
-          extMediaSources = extMediaSources.concat(vMediaSources);
+        if (config.directHlsConfig && config.directHlsConfig.enable) {
+          const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
+          if (vMediaSources && vMediaSources.length > 0) {
+            extMediaSources = extMediaSources.concat(vMediaSources);
+          }
         }
         // routeRule
         source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
@@ -515,7 +519,7 @@ async function sendMessage2EmbyDevice(deviceId, header, text, timeoutMs) {
       return;
     }
     sessionResPromise.json().then(sessionRes => {
-      if (!sessionRes || (!!sessionRes && sessionRes.length == 0)) {
+      if (!sessionRes || (sessionRes && sessionRes.length == 0)) {
         ngx.log(ngx.WARN, `warn: sendMessage2EmbyDevice: fetchSessions: session not found, skip`);
         return;
       }
@@ -654,9 +658,13 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
   }
 }
 
-function redirect(r, url, cachedRouteDictKey) {
-  if (!!config.alistSignEnable) {
+async function redirect(r, url, cachedRouteDictKey) {
+  if (config.alistSignEnable) {
     url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
+  }
+  if (config.redirectCheckEnable && !(await util.cost(ngxExt.linkCheck, url, r.headersIn["User-Agent"]))) {
+    r.warn(`redirectCheck fail: ${url}`);
+    return internalRedirect(r);
   }
 
   r.warn(`redirect to: ${url}`);
@@ -681,9 +689,7 @@ function internalRedirect(r, uri, cachedRouteDictKey) {
 }
 
 function internalRedirectExpect(r, uri) {
-  if (!uri) {
-    uri = "@root";
-  }
+  if (!uri) { uri = "@root"; }
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);

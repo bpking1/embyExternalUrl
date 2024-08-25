@@ -39,7 +39,7 @@ async function redirect2Pan(r) {
         // 115 must use ua
         cachedLink = ngx.shared[routeDictKey].get(`${cacheKey}:${ua}`);
       }
-      if (!!cachedLink) {
+      if (cachedLink) {
         r.warn(`hit cache ${routeDictKey}: ${cachedLink}`);
         if (cachedLink.startsWith("@")) {
           // use original link
@@ -136,12 +136,12 @@ async function redirect2Pan(r) {
         rule = rule.slice(2);
       }
       let directUrl = await ngxExt.fetchLastLink(mediaItemPath, rule[2], rule[3], ua);
-      if (!!directUrl) {
+      if (directUrl) {
         mediaItemPath = directUrl;
       } else {
         r.warn(`warn: fetchLastLink, not expected result, failback once`);
         directUrl = await ngxExt.fetchLastLink(ngxExt.lastLinkFailback(mediaItemPath), rule[2], rule[3], ua);
-        if (!!directUrl) {
+        if (directUrl) {
           mediaItemPath = directUrl;
         }
       }
@@ -467,23 +467,23 @@ function plexApiHandlerForJson(r, body) {
   const mediaContainer = body.MediaContainer;
   mediaContainerHandler(r, mediaContainer);
   const directoryArr = mediaContainer.Directory;
-  if (!!directoryArr) {
+  if (directoryArr) {
     directoryArr.map(dir => {
       directoryHandler(r, dir);
     });
   }
   if (mediaContainer.size > 0) {
     let metadataArr = [];
-    if (!!mediaContainer.Hub) {
+    if (mediaContainer.Hub) {
       mediaContainer.Hub.map(hub => {
-        if (!!hub.Metadata) {
+        if (hub.Metadata) {
           hub.Metadata.map(metadata => {
             metadataArr.push(metadata);
           });
         }
       });
     } else {
-      if (!!mediaContainer.Metadata) {
+      if (mediaContainer.Metadata) {
         mediaContainer.Metadata.map(metadata => {
           metadataArr.push(metadata);
         });
@@ -491,10 +491,10 @@ function plexApiHandlerForJson(r, body) {
     }
     metadataArr.map(metadata => {
       metadataHandler(r, metadata);
-      if (!!metadata.Media) {
+      if (metadata.Media) {
         metadata.Media.map(media => {
           mediaInfoHandler(r, media);
-          if (!!media.Part) {
+          if (media.Part) {
             media.Part.map(part => partInfoHandler(r, part));
           }
         });
@@ -507,7 +507,7 @@ function plexApiHandlerForXml(r, body) {
   const mediaContainerXmlDoc = body.MediaContainer;
   mediaContainerHandler(r, mediaContainerXmlDoc, true);
   const directoryXmlDoc = mediaContainerXmlDoc.$tags$Directory;
-  if (!!directoryXmlDoc) {
+  if (directoryXmlDoc) {
     directoryXmlDoc.map(dir => {
       directoryHandler(r, dir, true);
     });
@@ -516,16 +516,16 @@ function plexApiHandlerForXml(r, body) {
   let mediaXmlNodeArr;
   let partXmlNodeArr;
   // r.log(videoXmlNodeArr.length);
-  if (!!videoXmlNodeArr && videoXmlNodeArr.length > 0) {
+  if (videoXmlNodeArr && videoXmlNodeArr.length > 0) {
     videoXmlNodeArr.map(video => {
       metadataHandler(r, video, true);
       // Video.key prohibit modify, clients not supported
       mediaXmlNodeArr = video.$tags$Media;
-      if (!!mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
+      if (mediaXmlNodeArr && mediaXmlNodeArr.length > 0) {
         mediaXmlNodeArr.map(media => {
           mediaInfoHandler(r, media, true);
           partXmlNodeArr = media.$tags$Part;
-          if (!!partXmlNodeArr && partXmlNodeArr.length > 0) {
+          if (partXmlNodeArr && partXmlNodeArr.length > 0) {
             partXmlNodeArr.map(part => partInfoHandler(r, part, true));
           }
         });
@@ -692,13 +692,17 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
   }
 }
 
-function redirect(r, url, cachedRouteDictKey) {
+async function redirect(r, url, cachedRouteDictKey) {
   // for strm, only plex need this, like part location, but conf don't use add_header, repetitive: "null *"
   // add_header Access-Control-Allow-Origin *;
   r.headersOut["Access-Control-Allow-Origin"] = "*";
 
-  if (!!config.alistSignEnable) {
+  if (config.alistSignEnable) {
     url = util.addAlistSign(url, config.alistToken, config.alistSignExpireTime);
+  }
+  if (config.redirectCheckEnable && !(await util.cost(ngxExt.linkCheck, url, r.headersIn["User-Agent"]))) {
+    r.warn(`redirectCheck fail: ${url}`);
+    return internalRedirect(r);
   }
 
   r.warn(`redirect to: ${url}`);
@@ -723,9 +727,7 @@ function internalRedirect(r, uri, cachedRouteDictKey) {
 }
 
 function internalRedirectExpect(r, uri) {
-  if (!uri) {
-    uri = "@root";
-  }
+  if (!uri) { uri = "@root"; }
   r.log(`internalRedirect to: ${uri}`);
   // need caller: return;
   r.internalRedirect(uri);
