@@ -30,7 +30,7 @@ function generateUrl(r, host, uri, skipKeys) {
 function addDefaultApiKey(r, u) {
   let url = u;
   if (!url.includes("api_key") && !url.includes("X-Emby-Token")) {
-    url = appendUrlArg(url, "api_key", getApiKey(r.args));
+    url = appendUrlArg(url, "api_key", getDefaultApiKey(r.args));
   }
   return url;
 }
@@ -43,8 +43,11 @@ function getCurrentRequestUrlPrefix(r) {
   return `${r.variables.scheme}://${r.headersIn["Host"]}`;
 }
 
-function getApiKey(rArgs) {
-  return rArgs["X-Emby-Token"] ? rArgs["X-Emby-Token"] : rArgs.api_key;
+function getDefaultApiKey(rArgs) {
+  // emby old TV client only use config.embyApiKey
+  const embyApiKey = config.embyApiKey;
+  if (!rArgs) { return embyApiKey; }
+  return rArgs["X-Emby-Token"] ?? (rArgs.api_key ?? embyApiKey);
 }
 
 function getDeviceId(rArgs) {
@@ -133,7 +136,7 @@ export default {
   addDefaultApiKey,
   getCurrentRequestUrl,
   getCurrentRequestUrlPrefix,
-  getApiKey,
+  getDefaultApiKey,
   getDeviceId,
   getMediaSourceId,
   generateDirectStreamUrl,
