@@ -1,4 +1,5 @@
 import config from "../constant.js";
+import urlUtil from "./url-util.js";
 
 const ARGS = {
   // filePathKey: "filePath",
@@ -501,16 +502,12 @@ function getItemIdByUri(uri) {
 
 function getItemInfo(r) {
   const embyHost = config.embyHost;
-  const embyApiKey = config.embyApiKey;
   const itemId = getItemIdByUri(r.uri);
   const mediaSourceId = r.args.MediaSourceId
     ? r.args.MediaSourceId
     : r.args.mediaSourceId;
   const Etag = r.args.Tag;
-  let api_key = r.args["X-Emby-Token"]
-    ? r.args["X-Emby-Token"]
-    : r.args.api_key;
-  api_key = api_key ? api_key : embyApiKey;
+  const api_key = urlUtil.getDefaultApiKey(r.args);
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
 	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
