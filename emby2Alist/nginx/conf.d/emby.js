@@ -369,7 +369,7 @@ async function modifyBaseHtmlPlayer(r) {
     const res = await util.cost(embyApi.fetchBaseHtmlPlayer, config.embyHost, r.args);
     // 读取响应体
     let body = await res.text();
-    // 替换指定内容
+    // 替换指定内容, Only emby
     body = body.replace(/mediaSource\.IsRemote\s*&&\s*"DirectPlay"\s*===\s*playMethod\s*\?\s*null\s*:\s*"anonymous"/g, 'null');
     // 复制响应头
     util.copyHeaders(res.headers, r.headersOut);

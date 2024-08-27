@@ -52,12 +52,15 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 
 #### 6.115 内容无法 Web 端播放(htmlvideoplayer 跨域)?
 ~~因 emby/jellyfin/plex 的 Web 内嵌播放器无法轻易干预,~~
+以下如无特殊说明,以下均指 emby 修改, jellyfin 服务端反代修改也已实现, plex 只能参考下
 
 更正,感谢 @lixuemin13 [#236](https://github.com/bpking1/embyExternalUrl/issues/236) 
 提供的新思路,干预 htmlvideoplayer 的 <video> 标签可以实现
 
-一.新版 conf 中已经默认反代替换实现了,首次需要 二.3 中类似的清空下缓存再试,
-感谢 @Akimio521 [#64](https://github.com/chen3861229/embyExternalUrl/issues/64) 
+一.新版 conf 中已经默认反代替换实现了 emby,首次需要 二.3 中类似的清空下缓存再试,
+感谢 @Akimio521 [#64](https://github.com/chen3861229/embyExternalUrl/issues/64),
+jellyfin 这边的话 conf 中也已实现,但需要注意修改方式比较别扭,受限于 jellyfin web 代码全部为混淆后的,
+假如出现问题需要注释掉相关 location 块,https://github.com/bpking1/embyExternalUrl/pull/356/commits/475263f9d9ed4dab8041c1508f04097f001033b3
 
 二.以下服务端持久化修改
 
