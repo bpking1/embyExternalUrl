@@ -60,7 +60,7 @@ API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同
 一.新版 conf 中已经默认反代替换实现了 emby,首次需要 二.3 中类似的清空下缓存再试,
 感谢 @Akimio521 [#64](https://github.com/chen3861229/embyExternalUrl/issues/64),
 jellyfin 这边的话 conf 中也已实现,但需要注意修改方式比较别扭,受限于 jellyfin web 代码全部为混淆后的,
-假如出现问题需要注释掉相关 location 块,
+假如出现问题需要注释掉相关 location 块,https://github.com/bpking1/embyExternalUrl/pull/356/commits/475263f9d9ed4dab8041c1508f04097f001033b3
 
 二.以下服务端持久化修改
 
