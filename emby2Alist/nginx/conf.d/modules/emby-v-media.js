@@ -399,7 +399,7 @@ async function getVMediaSourcesByHls(r, source, notLocal, playSessionId) {
   if (isPlayback) { return; }
   const directHlsConfig = config.directHlsConfig;
   if (!directHlsConfig.enable) { return; }
-  const mediaItemPath = util.doMediaPathMapping(source.Path, notLocal);
+  const mediaItemPath = util.doMediaPathMapping(r, source.Path, notLocal);
   ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
   let realEnable = true;
   if (directHlsConfig.enableRule && directHlsConfig.enableRule.length > 0) {

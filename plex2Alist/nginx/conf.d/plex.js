@@ -119,7 +119,7 @@ async function redirect2Pan(r) {
   }
 
   // file path mapping
-  let mediaItemPath = util.doMediaPathMapping(mediaServerRes.path, notLocal);
+  let mediaItemPath = util.doMediaPathMapping(r, mediaServerRes.path, notLocal);
   ngx.log(ngx.WARN, `mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp

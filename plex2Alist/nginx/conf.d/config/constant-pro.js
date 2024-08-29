@@ -51,6 +51,8 @@ const routeRule = [
   // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
+  // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 plex 码率为 Kbps 单位
+  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 -(1 * 1000) + (1 * 1000)],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
@@ -66,7 +68,18 @@ const mediaPathMapping = [
   // [0, 0, /blue/g, "red"], // 此处正则不要加引号
   // [1, 1, `${alistPublicAddr}/d`],
   // [2, 2, "?xxx"],
+  // 此条是一个规则变量引用,方便将规则汇合到同一处进行管理
   // [ruleRef.mediaPathMappingGroup01, 0, 0, "/aliyun-01", "/aliyun-02"],
+  // 路径映射多条规则会从上至下依次执行,如下有同一个业务关系集的,注意带上区间的闭合条件,不然会被后续重复替换会覆盖
+  // 以下是按码率条件进行路径映射,全用户设备强制,区分用户和设备可再精确添加条件
+  // [[["4K 目录映射到 1080P 目录", "r.XMedia.bitrate", ">", 10 * 1000],
+  // ], 0, 0, "/4K/", "/1080P/"],
+  // [[["1080P 目录映射到 720P 目录", "r.XMedia.bitrate", ">", 6 * 1000],
+  //   ["1080P 目录映射到 720P 目录", "r.XMedia.bitrate", "<=", 10 * 1000],
+  // ], 0, 0, "/1080P/", "/720P/"],
+  // [[["720P 目录映射到 480P 目录", "r.XMedia.bitrate", ">", 3 * 1000],
+  //   ["720P 目录映射到 480P 目录", "r.XMedia.bitrate", "<=", 6 * 1000],
+  // ], 0, 0, "/720P/", "/480P/"],
 ];
 
 export default {

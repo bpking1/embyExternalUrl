@@ -98,7 +98,7 @@ async function redirect2Pan(r) {
   }
 
   // file path mapping
-  let mediaItemPath = util.doMediaPathMapping(embyRes.path, embyRes.notLocal);
+  let mediaItemPath = util.doMediaPathMapping(r, embyRes.path, embyRes.notLocal);
   ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp

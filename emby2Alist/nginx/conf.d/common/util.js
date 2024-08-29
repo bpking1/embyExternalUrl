@@ -49,11 +49,12 @@ const MATCHER_ENUM = {
 
 /**
  * doMediaPathMapping, config.mediaMountPath and config.mediaPathMapping
+ * @param {Object} r nginx objects, HTTP Request
  * @param {String} mediaItemPath media server item path
  * @param {Boolean} notLocal Http or strm link
  * @returns mapped path
  */
-function doMediaPathMapping(mediaItemPath, notLocal) {
+function doMediaPathMapping(r, mediaItemPath, notLocal) {
   // isRemote range > notLocal, there is overlap, which can be optimized
   const isRemote = !isAbsolutePath(mediaItemPath);
   // warnning config.XX Objects is current VM shared variable
@@ -70,7 +71,7 @@ function doMediaPathMapping(mediaItemPath, notLocal) {
     }
     if (mediaPathMappingRule) {
       let hitRule = simpleRuleFilter(
-        r, mediaPathMappingRule, mediaItemPath, 
+        r, mediaPathMappingRule, mediaItemPath,
         SOURCE_STR_ENUM.filePath, "mediaPathMappingRule"
       );
       if (!(hitRule && hitRule.length > 0)) { return; }
