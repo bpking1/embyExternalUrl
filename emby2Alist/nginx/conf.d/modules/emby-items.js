@@ -27,10 +27,10 @@ async function itemsFilter(r) {
   if (itemHiddenRule && itemHiddenRule.length > 0) {
     r.warn(`itemsFilter before: ${body.Items.length}`);
 
-    const flag = r.variables.flag;
-    r.warn(`itemsFilter flag: ${flag}`);
+    const apiType = r.variables.apiType;
+    r.warn(`itemsFilter apiType: ${apiType}`);
     let mainItemPath;
-    if (flag == "itemSimilar") {
+    if (apiType == "itemSimilar") {
       // fetch mount emby/jellyfin file path
       const itemInfo = util.getItemInfo(r);
       r.warn(`itemSimilarInfoUri: ${itemInfo.itemInfoUri}`);
@@ -55,18 +55,18 @@ async function itemsFilter(r) {
             && util.strMatches(rule[0], mainItemPath, rule[1])) {
             return false;
           }
-          if (flag == "searchSuggest" && rule[2] == 2) {
+          if (apiType == "searchSuggest" && rule[2] == 2) {
             return false;
           }
-          if (flag == "backdropSuggest" && rule[2] == 3) {
+          if (apiType == "backdropSuggest" && rule[2] == 3) {
             return false;
           }
           // 4: 只隐藏[类型风格]接口,这个暂时分页有 bug,被隐藏掉的项会有个空的海报,第一页后的 StartIndex 需要减去 itemHiddenCount
           // 且最重要是无法得知当前浏览项目,会误伤导致接口返回[],不建议实现该功能
-          // if (flag == "genreSearch" && rule[2] == 4) {
+          // if (apiType == "genreSearch" && rule[2] == 4) {
           //   return false;
           // }
-          if (flag == "itemSimilar" && rule[2] == 1) {
+          if (apiType == "itemSimilar" && rule[2] == 1) {
             return false;
           }
           if (util.strMatches(rule[0], item.Path, rule[1])) {

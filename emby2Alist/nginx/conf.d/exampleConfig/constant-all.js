@@ -41,6 +41,12 @@ const strHead = {
     seekBug: ["Emby for iOS", "Infuse"],
     maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
   },
+  xUAs: {
+    clientsPC: ["EmbyTheater"],
+    clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
+    player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
+    // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
+  },
   "115": "115.com",
   ali: "aliyundrive.net",
   userIds: {
@@ -96,8 +102,9 @@ const symlinkRule = [
 
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
-// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "transcode": 转码, "block": 只是屏蔽播放
-// "transcode",稍微有些歧义,大部分情况等同于"proxy",这里只是不做转码参数修改,具体是否转码由 emby 客户端自己判断上报或客户端手动切换码率控制
+// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链 302,
+// "transcode": 转码,稍微有些歧义,大部分情况等同于"proxy",这里只是不做转码参数修改,具体是否转码由 emby 客户端自己判断上报或客户端手动切换码率控制,
+// "block": 屏蔽媒体播放和下载, "blockDownload": 只屏蔽下载, "blockPlay": 只屏蔽播放,
 // 参数2: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数3: 匹配类型或来源(字符串参数类型) "filePath": 文件路径(Item.Path), "alistRes": alist返回的链接
 // 参数4: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
@@ -128,6 +135,12 @@ const routeRule = [
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 emby/jellyfin 码率为 bps 单位
   // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 -(1 * 1000 ** 2) + (1 * 1000 ** 2)],
+  // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
+  // ["blockDownload", "屏蔽下载", "r.headersIn.User-Agent", "includes", strHead.xUAs.clients3rdParty],
+  // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
+  // ["blockDownload", "屏蔽下载", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
+  // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
+  // ["blockDownload", "屏蔽下载", "filePath", "startsWith", ["/mnt/115"]],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了

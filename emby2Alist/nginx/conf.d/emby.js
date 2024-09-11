@@ -85,15 +85,16 @@ async function redirect2Pan(r) {
   // add Expression Context to r
   r[util.ARGS.rXMediaKey] = embyRes.mediaSource;
   ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
-
-  // diff from PlaybackInfo routeRule, because depends on current playback 
+  // diff of PlaybackInfo routeRule, prevent bypass so rejudge
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
-  r.warn(`getRouteMode: ${routeMode}`);
-  if (util.ROUTE_ENUM.proxy == routeMode) {
-    // use original link
-    return internalRedirect(r);
-  } else if (util.ROUTE_ENUM.block == routeMode) {
+  const apiType = r.variables.apiType ?? "";
+  r.warn(`getRouteMode: ${routeMode}, apiType: ${apiType}`);
+  if (util.ROUTE_ENUM.proxy === routeMode) {
+    return internalRedirect(r); // use original link
+  } else if ((routeMode === util.ROUTE_ENUM.block)
+    || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
+    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))) {
     return r.return(403, "blocked");
   }
 
@@ -151,13 +152,10 @@ async function redirect2Pan(r) {
   );
   r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    // routeRule
+    // routeRule, there is only check for alistRes on proxy mode
     const routeMode = util.getRouteMode(r, alistRes, true, embyRes.notLocal);
-    if (util.ROUTE_ENUM.proxy == routeMode) {
-      // use original link
-      return internalRedirect(r);
-    } else if (util.ROUTE_ENUM.block == routeMode) {
-      return r.return(403, "blocked");
+    if (util.ROUTE_ENUM.proxy === routeMode) {
+      return internalRedirect(r); // use original link
     }
     // clientSelfAlistRule, after fetch alist, cover raw_url
     return redirect(r, util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes);
@@ -263,7 +261,7 @@ async function transferPlaybackInfo(r) {
           const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
           r.warn(`playbackinfo routeMode: ${routeMode}`);
           source.XRouteMode = routeMode; // for debug
-          if (util.ROUTE_ENUM.redirect == routeMode) {
+          if (util.ROUTE_ENUM.redirect === routeMode) {
             if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
             // 1. first priority is user clients choice video bitrate < source.Bitrate
             // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
@@ -283,14 +281,16 @@ async function transferPlaybackInfo(r) {
               modifyDirectPlaySupports(source, false);
               continue;
             }
-          } else if (util.ROUTE_ENUM.transcode == routeMode) {
+          } else if (util.ROUTE_ENUM.transcode === routeMode) {
             r.warn(`routeMode modify playback supports`);
             // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
             modifyDirectPlaySupports(source, false);
             continue;
-          } else if (util.ROUTE_ENUM.block == routeMode) {
-            return r.return(403, "blocked");
           }
+          // PlaybackInfo temporary not block
+          // else if (util.ROUTE_ENUM.block === routeMode) {
+          //   return r.return(403, "blocked");
+          // }
           // util.ROUTE_ENUM.proxy == routeMode, because subdivided transcode, proxy do't modify
         } else {
           source.SupportsTranscoding = false;

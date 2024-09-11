@@ -100,14 +100,16 @@ async function redirect2Pan(r) {
   // because plex PartInfo cache only has path, not implemented temporarily
   r[util.ARGS.rXMediaKey] = mediaServerRes.media;
   ngx.log(ngx.WARN, `add plex Media to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
-
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
-  r.warn(`getRouteMode: ${routeMode}`);
-  if (util.ROUTE_ENUM.proxy == routeMode) {
-    // use original link
-    return internalRedirect(r);
-  } else if (util.ROUTE_ENUM.block == routeMode) {
+  const apiType = r.variables.apiType ?? "";
+  r.warn(`getRouteMode: ${routeMode}, apiType: ${apiType}`);
+  if (util.ROUTE_ENUM.proxy === routeMode) {
+    return internalRedirect(r); // use original link
+  } else if ((routeMode === util.ROUTE_ENUM.block)
+    // || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
+    // || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))
+  ) {
     return r.return(403, "blocked");
   }
 
@@ -172,13 +174,10 @@ async function redirect2Pan(r) {
   );
   r.warn(`fetchAlistPathApi, UA: ${ua}`);
   if (!alistRes.startsWith("error")) {
-    // routeRule
+    // routeRule, there is only check for alistRes on proxy mode
     const routeMode = util.getRouteMode(r, alistRes, true, notLocal);
-    if (util.ROUTE_ENUM.proxy == routeMode) {
-      // use original link
-      return internalRedirect(r);
-    } else if (util.ROUTE_ENUM.block == routeMode) {
-      return r.return(403, "blocked");
+    if (util.ROUTE_ENUM.proxy === routeMode) {
+      return internalRedirect(r); // use original link
     }
     // clientSelfAlistRule, after fetch alist, cover raw_url
     return redirect(r, util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes);

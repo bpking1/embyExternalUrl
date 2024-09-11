@@ -16,7 +16,9 @@ const ROUTE_ENUM = {
   proxy: "proxy",
   redirect: "redirect",
   transcode: "transcode",
-  block: "block",
+  block: "block", // blockAll
+  blockDownload: "blockDownload",
+  blockPlay: "blockPlay",
 };
 
 const CHCHE_LEVEL_ENUM = {
@@ -128,10 +130,11 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   let cRouteRule = config.routeRule;
   // skip internal request
   if (r.args[ARGS.internalKey] === "1") {
-    cRouteRule = cRouteRule.filter(rule => 
-      rule[0] != "r.variables.remote_addr" 
-      && rule[1] != "r.variables.remote_addr" 
-      && rule[2] != "r.variables.remote_addr");
+    cRouteRule = cRouteRule.filter(rule =>
+      rule[0] != "r.variables.remote_addr"
+      && rule[1] != "r.variables.remote_addr"
+      && rule[2] != "r.variables.remote_addr"
+    );
   }
   // old proxy, sigle rule length is 3 or 4(group)
   let proxyRules = cRouteRule.filter(rule => rule.length <= 4);
@@ -147,8 +150,8 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   }
   // new routeRules and not new proxy routeMode
   let routeRules = cRouteRule.filter(rule => {
-    for (const rKey in ROUTE_ENUM) {
-      if (ROUTE_ENUM[rKey] === rule[0] && rule[0] != ROUTE_ENUM.proxy) {
+    for (const routeMode in ROUTE_ENUM) {
+      if (ROUTE_ENUM[routeMode] === rule[0] && rule[0] != ROUTE_ENUM.proxy) {
         return rule;
       }
     }
@@ -159,22 +162,22 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
   }
   // routeRules groupBy group name
   const routeRulesObjArr = groupBy(routeRules, 0);
-  for (const rKey in routeRulesObjArr) {
-    routeRules = routeRulesObjArr[rKey];
+  for (const routeMode in routeRulesObjArr) {
+    routeRules = routeRulesObjArr[routeMode];
     // remove routeMode
     const oldRulesArr3D = routeRules.map(rRule => rRule.slice(1));
     // routeRules is 3D array
     if (routeRules[0].length > 4) {
       let matchedGroupKey = getMatchedRuleGroupKey(r, routeRules[0][1], oldRulesArr3D, filePath);
       if (matchedGroupKey) {
-        ngx.log(ngx.WARN, `hit ${rKey}, group: ${matchedGroupKey}`);
-        return rKey;
+        ngx.log(ngx.WARN, `hit ${routeMode}, group: ${matchedGroupKey}`);
+        return routeMode;
       }
     } else {
       const matchedRule = getMatchedRule(r, oldRulesArr3D, filePath);
       if (matchedRule) {
-        ngx.log(ngx.WARN, `hit ${rKey}: ${JSON.stringify(matchedRule)}`);
-        return rKey;
+        ngx.log(ngx.WARN, `hit ${routeMode}: ${JSON.stringify(matchedRule)}`);
+        return routeMode;
       }
     }
   }
