@@ -37,6 +37,12 @@ const strHead = {
     seekBug: ["Emby for iOS", "Infuse"],
     maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
   },
+  xUAs: {
+    clientsPC: ["EmbyTheater"],
+    clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
+    player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
+    // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
+  },
   "115": "115.com",
   ali: "aliyundrive.net",
   userIds: {
@@ -86,7 +92,7 @@ const symlinkRule = [
 
 // 路由规则,注意有先后顺序,"proxy"规则优先级最高,其余依次,千万注意规则不要重叠,不然排错十分困难,字幕和图片走了缓存,不在此规则内
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
-// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 只是屏蔽播放
+// "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 屏蔽媒体播放和下载
 // pelx 不需要 "transcode", 可用 "proxy" 代替,稍微有些歧义,这里只是不做修改,交给原始服务中转处理,具体是否转码由 plex 客户端自己判断上报的
 // 参数2: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数3: 匹配类型或来源(字符串参数类型) "filePath": 文件路径(Item.Path), "alistRes": alist返回的链接

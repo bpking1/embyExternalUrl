@@ -29,21 +29,37 @@ async function transcodeBalance(r) {
     return emby.internalRedirectExpect(r);
   }
 
-  // swich transcode opt, skip modify
-  if (r.args.StartTimeTicks === "0") {
-    // routeRule
-    const notLocal = util.checkIsStrmByPath(currentItem.path);
-    const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
-    if (util.ROUTE_ENUM.proxy == routeMode) {
-      return emby.internalRedirectExpect(r);
-      // not need route, clients will self select
-    // } else if (util.ROUTE_ENUM.redirect == routeMode) {
-    //   // this maybe not support, because player is already init to HLS
-    //   return emby.redirect2Pan(r);
-    } else if (util.ROUTE_ENUM.block == routeMode) {
-      return r.return(403, "blocked");
-    }
+  // add Expression Context to r
+  r[util.ARGS.rXMediaKey] = currentItem;
+  ngx.log(ngx.WARN, `add emby/jellyfin currentItem to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
+  // routeRule, diff of PlaybackInfo routeRule, prevent bypass so rejudge
+  const notLocal = util.checkIsStrmByPath(currentItem.path);
+  const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
+  const apiType = r.variables.apiType ?? "";
+  r.warn(`getRouteMode: ${routeMode}, apiType: ${apiType}`);
+  if (util.ROUTE_ENUM.proxy === routeMode) {
+    return emby.internalRedirectExpect(r);
+  } else if ((routeMode === util.ROUTE_ENUM.block)
+    || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
+    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))) {
+    return r.return(403, "blocked");
   }
+
+  // swich transcode opt, skip modify
+  // if (r.args.StartTimeTicks === "0") {
+  //   // routeRule
+  //   const notLocal = util.checkIsStrmByPath(currentItem.path);
+  //   const routeMode = util.getRouteMode(r, currentItem.path, false, notLocal);
+  //   if (util.ROUTE_ENUM.proxy === routeMode) {
+  //     return emby.internalRedirectExpect(r);
+  //     // not need route, clients will self select
+  //   // } else if (util.ROUTE_ENUM.redirect === routeMode) {
+  //   //   // this maybe not support, because player is already inited to HLS
+  //   //   return emby.redirect2Pan(r);
+  //   } else if (util.ROUTE_ENUM.block === routeMode) {
+  //     return r.return(403, "blocked");
+  //   }
+  // }
   
   // check transcode load
   let transServer = await getTransServer(r);
