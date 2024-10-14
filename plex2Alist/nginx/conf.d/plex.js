@@ -77,8 +77,11 @@ async function redirect2Pan(r) {
   const notLocal = util.checkIsStrmByPath(mediaServerRes.path);
   r.warn(`notLocal: ${notLocal}`);
   if (notLocal) {
-    mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
-    r.warn(`notLocal decodeURIComponent mediaServerRes.path`);
+    const filePathPart = urlUtil.getFilePathPart(mediaServerRes.path);
+    if (filePathPart) {
+      r.warn(`notLocal is CloudDrive/AList link, decodeURIComponent mediaServerRes.path before: ${mediaServerRes.path}`);
+      mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
+    }
   }
 
   // check symlinkRule
