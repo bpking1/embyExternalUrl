@@ -62,8 +62,8 @@ async function redirect2Pan(r) {
   } else {
     r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
     mediaServerRes = await util.cost(fetchPlexFilePath,
-      itemInfo.itemInfoUri, 
-      itemInfo.mediaIndex, 
+      itemInfo.itemInfoUri,
+      itemInfo.mediaIndex,
       itemInfo.partIndex
     );
     r.log(`mediaServerRes: ${JSON.stringify(mediaServerRes)}`);
@@ -431,7 +431,8 @@ async function fetchStrmInnerText(r) {
 async function plexApiHandler(r) {
   events.njsOnExit(`plexApiHandler: ${r.uri}`);
 
-  if (!config.transcodeConfig.enable && r.variables.isDecision === "1") {
+  const apiType = r.variables.apiType ?? "";
+  if (!config.transcodeConfig.enable && apiType === "TranscodeUniversalDecision") {
     // default modify direct play supports all true
     r.variables.request_uri += "&directPlay=1&directStream=1";
     r.headersOut["X-Modify-DirectPlay-Success"] = true;
