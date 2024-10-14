@@ -5,6 +5,11 @@ date: 2023/11/04 22:00:00
 
 ### 文章更新记录 
 
+#### 2024-10-13
+
+1.修复变量未初始化的日志输出,此问题不影响任何功能
+https://github.com/nginx/njs/issues/668
+
 #### 2024-08-29
 
 1.修复 mediaPathMapping 中的 r 上下文变量传递
@@ -208,12 +213,12 @@ https://clients.plex.tv/api/v2/resources
 
 4.很简单,使用公网访问自己plex,避免局域网的使用情况,确保nginx的处理生效
 
-5.最简单,ios平台使用第三方客户端,原本plex对于strm的支持就是只能远程直链的重定向下载,响应的是301,而部分第三方客户端播放可能使用的下载接口，支持情况不统一
+5.最简单,ios平台使用第三方客户端,原本plex对于strm的支持就是只能远程直链的重定向下载,响应的是301,而部分第三方客户端播放可能使用的下载接口,支持情况不统一
 可以断定plex就是把这个活丢出去了,自身客户端并不想支持播放,因为还有bug,体验不是很好,如果媒体库全部为远程strm直链,且客户端全部为第三方,其实用不着部署nginx了
 
 测试已通过
 
-1.局域网环境下的Web浏览器添加拓展解决，并更新最新代码
+1.局域网环境下的Web浏览器添加拓展解决,并更新最新代码
 ![e6cb4294e72b3140870f42da1bb966bb](https://github.com/bpking1/embyExternalUrl/assets/42368856/96e1a512-2021-4aff-83dc-bc1424d6e0db)
 ![image](https://github.com/bpking1/embyExternalUrl/assets/42368856/ab71279e-296c-4845-af69-19738b25aae2)
 
@@ -362,9 +367,27 @@ docker-compose logs -f
 ### 3.2 - 群晖docker
 容器=>设置=>导入=>选择json配置文件=>确认
 
-### 4. 
+### 4.1 http
 防火墙放行 http(当前默认) 的 8091 端口和 https(需要自己配置证书并启用) 的 8095 为 plex 转直链端口与默认的 32400 互不影响
 访问 alist,查看 token,管理=>设置=>其他=>令牌,根据项目文档 https://github.com/Xhofe/alist 在Alist项目后台添加网盘
+
+### 4.2 https
+4.2.1 更改`plex2Alist/nginx/conf.d/plex.conf`第 25-26 行,注释默认的 http 访问方式,打开 https 的访问
+```js
+## Include the http and https configs, better don't use same port
+# include /etc/nginx/conf.d/includes/http.conf;
+include /etc/nginx/conf.d/includes/https.conf;
+```
+4.2.2 注意下`plex2Alist/nginx/conf.d/includes/https.conf`中第 12-13 行的,证书文件,证书密钥的路径位置与文件名
+```js
+ssl_certificate      /etc/nginx/conf.d/cert/fullchain.pem;  ## Location of your public PEM file.
+ssl_certificate_key  /etc/nginx/conf.d/cert/privkey.key;  ## Location of your private PEM file.
+```
+4.2.3 假如不更改默认的证书路径和文件名,直接将证书文件,证书密钥,改为上面的默认文件名,然后放置到`plex2Alist/nginx/conf.d/cert`目录下即可
+
+4.2.4 配置文件更改完成后,需要终端执行`nginx -s reload`或直接重启 nginx 服务刷新配置文件生效
+
+4.2.5 此时通过默认 https 脚本中默认的`8095`端口访问,`http.conf`中的`8091`端口已经被释放无法访问,假如是`Docker`环境,需要检查下容器是否正确映射出了`8095`到`宿主机`上,假如`路由器需要做端口转发(内部端口/宿主机 8095 到外部端口 8095)`开放在公网上,也需要检查下路由器中的设置
 
 ### 5. plex 服务端控制台设置
 1.设置远程访问-手动设置公开端口为 nginx 的 8091 端口,避免客户端优先直连 32400,如果路由器做了 32400 端口转发,不影响外部访问

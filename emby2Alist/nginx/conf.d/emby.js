@@ -214,7 +214,7 @@ async function transferPlaybackInfo(r) {
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       return r.return(200, JSON.stringify(vMediaSources));
     }
-  }  
+  }
   
   let start = Date.now();
   const isPlayback = r.args.IsPlayback === "true";
