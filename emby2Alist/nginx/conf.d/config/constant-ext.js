@@ -71,6 +71,22 @@ const directHlsConfig = {
   enableRule: ruleRef.directHlsEnable ?? [],
 };
 
+// PlaybackInfo 接口的一些增强配置
+const playbackInfoConfig = {
+  // 多版本播放源排序规则,对接口数据MediaSources数组进行排序
+  // 优先级从上至下,数组内从左至右,支持正则表达式
+  // key使用'.'进行层级,分割后的键按层级从MediaSources获取,根据分割键获取下一层值时若对象为数组,则过滤[Type===分割键]的第一行数据
+  // (如: 'MediaStreams.Video.Height'规则中MediaSources.MediaStreams值为数组,则取数组中[Type==='Video']的对象的Height值)
+  // ':length'为关键字,用于数组长度排序
+  sourcesSortRules: {
+    // 'Path': ['1080p', '720p', '480p', "hevc", "h265", "h264"],
+    // 'MediaStreams.Video.Height': 'desc',
+    // 'MediaStreams.Video.Codec': ["hevc", "h265", "h264"],
+    // 'MediaStreams.Subtitle:length': 'desc',
+    // 'MediaStreams.Video.BitRate': 'asc',
+  },
+}
+
 export default {
   imageCachePolicy,
   embyNotificationsAdmin,
@@ -80,4 +96,5 @@ export default {
   searchConfig,
   webCookie115,
   directHlsConfig,
+  playbackInfoConfig,
 }

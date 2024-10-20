@@ -10,6 +10,7 @@ import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 import ngxExt from "./modules/ngx-ext.js";
 import embyVMedia from "./modules/emby-v-media.js";
+import embyPlaybackInfo from "./modules/emby-playback-info.js";
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
@@ -315,6 +316,9 @@ async function transferPlaybackInfo(r) {
         }
       }
 
+      if (config.playbackInfoConfig && config.playbackInfoConfig.sourcesSortRules) {
+        body.MediaSources = embyPlaybackInfo.sourcesSort(body.MediaSources, config.playbackInfoConfig.sourcesSortRules);
+      }
       body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
       
       util.copyHeaders(response.headersOut, r.headersOut);
