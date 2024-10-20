@@ -29,7 +29,7 @@ const alistPublicAddr = "http://youralist.com:5244";
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 // 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
+  // IOS 客户端对于 115 的进度条拖动可能依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
   // [2, strHead.ali, alistPublicAddr],

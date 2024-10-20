@@ -322,6 +322,22 @@ const routeRule = [
 ];
 ```
 
+5.禁用指定客户端标识的 115 直链功能,走 emby 回源中转,主要为部分客户端默认视频加载线程 > 2 超出了 115 服务方的限制,导致拖动进度条黑屏
+
+```js
+const routeRule = [
+  // 以下规则代表禁用指定客户端的[本地挂载文件或 alist 返回的链接]的 115 直链功能
+  ["proxy", "115-alist-xEmbyClients", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug], // 链接入参,客户端类型
+  ["proxy", "115-alist-xEmbyClients", "alistRes", 0, strHead["115"]],
+  ["proxy", "115-local-xEmbyClients", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.seekBug],
+  ["proxy", "115-local-xEmbyClients", "filePath", 0, "/mnt/115"],
+  ["proxy", "115-alist-xUAs", "r.headersIn.User-Agent", 0, strHead.xUAs.seekBug], // 请求头 User-Agent
+  ["proxy", "115-alist-xUAs", "alistRes", 0, strHead["115"]],
+  ["proxy", "115-local-xUAs", "r.headersIn.User-Agent", 0, strHead.xUAs.seekBug],
+  ["proxy", "115-local-xUAs", "filePath", 0, "/mnt/115"],
+];
+```
+
 #### 21.因为图片缓存导致更新海报不生效?
 0.以下只针对多设备共用一份 nginx 缓存设置的情况,缓存是多级的,已知有
 
@@ -704,6 +720,27 @@ plex 中具体为 Metadata.Media[0].Part[0] 中的 Media 单个对象,可用取�
 plex 更加不支持,多版本字段和接口逻辑完全不同
 
 8.versionDict cache 可用直链范围(多码率版本) > routeLXDict,故虽然路由缓存也缓存了直链,但忽略路由缓存使用,提升命中率
+
+#### 35.部分客户端播放 strm 无进度操作按钮?
+
+1.因为 strm 本身在 emby 中没有经过扫库/入库过程,故 emby 服务端媒体元信息中是没有`runTimeTicks`可播放时长信息的
+
+![image](https://github.com/user-attachments/assets/a68369a2-8403-425e-93bd-76cd30c2a832)
+
+2.上面`strm`中只有`alist`的直链，没有填写`sign`参数,因为脚本中可以动态获取补充这个,
+虽然客户端可以播放成功,但是 emby 服务端会在客户端播放的瞬间,
+同时也会去读取原始链接的媒体信息获取可播放时长和其他一些媒体编码信息补充入库,
+此时 emby 服务端没有`sign`被`alist`拦截了
+
+![image](https://github.com/user-attachments/assets/b472f6a5-463f-46d8-9d33-15c1e41938dd)
+
+3.以上仅简单复现过程不用严格相等,重点仅在于`emby 服务端对于此媒体没有元信息`且`emby 服务端无法直接读取到原媒体信息`这个通用情况导致的
+
+4.1 解决方案 1, 换用对`strm`支持更好的第三方播放器,它们不需要服务端编码元信息,而是直接从播放链接中获取
+
+4.2 解决方案 2, 假如是`strm`指向'alist',需要关闭`alist 的 sign`
+
+4.3 解决方案 3, 换用 emby 最初支持的兼容性和稳定性更高的挂载媒体方式或软链接方式,即等同 emby 扫库本地媒体
 
 # embyAddExternalUrl
 

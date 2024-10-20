@@ -88,7 +88,7 @@ async function redirect2Pan(r) {
 
   // add Expression Context to r
   r[util.ARGS.rXMediaKey] = embyRes.mediaSource;
-  ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
+  ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r`);
   // diff of PlaybackInfo routeRule, prevent bypass so rejudge
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
