@@ -38,10 +38,10 @@ const alistPublicAddr = "http://youralist.com:5244";
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   xEmbyClients: {
-    seekBug: ["Emby for iOS", "Infuse"],
-    maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
+    seekBug: ["Emby for iOS"],
   },
   xUAs: {
+    seekBug: ["Infuse", "VidHub", "SenPlayer"],
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
@@ -59,6 +59,7 @@ const strHead = {
     mediaPathMappingGroup01: [],
   },
 };
+
 // 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配)
 // 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": 本地文件为路径,strm 为远程链接
 // ,有分组时不可省略填写,可为表达式
@@ -121,16 +122,11 @@ const routeRule = [
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
-  // 以下规则代表禁用 strHead.xEmbyClients.maybeProxy 中的[本地挂载文件或 alist 返回的链接]的 115 直链功能
-  // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy], // 链接入参,客户端类型
-  // ["115-alist", "alistRes", 0, strHead["115"]],
-  // ["115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
-  // ["115-local", "filePath", 0, "/mnt/115"],
   // 注意非"proxy"无法使用"alistRes"条件,因为没有获取 alist 直链的过程
   // ["proxy", "filePath", 0, "/mnt/sda1"],
   // ["redirect", "filePath", 0, "/mnt/sda2"],
   // ["transcode", "filePath", 0, "/mnt/sda3"],
-  // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
+  // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.XXX],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 emby/jellyfin 码率为 bps 单位
@@ -199,7 +195,7 @@ const redirectStrmLastLinkRule = [
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 // 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
+  // IOS 客户端对于 115 的进度条拖动可能依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
   // [2, strHead.ali, alistPublicAddr],
@@ -309,6 +305,21 @@ const directHlsConfig = {
   enableRule: ruleRef.directHlsEnable ?? [],
 };
 
+// PlaybackInfo 接口的一些增强配置
+const playbackInfoConfig = {
+  // 多版本播放源排序规则,对接口数据 MediaSources 数组进行排序,优先级从上至下,数组内从左至右,支持正则表达式
+  // Key 使用'.'进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
+  // (如: 'MediaStreams.Video.Height'规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === 'Video']的对象的 Height 值)
+  // ':length'为关键字,用于数组长度排序
+  sourcesSortRules: {
+    // 'Path': ['1080p', '720p', '480p', "hevc", "h265", "h264"],
+    // 'MediaStreams.Video.Height': 'desc',
+    // 'MediaStreams.Video.Codec': ["hevc", "h265", "h264"],
+    // 'MediaStreams.Subtitle:length': 'desc',
+    // 'MediaStreams.Video.BitRate': 'asc',
+  },
+}
+
 // nginx 配置 Start
 
 const nginxConfig = {
@@ -365,6 +376,7 @@ export default {
   searchConfig,
   webCookie115,
   directHlsConfig,
+  playbackInfoConfig,
   getEmbyHost,
   getTranscodeEnable,
   getTranscodeType,

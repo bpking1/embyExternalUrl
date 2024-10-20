@@ -102,7 +102,7 @@ async function redirect2Pan(r) {
   // add Expression Context to r
   // because plex PartInfo cache only has path, not implemented temporarily
   r[util.ARGS.rXMediaKey] = mediaServerRes.media;
-  ngx.log(ngx.WARN, `add plex Media to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
+  ngx.log(ngx.WARN, `add plex Media to r`);
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, mediaServerRes.path, false, notLocal);
   const apiType = r.variables.apiType ?? "";

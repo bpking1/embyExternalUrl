@@ -65,6 +65,7 @@ export default {
   searchConfig: extConfig.searchConfig,
   webCookie115: extConfig.webCookie115,
   directHlsConfig: extConfig.directHlsConfig,
+  playbackInfoConfig: extConfig.playbackInfoConfig,
 
   getEmbyHost,
   getTranscodeEnable,

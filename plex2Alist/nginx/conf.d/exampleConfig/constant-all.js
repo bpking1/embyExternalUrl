@@ -34,10 +34,10 @@ const alistPublicAddr = "http://youralist.com:5244";
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   xEmbyClients: {
-    seekBug: ["Emby for iOS", "Infuse"],
-    maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
+    seekBug: ["Emby for iOS"],
   },
   xUAs: {
+    seekBug: ["Infuse", "VidHub", "SenPlayer"],
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
@@ -55,6 +55,7 @@ const strHead = {
     mediaPathMappingGroup01: [],
   },
 };
+
 // 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配)
 // 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": 本地文件为路径,strm 为远程链接
 // ,有分组时不可省略填写,可为表达式
@@ -110,11 +111,6 @@ const routeRule = [
   // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
   // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
-  // 以下规则代表禁用 strHead.xEmbyClients.maybeProxy 中的[本地挂载文件或 alist 返回的链接]的 115 直链功能
-  // ["115-alist", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy], // 链接入参,客户端类型
-  // ["115-alist", "alistRes", 0, strHead["115"]],
-  // ["115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.maybeProxy],
-  // ["115-local", "filePath", 0, "/mnt/115"],
   // 注意非"proxy"无法使用"alistRes"条件,因为没有获取 alist 直链的过程
   // ["proxy", "filePath", 0, "/mnt/sda1"],
   // ["redirect", "filePath", 0, "/mnt/sda2"],
@@ -179,7 +175,7 @@ const redirectStrmLastLinkRule = [
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 // 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // "Emby for iOS"和"Infuse"对于 115 的进度条拖动依赖于此
+  // IOS 客户端对于 115 的进度条拖动可能依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
   // [2, strHead.ali, alistPublicAddr],

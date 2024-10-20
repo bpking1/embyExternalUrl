@@ -10,6 +10,7 @@ import events from "./common/events.js";
 import embyApi from "./api/emby-api.js";
 import ngxExt from "./modules/ngx-ext.js";
 import embyVMedia from "./modules/emby-v-media.js";
+import embyPlaybackInfo from "./modules/emby-playback-info.js";
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
@@ -87,7 +88,7 @@ async function redirect2Pan(r) {
 
   // add Expression Context to r
   r[util.ARGS.rXMediaKey] = embyRes.mediaSource;
-  ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r: ${JSON.stringify(r[util.ARGS.rXMediaKey])}`);
+  ngx.log(ngx.WARN, `add emby/jellyfin MediaSource to r`);
   // diff of PlaybackInfo routeRule, prevent bypass so rejudge
   // routeRule, not must before mediaPathMapping, before is simple, can ignore mediaPathMapping
   const routeMode = util.getRouteMode(r, embyRes.path, false, embyRes.notLocal);
@@ -315,6 +316,9 @@ async function transferPlaybackInfo(r) {
         }
       }
 
+      if (config.playbackInfoConfig && config.playbackInfoConfig.sourcesSortRules) {
+        body.MediaSources = embyPlaybackInfo.sourcesSort(body.MediaSources, config.playbackInfoConfig.sourcesSortRules);
+      }
       body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
       
       util.copyHeaders(response.headersOut, r.headersOut);

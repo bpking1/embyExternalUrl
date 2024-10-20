@@ -5,10 +5,10 @@
 const strHead = {
   lanIp: ["172.", "10.", "192.", "[fd00:"], // 局域网ip头
   xEmbyClients: {
-    seekBug: ["Emby for iOS", "Infuse"],
-    maybeProxy: ["Emby Web", "Emby for iOS", "Infuse"],
+    seekBug: ["Emby for iOS"],
   },
   xUAs: {
+    seekBug: ["Infuse", "VidHub", "SenPlayer"],
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
