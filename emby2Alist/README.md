@@ -13,6 +13,8 @@ date: 2021/09/06 22:00:00
 2.目前固定版本为 nginx:1.27.1 待 nginx 官方修复后再改回 nginx:latest 镜像,
 为防止意外内存泄漏卡死机器,docker 脚本已添加资源限制,默认 memory: 128M 也可 memory: 256M
 
+3.fix(emby2Alist): 修复搜索框指令对于历史配置的兼容问题
+
 #### 2024-10-20
 
 1.feat(emby2Alist): 新增多版本播放源排序
