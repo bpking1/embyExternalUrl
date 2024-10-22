@@ -1,10 +1,13 @@
 version: '3.5'
-
 services:
-
     service.nginx-emby:
-      image: nginx:latest
+      image: nginx:1.27.1
       container_name: nginx-emby
+      deploy:
+        resources:
+          limits:
+            cpus: '0.50'
+            memory: 128M
       # 更改为默认host网络,纠正流量标识,直接占用宿主机端口,docker层会禁用端口映射
       network_mode: host
       # 如果需要使用bridge(桥接)网络,请取消ports(端口映射)注释,并注释network_mode
@@ -26,14 +29,14 @@ services:
       # depends_on:
       #   - service.ali
 
-    service.ali:
-      image: xhofe/alist:latest
-      container_name: alist
-      ports:
-        - 5244:5244
-      volumes:
-        - ../alist:/opt/alist/data
-      restart: always
+    # service.ali:
+    #   image: xhofe/alist:latest
+    #   container_name: alist
+    #   ports:
+    #     - 5244:5244
+    #   volumes:
+    #     - ../alist:/opt/alist/data
+    #   restart: always
 
     # service.ali-webdav:
     #   image: messense/aliyundrive-webdav
@@ -47,4 +50,3 @@ services:
     #     - WEBDAV_AUTH_USER=admin
     #     - WEBDAV_AUTH_PASSWORD=admin
     #   restart: always
-
