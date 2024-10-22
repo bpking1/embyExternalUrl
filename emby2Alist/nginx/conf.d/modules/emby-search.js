@@ -38,11 +38,16 @@ const DIRECTIVE_KEY_ENUM = {
 
 async function searchHandle(r) {
   const searchConfig = config.searchConfig;
-  let hitFlag = searchConfig.interactiveEnableRule.length == 0;
-  if (searchConfig && !hitFlag) {
+  const enable = searchConfig && searchConfig.interactiveEnable;
+  if (!enable) {
+    r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
+    return emby.internalRedirectExpect(r, r.variables.request_uri);
+  }
+  let hitFlag = true;
+  if (searchConfig.interactiveEnableRule && searchConfig.interactiveEnableRule.length > 0) {
     hitFlag = searchConfig.interactiveEnableRule.some(rule => r.variables.request_uri.includes(rule));
   }
-  if (!searchConfig || !searchConfig.interactiveEnable || !hitFlag) {
+  if (!hitFlag) {
     r.variables.request_uri += `&${util.ARGS.useProxyKey}=1`;
     return emby.internalRedirectExpect(r, r.variables.request_uri);
   }
