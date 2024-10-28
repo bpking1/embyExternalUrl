@@ -32,16 +32,16 @@ function getCurrentRequestUrlPrefix(r) {
 }
 
 /**
- * 1.CloudDrive
- * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv
- * 2.AList
- * http://mydomain:5244/d/AList/xxx.mkv
- * see: https://regex101.com/r/Gd3JUH/1
+ * 1.CloudDrive with params
+ * http://mydomain:19798/static/http/mydomain:19798/False//AList/xxx.mkv?aaa=bbb
+ * 2.AList with params
+ * http://mydomain:5244/d/AList/xxx.mkv?aaa=bbb
+ * see: https://regex101.com/r/Gd3JUH/2
  * @param {String} url full url
  * @returns "/AList/xxx.mkv" or "AList/xxx.mkv" or ""
  */
 function getFilePathPart(url) {
-  const matches = url.match(/(?:\/False\/|\/d\/)(.*)/);
+  const matches = url.match(/(?:\/False\/|\/d\/)(.*?)(?:\?|$)/);
   return matches ? matches[1] : "";
 }
 
