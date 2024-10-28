@@ -129,8 +129,8 @@ async function redirect2Pan(r) {
 
   // strm file inner remote link redirect,like: http,rtsp
   // not only strm, mediaPathMapping maybe used remote link
-  const isRemote = !util.isAbsolutePath(mediaItemPath);
-  if (isRemote) {
+  const isRelative = !util.isAbsolutePath(mediaItemPath);
+  if (isRelative) {
     let rule = util.simpleRuleFilter(
       r, config.redirectStrmLastLinkRule, mediaItemPath, 
       util.SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule"

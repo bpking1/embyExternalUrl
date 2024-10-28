@@ -53,20 +53,19 @@ const MATCHER_ENUM = {
  * @returns mapped path
  */
 function doMediaPathMapping(r, mediaItemPath, notLocal) {
-  // isRemote range > notLocal, there is overlap, which can be optimized
-  const isRemote = !isAbsolutePath(mediaItemPath);
+  const isRelative = !isAbsolutePath(mediaItemPath);
   // warnning config.XX Objects is current VM shared variable
   let mediaPathMapping = config.mediaPathMapping.slice();
   config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
   ngx.log(ngx.WARN, `mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
   let mediaPathMappingRule;
   mediaPathMapping.map(arr => {
-    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
     if ((arr[1] == 0 && notLocal)
-      || (arr[1] == 1 && (!notLocal || isRemote))
-      || (arr[1] == 2 && (!notLocal || !isRemote))) {
+      || (arr[1] == 1 && (!notLocal || isRelative))
+      || (arr[1] == 2 && (!notLocal || !isRelative))) {
       return;
     }
+    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
     if (mediaPathMappingRule) {
       let hitRule = simpleRuleFilter(
         r, mediaPathMappingRule, mediaItemPath, 
