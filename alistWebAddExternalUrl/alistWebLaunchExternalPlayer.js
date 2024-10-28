@@ -11,7 +11,7 @@
 // @license      MIT
 // @author       @Chen3861229
 // @github       https://github.com/bpking1/embyExternalUrl
-// @match        */*
+// @match        *://*/*
 // ==/UserScript==
 
 (function () {
@@ -136,7 +136,7 @@
         }
     }
 
-    // copy from ./iconsExt, 如果更改了以下内容,请同步更改 ./iconsExt
+    // copy from /embyWebAddExternalUrl/iconsExt.js, 如果更改了以下内容,请同步更改 ./iconsExt
     function getIconsExt() {
         // base64 data total size 50.4 KB from embyWebAddExternalUrl/icons/min, sync modify
         const iconsExt = [

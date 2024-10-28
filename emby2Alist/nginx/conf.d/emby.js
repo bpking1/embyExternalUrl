@@ -50,7 +50,7 @@ async function redirect2Pan(r) {
   // fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
-  let embyRes = await util.cost(fetchEmbyFilePath,
+  const embyRes = await util.cost(fetchEmbyFilePath,
     itemInfo.itemInfoUri,
     itemInfo.itemId,
     itemInfo.Etag,
@@ -66,7 +66,7 @@ async function redirect2Pan(r) {
   if (embyRes.notLocal) {
     const filePathPart = urlUtil.getFilePathPart(embyRes.path);
     if (filePathPart) {
-      r.warn(`notLocal is CloudDrive/AList link, decodeURIComponent embyRes.path before: ${embyRes.path}`);
+      r.warn(`notLocal:true and is CloudDrive/AList link, decodeURIComponent embyRes.path before: ${embyRes.path}`);
       embyRes.path = decodeURIComponent(embyRes.path);
     }
   }
@@ -108,8 +108,8 @@ async function redirect2Pan(r) {
 
   // strm file inner remote link redirect,like: http,rtsp
   // not only strm, mediaPathMapping maybe used remote link
-  const isRemote = !util.isAbsolutePath(mediaItemPath);
-  if (isRemote) {
+  const isRelative = !util.isAbsolutePath(mediaItemPath);
+  if (isRelative) {
     let rule = util.simpleRuleFilter(
       r, config.redirectStrmLastLinkRule, mediaItemPath,
       util.SOURCE_STR_ENUM.filePath, "redirectStrmLastLinkRule"
@@ -492,6 +492,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           /**
            * note1: MediaSourceInfo{ Protocol }, String ($enum)(File, Http, Rtmp, Rtsp, Udp, Rtp, Ftp, Mms)
            * note2: live stream "IsInfiniteStream": true
+           * note3: item.Path include ".strm", mediaSource.Path sometime not include
            * eg1: MediaSourceInfo{ IsRemote }: true
            * eg1: MediaSourceInfo{ IsRemote }: false, but MediaSourceInfo{ Protocol }: File, this is scraped
            */

@@ -4,15 +4,15 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.11
+// @version      1.1.12
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
 // @license      MIT
 // @author       @bpking
 // @github       https://github.com/bpking1/embyExternalUrl
-// @include      */web/index.html
-// @match        */web/
+// @match        *://*/web/index.html
+// @match        *://*/web/
 // ==/UserScript==
 
 (function () {
@@ -25,7 +25,8 @@
         iconOnly: false,
         // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
         // 1.add icons from jsdelivr, network
-        baseUrl: "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons",
+        baseUrl: "https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/icons",
+        // baseUrl: "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons",
         // 2.server local icons, same as /emby-server/system/dashboard-ui/icons
         // baseUrl: "icons",
         // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
