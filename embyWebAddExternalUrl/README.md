@@ -1,72 +1,101 @@
-### CHANGELIST
 
-#### 1.0.8
-修复 mpv-handler 编码错误
+### emby 调用外部播放器用户脚本,支持网页和服务端:
 
-#### 1.0.7
-再次修复 URL 编码错误
+### 现用户脚本更新地址
+https://greasyfork.org/zh-CN/scripts/514529
 
-#### 1.0.6
-优先使用本地 base64 图标提升加载速度
 
-#### 1.0.5
-修复 MX 错误的注释内容
+### 原作者(bpking1)提示信息
 
-#### 1.0.4
-延迟加载点以适配服务端自定义头部
+1. 添加mpv player, 桌面端需要使用这个项目进行设置 https://github.com/akiirui/mpv-handler
+2. 请使用Potplayer官方最新版,目前的版本号是230208,影片标题中文表现为乱码,需要等potplayer官方更新才行
+3. PotPlayer可以调用外挂字幕,未选中外挂字幕的时候默认会尝试加载中文外挂字幕
+4. 取消直链网盘播放按钮,直链需求可以在emby_server解决,请参考 [这篇文章](https://blog.738888.xyz/posts/emby_jellyfin_to_alist_directlink)
+5. potPlayer调用不生效的情况通常是注册表没加上,请重新安装pot官网最新版
+6. 需要多开potPlayer的话,将脚本第186行左右的 /current 删除即可
+7. 推荐直接将js脚本部署到emby_server,这样就不需要油猴了: 以linux为例,在/opt/emby-server/system/dashboard-ui目录下新建externalPlayer.js文件,将本脚本内容复制到里面,然后在当前目录下的index.html的 /body上面引入脚本即可
+8. 提示信息引用至原地址1: https://greasyfork.org/zh-CN/scripts/459297-embylaunchpotplayer
+9. 原脚本的账号无法登陆了,以后在这个地址更新,原地址2 https://greasyfork.org/en/scripts/406811-embylaunchpotplayer ,github地址: https://github.com/bpking1/embyExternalUrl
 
-#### 1.0.3
-兼容 AList V2
 
-#### 1.0.2
-降低 token 依赖适配第三方网站
-
-#### 1.0.1
-修复错误的 URL 双重编码
-
-### alist 调用外部播放器用户脚本,支持网页和服务端:
-
-[篡改猴地址](https://greasyfork.org/zh-CN/scripts/494829)
-
-需要更改的地方:
+按需更改的地方:
 
 1.代码内部变量
 
-```javascript
-// 是否替换原始外部播放器
-const replaceOriginLinks = true;
-// 是否使用内置的 base64 图标
-const useInnerIcons = true;
+```js
+// 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
+// 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
+const useRealFileName = false;
+const iconConfig = {
+    // 启用后将只显示图标,不显示文字
+    iconOnly: false,
+    // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
+    // 1.add icons from jsdelivr, network
+    baseUrl: "https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/icons",
+    // baseUrl: "https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/icons",
+    // 2.server local icons, same as /emby-server/system/dashboard-ui/icons
+    // baseUrl: "icons",
+    // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
+    // 自行复制 ./iconsExt.js 内容到此脚本的 getIconsExt 中
+};
 ```
 
 效果:
 
-AList V3
-![aabd331039262d2c073ea52dc51c5d24](https://github.com/chen3861229/embyExternalUrl/assets/42368856/e0c2b90a-02b0-41ec-861f-7a9ba0949fd4)
+Emby Web, iconOnly: false
+![image](https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/preview/preview01.png)
 
-AList V2
-![image](https://github.com/chen3861229/embyExternalUrl/assets/42368856/2b5697f6-5b7c-40b1-a632-248d3b8d2d4e)
+Emby Web, iconOnly: true
+![image](https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/preview/preview02.png)
 
-一. 浏览器单独使用方法
+### CHANGELOG
 
-1. 安装 [Tampermonkey](https://www.tampermonkey.net) 拓展插件,
-2. 进入脚本详情页点击安装
-3. 打开已安装的脚本列表,点击启用按钮,再点击最后边的编辑按钮,选择设置选项卡,
-编辑 包括/排除,去掉 原始匹配 勾选的泛化全域名,在 用户匹配 中添加响应的 alist 域名,不能包含端口号,会被忽略
+#### 1.1.12
+1. 更换默认的网络图标 CDN 为 Cloudflare Pages 地址,以改善中国移动宽带的体验
+2. 更换 @match 为严格匹配以兼容暴力猴
 
-二. 添加到服务端 alist 网站上
+#### 1.1.11
+1. 播放链接添加 DeviceId 参数
 
-1. 登录 alist 管理后台 -> 设置 -> 全局 -> 自定义头部,填入脚本地址即可
+#### 1.1.10
+1. 修复 mpv-handler 编码错误
 
-```javascript
-<!-- 这是 alist 原本自带的 -->
-<script src="https://polyfill.io/v3/polyfill.min.js?features=String.prototype.replaceAll"></script>
-<!-- 自己下载到服务器本地开放此文件出来 -->
-<!-- <script src="https://xxx:85/alistWebLaunchExternalPlayer.js"></script> -->
-<!-- 或下面的 CDN 仓库二选一 -->
-<!-- <script src="https://fastly.jsdelivr.net/gh/chen3861229/embyExternalUrl@main/embyWebAddExternalUrl/alistWebLaunchExternalPlayer.js"></script> -->
-<!-- <script src="https://fastly.jsdelivr.net/gh/bpking1/embyExternalUrl@main/embyWebAddExternalUrl/alistWebLaunchExternalPlayer.js"></script> -->
-```
+#### 1.1.9
+1. 修复非管理员账号 ddplay 的无 filePath 错误
 
-#### 其余注意事项请参照
-[篡改猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
+#### 1.1.8
+1. 修复自定义的串流和下载地址
+
+#### 1.1.7
+1. 添加 iconOnly 设置
+2. 兼容Jellyfin 10.9.6 +
+
+#### 1.1.6
+1. 重构 html 字符串为 js 对象方式,方便排错
+2. 修复未定义变量
+3. 复制并填写了 getIconsExt 函数时优先使用本地图标提升加载速度
+4. 修复 live 文件名
+
+#### 1.1.5
+1. 修复复制链接按钮
+
+#### 1.1.4
+1. 兼容 jellfin 10.8.13
+2. stream 提供 useRealFileName 开关
+3. 修复无当前集情况
+4. 调整 JellyfinWebMobileCss 上的样式
+
+#### 1.1.3
+1. 同步 emby2Alist 中对 stream.ext 的修改
+2. 修复错误的 URL 双重编码
+
+#### 1.1.2
+1. 兼容播放列表页
+2. 修正一个造成当前集无法播放的 bug
+3. 兼容直播详情页
+4. 添加弹弹 play 和 base64 图标方式
+5. 兼容 jellfin
+6. 修复直播页面 bug
+
+#### 1.1.1
+兼容首次没有音视频信息加载(STRM)
