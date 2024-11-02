@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.12
+// @version      1.1.13
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -160,17 +160,6 @@
             btnManualRecording = document.querySelector(".btnCancelTimer:not(.hide)");
         }
         return !!mediaInfoPrimary || !!btnManualRecording;
-
-        // let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        // if (!mainDetailButtons) {
-        //     return false;
-        // }
-        // let videoElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectVideoContainer");
-        // if (videoElement && videoElement.classList.contains("hide")) {
-        //     return false;
-        // }
-        // let audioElement = document.querySelector("div[is='emby-scroller']:not(.hide) .selectAudioContainer");
-        // return !(audioElement && audioElement.classList.contains("hide"));
     }
 
     async function getItemInfo() {
@@ -323,13 +312,36 @@
     // Short => 's'
 
     async function embyPot() {
-        let mediaInfo = await getEmbyMediaInfo();
-        let intent = mediaInfo.intent;
-        let poturl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)}`;
-        poturl += useRealFileName ? '' : ` /title="${intent.title}"`;
-        console.log(poturl);
-        window.open(poturl, "_self");
+        const mediaInfo = await getEmbyMediaInfo();
+        const intent = mediaInfo.intent;
+        let potUrl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)} /title="${intent.title}"`;
+        // writeClipboardLegacy(potUrl);
+        await navigator.clipboard.writeText(potUrl);
+        console.log("成功写入剪切板真实深度链接: ", potUrl);
+        // 测试出无空格也行,potplayer 对于 DeepLink 会自动转换为命令行参数,全量参数: PotPlayer 关于 => 命令行选项
+        potUrl = `potplayer:///current/clipboard`;
+        window.open(potUrl, "_self");
     }
+
+    /**
+     * 这是一个临时解决方案,所以此段判断仅在 Google Chrome 浏览器下使用,区别 {brand: 'Microsoft Edge', version: '130'}
+     * 非 Chrome 内核无 userAgentData 对象, Chrome 内核套壳的没添加 brands 品牌元素
+     */
+    // function geGoogleChrome130() {
+    //     if (!navigator.userAgentData) { return false; }
+    //     const googleBrand = navigator.userAgentData.brands.find(b => b.brand === "Google Chrome");
+    //     if (!googleBrand) { return false; }
+    //     return parseInt(googleBrand.version) >= 130;
+    // }
+
+    // async function embyPot() {
+    //     let mediaInfo = await getEmbyMediaInfo();
+    //     let intent = mediaInfo.intent;
+    //     let potUrl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)}`;
+    //     potUrl += useRealFileName ? '' : ` /title="${intent.title}"`;
+    //     console.log(potUrl);
+    //     window.open(potUrl, "_self");
+    // }
 
     // https://wiki.videolan.org/Android_Player_Intents/
     async function embyVlc() {
@@ -446,24 +458,31 @@
 
     async function embyCopyUrl() {
         const mediaInfo = await getEmbyMediaInfo();
+        const streamUrl = encodeURI(mediaInfo.streamUrl);
+        // if (writeClipboardLegacy(streamUrl)) {
+        //     console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
+        //     this.innerText = '复制成功';
+        // }
+        // need https
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(streamUrl).then(() => {
+                 console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
+                 this.innerText = '复制成功';
+            })
+        }
+    }
+
+    function writeClipboardLegacy(text) {
         let textarea = document.createElement('textarea');
         document.body.appendChild(textarea);
         textarea.style.position = 'absolute';
         textarea.style.clip = 'rect(0 0 0 0)';
-        const streamUrl = encodeURI(mediaInfo.streamUrl);
-        textarea.value = streamUrl;
+        textarea.value = text;
         textarea.select();
         if (document.execCommand('copy', true)) {
-            console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
-            this.innerText = '复制成功';
+            return true;
         }
-        //need https
-        // if (navigator.clipboard) {
-        //     navigator.clipboard.writeText(streamUrl).then(() => {
-        //          console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
-        //          this.innerText = '复制成功';
-        //     })
-        // }
+        return false;
     }
 
     function getOS() {

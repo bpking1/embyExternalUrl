@@ -48,6 +48,10 @@ greasyfork 地址: https://greasyfork.org/en/scripts/459297-embylaunchpotplayer
 
 ### CHANGELOG
 
+#### 1.0.9
+1. 修复 Google Chrome Version >= 130 导致的 PotPlayer 拉起播放错误,但注意不要禁用剪切板权限
+2. 意外修复了 PotPlayer 串流的中文标题支持问题
+
 #### 1.0.8
 1. 修复 mpv-handler 编码错误
 2. 更换 @match 为严格匹配以兼容暴力猴
