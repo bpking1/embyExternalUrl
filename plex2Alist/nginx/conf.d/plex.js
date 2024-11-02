@@ -77,10 +77,11 @@ async function redirect2Pan(r) {
   const notLocal = util.checkIsStrmByPath(mediaServerRes.path);
   r.warn(`notLocal: ${notLocal}`);
   if (notLocal) {
+    // need careful encode filePathPart, other don't encode
     const filePathPart = urlUtil.getFilePathPart(mediaServerRes.path);
     if (filePathPart) {
-      r.warn(`notLocal is CloudDrive/AList link, decodeURIComponent mediaServerRes.path before: ${mediaServerRes.path}`);
-      mediaServerRes.path = decodeURIComponent(mediaServerRes.path);
+      r.warn(`notLocal:true and is CloudDrive/AList link, decodeURIComponent filePathPart before: ${mediaServerRes.path}`);
+      mediaServerRes.path = mediaServerRes.path.replace(filePathPart, decodeURIComponent(filePathPart));
     }
   }
 
