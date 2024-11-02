@@ -50,6 +50,11 @@ Emby Web, iconOnly: true
 
 ### CHANGELOG
 
+#### 1.1.13
+1. 修复 Google Chrome Version >= 130 导致的 PotPlayer 拉起播放错误,但注意不要禁用剪切板权限
+2. 意外修复了 PotPlayer 串流的中文标题支持问题
+3. 更换为现代方式写入剪切板 API 以支持火狐,且可能会导致老旧浏览器无法复制
+
 #### 1.1.12
 1. 更换默认的网络图标 CDN 为 Cloudflare Pages 地址,以改善中国移动宽带的体验
 2. 更换 @match 为严格匹配以兼容暴力猴

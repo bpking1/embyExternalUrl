@@ -216,8 +216,8 @@ function toVMediaSources(parsedM3U8) {
       Protocol: "Http",
       RequiredHttpHeaders,
       IsRemote: true,
-      SupportsDirectPlay:true,
-      SupportsDirectStream:true,
+      SupportsDirectPlay: true,
+      SupportsDirectStream: true,
       SupportsTranscoding: false,
       // some origin MediaSource and Extra fields
       ItemId: parsedM3U8.ItemId,

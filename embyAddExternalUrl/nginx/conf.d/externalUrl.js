@@ -128,12 +128,13 @@ const addUrl = (r, data) => {
 // Long => 'l'
 // Short => 's'
 
+// Google Chrome Version >= 130 导致的 PotPlayer 拉起播放错误,但此实现无法替换 a 标签逻辑,换用 Microsoft Edge 解决
 const getPotUrl = (mediaInfo) => {
     return {
         Name: `potplayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
-        Url: `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /seek=${getSeek(mediaInfo.position)}`
+        Url: `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /seek=${getSeek(mediaInfo.position)} /title="${mediaInfo.title}"`
         // 双引号不能直接放,可能要base64编码一下
-        // Url: `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub="${encodeURI(mediaInfo.subUrl)}" /current /title="${encodeURI(mediaInfo.title)}" /seek=${getSeek(mediaInfo.position)}`
+        // Url: `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub="${encodeURI(mediaInfo.subUrl)}" /current /title="${encodeURI(mediaInfo.title)}" /seek=${getSeek(mediaInfo.position)} /title="${mediaInfo.title}`
     }
 }
 

@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.8
+// @version      1.0.9
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -132,6 +132,17 @@
             const id = linksEle[i].id;
             if (id && id in linkIdsMap) {
                 linksEle[i].href = linkIdsMap[id](mediaInfo);
+                if (id === "icon-PotPlayer") {
+                    linksEle[i].onclick = (e) => {
+                        e.preventDefault();
+                        let potUrl = linkIdsMap[id](mediaInfo);
+                        navigator.clipboard.writeText(potUrl).then(() => {
+                            console.log("成功写入剪切板真实深度链接: ", potUrl);
+                            potUrl = `potplayer:///current/clipboard`;
+                            window.open(potUrl, "_self");
+                        });
+                    }
+                }
             }
         }
     }
@@ -240,7 +251,7 @@
     }
 
     function getPotUrl(mediaInfo) {
-        return `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current`;
+        return `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current  /title="${mediaInfo.title}"`;
     }
 
     // https://wiki.videolan.org/Android_Player_Intents/
