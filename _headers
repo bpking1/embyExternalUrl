@@ -1,0 +1,3 @@
+# 为全部 js 文件设置
+/*.js
+  Content-Type: text/javascript; charset=utf-8

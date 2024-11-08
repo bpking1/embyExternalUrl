@@ -71,7 +71,4 @@ docker logs -f nginx-embyUrl 2>&1 | grep error
 
 ### emby调用外部播放器用户脚本,只支持网页:
 
-[篡改猴地址](https://greasyfork.org/en/scripts/459297-embylaunchpotplayer)
-
-
-
+[篡改猴地址](https://greasyfork.org/zh-CN/scripts/514529)

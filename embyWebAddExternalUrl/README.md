@@ -17,8 +17,30 @@ https://greasyfork.org/zh-CN/scripts/514529
 8. 提示信息引用至原地址1: https://greasyfork.org/zh-CN/scripts/459297-embylaunchpotplayer
 9. 原脚本的账号无法登陆了,以后在这个地址更新,原地址2 https://greasyfork.org/en/scripts/406811-embylaunchpotplayer ,github地址: https://github.com/bpking1/embyExternalUrl
 
+### 部署方式,任选一种
 
-按需更改的地方:
+## 一.原生部署到服务端上(推荐)
+1. 优点是不依赖其他插件,例如: 油猴/篡改猴, 所有 Web 端共享加载插件,缺点是用户无法手动禁用插件,且非 Web 端不生效
+2. 修改服务端的`../emby-server/system/dashboard-ui/index.html`最下方,/body 标签上,`<script src="apploader.js" defer></script>`这行的下方添加,
+```js
+...
+    <script src="apploader.js" defer></script>
+    <script src="https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/embyLaunchPotplayer.js" defer></script>
+</body>
+```
+3. 客户端浏览器刷新页面或清空缓存生效
+
+## 二.服务端插件用户脚本管理器部署方式(推荐)
+1. 优点是多端统一共用,支持强制启用,手动启用或禁用插件,更为灵活与现代化,缺点是依赖第三方用户脚本管理器,属于 emby 插件,也可添加其它类型脚本并快捷管理,但同样需要服务端与客户端配合使用[CustomCssJS](https://github.com/Shurelol/Emby.CustomCssJS),服务端改一次,客户端修改集成可手动参考三,不想自己改的可直接使用第三方魔改增强版已内置 **CustomCssJS** 集成的即可,缺点为无 iOS 端的已修改版
+
+## 三.浏览器用户脚本管理器部署方式
+1. 优点是最传统且符合习惯,缺点是甚至每个浏览器都需要装用户脚本管理器
+
+## 四.其他部署方式和各客户端集成方式
+1. 参考: 
+https://github.com/chen3861229/dd-danmaku#%E5%AE%89%E8%A3%85
+
+## 按需更改的地方
 
 1.代码内部变量
 
