@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.0.9
+// @version      1.1.0
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -136,7 +136,7 @@
                     linksEle[i].onclick = (e) => {
                         e.preventDefault();
                         let potUrl = linkIdsMap[id](mediaInfo);
-                        navigator.clipboard.writeText(potUrl).then(() => {
+                        writeClipboard(potUrl).then(() => {
                             console.log("成功写入剪切板真实深度链接: ", potUrl);
                             potUrl = `potplayer:///current/clipboard`;
                             window.open(potUrl, "_self");
@@ -325,6 +325,37 @@
             url = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.xyoye.dandanplay;type=video/*;end`;
         }
         return url;
+    }
+
+    async function writeClipboard(text) {
+        let flag = false;
+        if (navigator.clipboard) {
+            // 火狐上 need https
+            try {
+                await navigator.clipboard.writeText(text);
+                flag = true;
+                console.log("成功使用 navigator.clipboard 现代剪切板实现");
+            } catch (error) {
+                console.error('navigator.clipboard 复制到剪贴板时发生错误:', error);
+            }
+        } else {
+            flag = writeClipboardLegacy(text);
+            console.log("不存在 navigator.clipboard 现代剪切板实现,使用旧版实现");
+        }
+        return flag;
+    }
+
+    function writeClipboardLegacy(text) {
+        let textarea = document.createElement('textarea');
+        document.body.appendChild(textarea);
+        textarea.style.position = 'absolute';
+        textarea.style.clip = 'rect(0 0 0 0)';
+        textarea.value = text;
+        textarea.select();
+        if (document.execCommand('copy', true)) {
+            return true;
+        }
+        return false;
     }
 
     function getOS() {
