@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.13
+// @version      1.1.14
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -236,7 +236,6 @@
         return subTitlePath;
     }
 
-
     async function getEmbyMediaInfo() {
         let itemInfo = await getItemInfo();
         let mediaSourceId = itemInfo.MediaSources[0].Id;
@@ -315,8 +314,7 @@
         const mediaInfo = await getEmbyMediaInfo();
         const intent = mediaInfo.intent;
         let potUrl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)} /title="${intent.title}"`;
-        // writeClipboardLegacy(potUrl);
-        await navigator.clipboard.writeText(potUrl);
+        await writeClipboard(potUrl);
         console.log("成功写入剪切板真实深度链接: ", potUrl);
         // 测试出无空格也行,potplayer 对于 DeepLink 会自动转换为命令行参数,全量参数: PotPlayer 关于 => 命令行选项
         potUrl = `potplayer:///current/clipboard`;
@@ -459,17 +457,28 @@
     async function embyCopyUrl() {
         const mediaInfo = await getEmbyMediaInfo();
         const streamUrl = encodeURI(mediaInfo.streamUrl);
-        // if (writeClipboardLegacy(streamUrl)) {
-        //     console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
-        //     this.innerText = '复制成功';
-        // }
-        // need https
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(streamUrl).then(() => {
-                 console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
-                 this.innerText = '复制成功';
-            })
+        if (await writeClipboard(streamUrl)) {
+            console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
+            this.innerText = '复制成功';
         }
+    }
+
+    async function writeClipboard(text) {
+        let flag = false;
+        if (navigator.clipboard) {
+            // 火狐上 need https
+            try {
+                await navigator.clipboard.writeText(text);
+                flag = true;
+                console.log("成功使用 navigator.clipboard 现代剪切板实现");
+            } catch (error) {
+                console.error('navigator.clipboard 复制到剪贴板时发生错误:', error);
+            }
+        } else {
+            flag = writeClipboardLegacy(text);
+            console.log("不存在 navigator.clipboard 现代剪切板实现,使用旧版实现");
+        }
+        return flag;
     }
 
     function writeClipboardLegacy(text) {
