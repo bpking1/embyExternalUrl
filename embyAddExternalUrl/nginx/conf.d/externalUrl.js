@@ -108,10 +108,15 @@ const addUrl = (r, data) => {
         data.ExternalUrls.push(getIinaUrl(mediaInfo));
         data.ExternalUrls.push(getNPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getMXUrl(mediaInfo));
+        data.ExternalUrls.push(getMXProUrl(mediaInfo));
         data.ExternalUrls.push(getInfuseUrl(mediaInfo));
         data.ExternalUrls.push(getStellarPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getMPVUrl(mediaInfo));
         data.ExternalUrls.push(getDDPlayUrl(mediaInfo));
+        data.ExternalUrls.push(getFileballUrl(mediaInfo));
+        data.ExternalUrls.push(getOmniPlayerUrl(mediaInfo));
+        data.ExternalUrls.push(getFigPlayerUrl(mediaInfo));
+        data.ExternalUrls.push(getSenPlayerUrl(mediaInfo));
         data.ExternalUrls.push(getWebUrl(mediaInfo, itemId, serverId));
     });
     return data;
@@ -181,13 +186,23 @@ const getInfuseUrl = (mediaInfo) => {
 // https://mx.j2inter.com/api
 // https://support.mxplayer.in/support/solutions/folders/43000574903
 const getMXUrl = (mediaInfo) => {
-    // mxPlayer free
-    const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.ad;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
-    const mxUrl64 = Buffer.from(mxUrl, 'utf8').toString('base64');
     // mxPlayer Pro
-    // const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=com.mxtech.videoplayer.pro;S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
+    const packageName = "com.mxtech.videoplayer.ad";
+    const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=${packageName};S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
+    const mxUrl64 = Buffer.from(mxUrl, 'utf8').toString('base64');
     return {
         Name: `mxPlayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${mxUrl64}`
+    }
+}
+
+const getMXProUrl = (mediaInfo) => {
+    // mxPlayer Pro
+    const packageName = "com.mxtech.videoplayer.pro";
+    const mxUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=${packageName};S.title=${encodeURI(mediaInfo.title)};i.position=${mediaInfo.position};end`;
+    const mxUrl64 = Buffer.from(mxUrl, 'utf8').toString('base64');
+    return {
+        Name: `mxPlayerPro-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/${redirectKey}?link=${mxUrl64}`
     }
 }
@@ -244,6 +259,42 @@ const getDDPlayUrl = (mediaInfo) => {
     const url64 = Buffer.from(url, 'utf8').toString('base64');
     return {
         Name: `弹弹play-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${url64}`
+    }
+}
+
+const getFileballUrl = (mediaInfo) => {
+    const url = `filebox://play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    return {
+        Name: `Fileball-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${url64}`
+    }
+}
+
+const getOmniPlayerUrl = (mediaInfo) => {
+    const url = `omniplayer://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    return {
+        Name: `OmniPlayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${url64}`
+    }
+}
+
+const getFigPlayerUrl = (mediaInfo) => {
+    const url = `figplayer://weblink?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    return {
+        Name: `FigPlayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
+        Url: `${serverAddr}/${redirectKey}?link=${url64}`
+    }
+}
+
+const getSenPlayerUrl = (mediaInfo) => {
+    const url = `SenPlayer://x-callback-url/play?url=${encodeURIComponent(mediaInfo.streamUrl)}`;
+    const url64 = Buffer.from(url, 'utf8').toString('base64');
+    return {
+        Name: `SenPlayer-${mediaInfo.mediaSourceName}-${mediaInfo.displayTitle}`,
         Url: `${serverAddr}/${redirectKey}?link=${url64}`
     }
 }
