@@ -48,6 +48,10 @@ greasyfork 地址: https://greasyfork.org/en/scripts/459297-embylaunchpotplayer
 
 ### CHANGELOG
 
+#### 1.1.1
+1. 添加几个播放器支持
+2. 默认开启隐藏其他平台播放器图标
+
 #### 1.1.0
 1. 修复剪切板 API 兼容性
 
