@@ -45,10 +45,9 @@ https://github.com/chen3861229/dd-danmaku#%E5%AE%89%E8%A3%85
 1.代码内部变量
 
 ```js
-// 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
-// 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
-const useRealFileName = false;
 const iconConfig = {
+    // 隐藏异构平台的播放器图标
+    hideByOS: true,
     // 启用后将只显示图标,不显示文字
     iconOnly: false,
     // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
@@ -60,6 +59,9 @@ const iconConfig = {
     // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
     // 自行复制 ./iconsExt.js 内容到此脚本的 getIconsExt 中
 };
+// 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
+// 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
+const useRealFileName = false;
 ```
 
 效果:

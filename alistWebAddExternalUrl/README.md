@@ -8,9 +8,11 @@ greasyfork 地址: https://greasyfork.org/zh-CN/scripts/494829
 1.代码内部变量
 
 ```js
+// 隐藏异构平台的播放器图标
+const hideByOS = true;
 // 是否替换原始外部播放器
 const replaceOriginLinks = true;
-// 是否使用内置的 base64 图标
+// 是否使用内置的 Base64 图标
 const useInnerIcons = true;
 ```
 
