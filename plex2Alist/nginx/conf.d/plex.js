@@ -400,7 +400,7 @@ async function fetchPlexFileFullName(downloadApiPath) {
 
 async function fetchStrmInnerText(r) {
   const plexHost = config.plexHost;
-  const api_key = r.args[util.ARGS.plexTokenKey];
+  const api_key = r.args[util.ARGS.plexTokenKey] || r.headersIn[util.ARGS.plexTokenKey];
   const downloadApiPath = `${plexHost}${r.uri}?download=1&${util.ARGS.plexTokenKey}=${api_key}`;
   try {
   	// fetch Api ignore nginx locations
@@ -445,7 +445,7 @@ async function plexApiHandler(r) {
     method: r.method,
   });
   const contentType = subR.headersOut["Content-Type"];
-  //r.log(`plexApiHandler Content-Type Header: ${contentType}`);
+  r.log(`plexApiHandler Content-Type Header: ${contentType}`);
   let bodyObj;
   let sBody;
   if (subR.status === 200) {
@@ -613,12 +613,12 @@ function fillMediaInfo(r, media, isXmlNode) {
 }
 
 function fillPartInfo(r, part, isXmlNode) {
-  // !!!important is MediaInfo, PartInfo is not important
   if (!part) return;
   // only strm file not have mediaContainer
   // no real container required can playback, but subtitles maybe error
   const defaultContainer = "mp4";
   const defaultStream = [];
+  const isInfuse = r.headersIn["User-Agent"].includes("Infuse");
   if (isXmlNode) {
     if (!part.$attr$container) {
       part.$attr$container = defaultContainer;
@@ -626,12 +626,18 @@ function fillPartInfo(r, part, isXmlNode) {
     if (!part.$attr$Stream) {
       part.$attr$Stream = defaultStream;
     }
+    if (isInfuse && part.$attr$file.toLowerCase().endsWith(".strm")) {
+      part.$attr$file = part.$attr$file + `.${defaultContainer}`;
+    }
   } else {
     if (!part.container) {
       part.container = defaultContainer;
     }
     if (!part.Stream) {
       part.Stream = defaultStream;
+    }
+    if (isInfuse && part.file.toLowerCase().endsWith(".strm")) {
+      part.file = part.file + `.${defaultContainer}`;
     }
   }
 }
