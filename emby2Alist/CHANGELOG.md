@@ -14,7 +14,7 @@
 => navicat 中双击打开 data.db 的 main 数据库 => 表 => 右侧 x_storages 双击
 => 通过 drive 字段将鼠标点击到 115 Cloud 上 => 点击右下角倒数第二行的表单视图
 => addition 字段 => json 字段的 "limit_rate" 属性并修改 : 后的数值
-=> ctrl + s 保存/点击坐下角的对勾应用更改 => 关闭 data.db 连接
+=> ctrl + s 保存/点击左下角的对勾应用更改 => 关闭 data.db 连接
 => 更名原始的 data.db 为 data.db.bak 进行备份
 => 将修改后的 data.db 传输到服务端 => 重新启动 alist 即可
 
