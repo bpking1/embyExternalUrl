@@ -642,6 +642,7 @@ function fillPartInfo(r, part, isXmlNode) {
   }
 }
 
+/** @deprecated: 废弃 */
 function modifyDirectoryHidden(r, dir, isXmlNode) {
   if (!dir) return;
   if (isXmlNode) {
