@@ -220,7 +220,7 @@ async function transferPlaybackInfo(r) {
       return r.return(200, JSON.stringify(vMediaSources));
     }
   }
-  
+
   let start = Date.now();
   const isPlayback = r.args.IsPlayback === "true";
   // replay the request
@@ -270,7 +270,7 @@ async function transferPlaybackInfo(r) {
             if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
             // 1. first priority is user clients choice video bitrate < source.Bitrate
             // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
-            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty        
+            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
             if (
               (transcodeConfig.enableStrmTranscode || !isStrm)
               && source.SupportsTranscoding && source.TranscodingUrl
@@ -317,11 +317,27 @@ async function transferPlaybackInfo(r) {
         }
       }
 
-      if (config.playbackInfoConfig && config.playbackInfoConfig.sourcesSortRules) {
-        body.MediaSources = embyPlaybackInfo.sourcesSort(body.MediaSources, config.playbackInfoConfig.sourcesSortRules);
+      if (config.playbackInfoConfig && config.playbackInfoConfig.enabled) {
+        let matchedRuleName;
+        if (config.playbackInfoConfig.sourcesSortFitRule && config.playbackInfoConfig.sourcesSortFitRule.length > 0) {
+          let rule = util.simpleRuleFilter(
+              r, config.playbackInfoConfig.sourcesSortFitRule, null, null, "sourcesSortFitRule"
+          );
+          if (rule && rule.length > 0) {
+            matchedRuleName = rule[0];
+          }
+        }
+        if (!matchedRuleName) {
+          matchedRuleName = "sourcesSortRules";
+        }
+        if (!config.playbackInfoConfig[matchedRuleName]) {
+          r.warn(`sourceSortRules for ${matchedRuleName} does not exist.`);
+        } else {
+          body.MediaSources = embyPlaybackInfo.sourcesSort(body.MediaSources, config.playbackInfoConfig[matchedRuleName]);
+        }
       }
       body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
-      
+
       util.copyHeaders(response.headersOut, r.headersOut);
       const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
