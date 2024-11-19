@@ -73,6 +73,22 @@ const directHlsConfig = {
 
 // PlaybackInfo 接口的一些增强配置
 const playbackInfoConfig = {
+  enabled: true,
+  // 根据规则组指定播放源排序规则（与 redirectStrmLastLinkRule 配置类似，但必须设置分组名，且不支持 filePath）
+  //  sourcesSortRules 为旧版兼容排序规则，同时做为未匹配的默认排序规则，不要使用这个组名
+  // 匹配规则越靠前优先级越高
+  // 参数1: 分组名，组内为与关系(全部匹配)。排序规则key需要与分组名相同
+  // 参数2: 匹配类型或来源(字符串参数类型)
+  // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
+  // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
+  sourcesSortFitRule: [
+    // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 客户端为内网
+    // ["useGroup01", "r.args.X-Emby-Client", "startsWith", strHead.xEmbyClients.seekBug], // 客户端类型
+    // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[0]], // 公网
+    // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[3]], // 公网
+    // ["useGroup03", "r.args.X-Emby-Client", 2, "Emby Web"], // 浏览器
+    // ["useGroup03", "r.headersIn.user-agent", 2, "Chrome"],
+  ],
   // 多版本播放源排序规则,对接口数据 MediaSources 数组进行排序,优先级从上至下,数组内从左至右,支持正则表达式
   // Key 使用'.'进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
   // (如: 'MediaStreams.Video.Height'规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === 'Video']的对象的 Height 值)
@@ -84,6 +100,19 @@ const playbackInfoConfig = {
     // 'MediaStreams.Subtitle:length': 'desc',
     // 'MediaStreams.Video.BitRate': 'asc',
   },
+  // useGroup01: {
+  //   'MediaStreams.Video.Width': 'desc',
+  //   'MediaStreams.Video.ExtendedVideoSubType': ['DoviProfile5', 'DoviProfile8', 'Hdr10', 'DoviProfile7', 'None'],
+  //   'MediaStreams.Video.BitRate': 'desc',
+  //   'MediaStreams.Video.RealFrameRate': 'desc',
+  // },
+  // useGroup02: {
+  //   'MediaStreams.Video.BitRate': 'asc',
+  //   'MediaStreams.Video.RealFrameRate': 'asc',
+  // },
+  // useGroup03: {
+  //   'MediaStreams.Video.VideoRange': ['SDR'],
+  // },
 }
 
 export default {
