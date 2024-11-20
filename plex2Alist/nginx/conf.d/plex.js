@@ -125,7 +125,9 @@ async function redirect2Pan(r) {
   }
 
   // file path mapping
-  let mediaItemPath = util.doMediaPathMapping(r, mediaServerRes.path, notLocal);
+  const mediaPathMapping = config.mediaPathMapping.slice(); // warnning config.XX Objects is current VM shared variable
+  config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
+  let mediaItemPath = util.doUrlMapping(r, mediaServerRes.path, notLocal, mediaPathMapping, "mediaPathMapping");
   ngx.log(ngx.WARN, `mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
@@ -184,7 +186,14 @@ async function redirect2Pan(r) {
       return internalRedirect(r); // use original link
     }
     // clientSelfAlistRule, after fetch alist, cover raw_url
-    return redirect(r, util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes);
+    let redirectUrl = util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes;
+    const key = "alistRawUrlMapping";
+    const mappedUrl = util.doUrlMapping(r, redirectUrl, embyRes.notLocal, config[key], key);
+    if (mappedUrl) {
+      redirectUrl = mappedUrl;
+      ngx.log(ngx.WARN, `${key} mapped: ${redirectUrl}`);
+    }
+    return redirect(r, redirectUrl);
   }
   r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {

@@ -399,7 +399,9 @@ async function getVMediaSourcesByHls(r, source, notLocal, playSessionId) {
   if (isPlayback) { return; }
   const directHlsConfig = config.directHlsConfig;
   if (!directHlsConfig.enable) { return; }
-  const mediaItemPath = util.doMediaPathMapping(r, source.Path, notLocal);
+  const mediaPathMapping = config.mediaPathMapping.slice(); // warnning config.XX Objects is current VM shared variable
+  config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
+  const mediaItemPath = util.doUrlMapping(r, source.Path, notLocal, mediaPathMapping, "mediaPathMapping");
   ngx.log(ngx.WARN, `mapped emby file path: ${mediaItemPath}`);
   let realEnable = true;
   if (directHlsConfig.enableRule && directHlsConfig.enableRule.length > 0) {

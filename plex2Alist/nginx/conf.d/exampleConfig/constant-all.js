@@ -122,7 +122,7 @@ const routeRule = [
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
-// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
 // 参数3: 来源, 参数4: 目标
 const mediaPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
@@ -144,6 +144,15 @@ const mediaPathMapping = [
   // [[["720P 目录映射到 480P 目录", "r.XMedia.bitrate", ">", 3 * 1000],
   //   ["720P 目录映射到 480P 目录", "r.XMedia.bitrate", "<=", 6 * 1000],
   // ], 0, 0, "/720P/", "/480P/"],
+];
+
+// 仅针对 alist 返回的 raw_url 进行路径映射,优先级在 mediaPathMapping 和 clientSelfAlistRule 后,使用方法一样
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
+// 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
+// 参数3: 来源, 参数4: 目标
+const alistRawUrlMapping = [
+  // [0, 0, "/alias/movies", "/aliyun-01"],
 ];
 
 // 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
@@ -218,6 +227,7 @@ export default {
   clientSelfAlistRule,
   redirectCheckEnable,
   mediaPathMapping,
+  alistRawUrlMapping,
   redirectStrmLastLinkRule,
   transcodeConfig,
   getPlexHost,

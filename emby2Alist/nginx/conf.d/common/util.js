@@ -50,41 +50,46 @@ const MATCHER_ENUM = {
 };
 
 /**
- * doMediaPathMapping, config.mediaMountPath and config.mediaPathMapping
+ * doUrlMapping
  * @param {Object} r nginx objects, HTTP Request
  * @param {String} mediaItemPath media server item path
  * @param {Boolean} notLocal Http or strm link
- * @returns mapped path
+ * @param {Array} mappingArr 4D Array, first index is enable rule, 3D Array
+ * @param {String} mark log and tip keyword
+ * @returns mapped url
  */
-function doMediaPathMapping(r, mediaItemPath, notLocal) {
-  const isRelative = !isAbsolutePath(mediaItemPath);
-  // warnning config.XX Objects is current VM shared variable
-  let mediaPathMapping = config.mediaPathMapping.slice();
-  config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
-  ngx.log(ngx.WARN, `mediaPathMapping: ${JSON.stringify(mediaPathMapping)}`);
-  let mediaPathMappingRule;
-  mediaPathMapping.map(arr => {
-    if ((arr[1] == 0 && notLocal)
-      || (arr[1] == 1 && (!notLocal || isRelative))
-      || (arr[1] == 2 && (!notLocal || !isRelative))) {
-      return;
+function doUrlMapping(r, url, notLocal, mappingArr, mark) {
+  if (!mark) {
+    mark = "urlMapping";
+  }
+  const isRelative = !isAbsolutePath(url);
+  ngx.log(ngx.WARN, `${mark}: ${JSON.stringify(mappingArr)}`);
+  let enableRule;
+  mappingArr.map(arr => {
+    const rangeVal = arr[Number.isInteger(arr[0]) ? 1 : 2];
+    if (rangeVal != 3) {
+      if ((rangeVal == 0 && notLocal)
+        || (rangeVal == 1 && (!notLocal || isRelative))
+        || (rangeVal == 2 && (!notLocal || !isRelative))) {
+        return;
+      }
     }
-    mediaPathMappingRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
-    if (mediaPathMappingRule) {
+    enableRule = Number.isInteger(arr[0]) ? null : arr.splice(0, 1)[0];
+    if (enableRule) {
       let hitRule = simpleRuleFilter(
-        r, mediaPathMappingRule, mediaItemPath,
-        SOURCE_STR_ENUM.filePath, "mediaPathMappingRule"
+        r, enableRule, url,
+        SOURCE_STR_ENUM.filePath, `${mark}EnableRule`
       );
       if (!(hitRule && hitRule.length > 0)) { return; }
     }
-    mediaItemPath = strMapping(arr[0], mediaItemPath, arr[2], arr[3]);
+    url = strMapping(arr[0], url, arr[2], arr[3]);
   });
   // windows filePath to URL path, warn: markdown log text show \\ to \
-  if (mediaItemPath.startsWith("\\")) {
+  if (url.startsWith("\\")) {
     ngx.log(ngx.WARN, `windows filePath to URL path \\ => /`);
-    mediaItemPath = mediaItemPath.replaceAll("\\", "/");
+    url = url.replaceAll("\\", "/");
   }
-  return mediaItemPath;
+  return url;
 }
 
 function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
@@ -730,7 +735,7 @@ export default {
   ROUTE_ENUM,
   CHCHE_LEVEL_ENUM,
   SOURCE_STR_ENUM,
-  doMediaPathMapping,
+  doUrlMapping,
   copyHeaders,
   getRouteMode,
   parseExpression,
