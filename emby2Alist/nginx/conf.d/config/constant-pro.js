@@ -49,13 +49,13 @@ const routeRule = [
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 emby/jellyfin 码率为 bps 单位
-  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 -(1 * 1000 ** 2) + (1 * 1000 ** 2)],
+  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 - (1 * 1000 ** 2) + (1 * 1000 ** 2)],
   // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
-  // ["blockDownload", "屏蔽下载", "r.headersIn.User-Agent", "includes", strHead.xUAs.clients3rdParty],
+  // ["blockDownload", "屏蔽下载01", "r.headersIn.User-Agent", "includes", strHead.xUAs.blockDownload],
   // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
-  // ["blockDownload", "屏蔽下载", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
+  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
   // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
-  // ["blockDownload", "屏蔽下载", "filePath", "startsWith", ["/mnt/115"]],
+  // ["blockDownload", "屏蔽下载01", "filePath", "startsWith", ["/mnt/115"]],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了

@@ -20,8 +20,9 @@ async function transcodeBalance(r) {
     return emby.internalRedirectExpect(r);
   }
   events.njsOnExit(`transcodeBalance: ${r.uri}`);
+  const ua = r.headersIn["User-Agent"];
 
-  // const routeInternalDictKey = `${r.args.MediaSourceId}:${urlUtil.getDeviceId(r.args)}`;
+  // const routeInternalDictKey = `${r.args.MediaSourceId}:${urlUtil.getDeviceId(r)}`;
 
   // getCurrentItemInfo
   const currentItem = await getCurrentItemInfo(r);
@@ -41,8 +42,11 @@ async function transcodeBalance(r) {
     return emby.internalRedirectExpect(r);
   } else if ((routeMode === util.ROUTE_ENUM.block)
     || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
-    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))) {
-    return r.return(403, "blocked");
+    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))
+    // Infuse use VideoStreamPlay to download, UA diff, ignore apiType
+    || (routeMode === util.ROUTE_ENUM.blockDownload && ua.includes("Infuse"))
+  ) {
+    return emby.blocked(r);
   }
 
   // swich transcode opt, skip modify
@@ -57,7 +61,7 @@ async function transcodeBalance(r) {
   //   //   // this maybe not support, because player is already inited to HLS
   //   //   return emby.redirect2Pan(r);
   //   } else if (util.ROUTE_ENUM.block === routeMode) {
-  //     return r.return(403, "blocked");
+  //     return emby.blocked(r);
   //   }
   // }
   

@@ -12,6 +12,11 @@ const strHead = {
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
+    blockDownload: ["Infuse-Download"],
+    infuse: {
+      direct: "Infuse-Direct",
+      download: "Infuse-Download",
+    },
     // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
   },
   "115": "115.com",

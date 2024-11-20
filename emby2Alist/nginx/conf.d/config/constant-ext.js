@@ -12,7 +12,7 @@ const ruleRef = commonConfig.ruleRef;
 // 3: 关闭 nginx 缓存功能,已缓存文件不做处理
 const imageCachePolicy = 0;
 
-// 对接 emby 通知管理员设置,目前只发送是否直链成功,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
+// 对接 emby 通知管理员设置,目前只发送是否直链成功和屏蔽详情,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
 const embyNotificationsAdmin = {
   enable: false,
   includeUrl: false, // 链接太长,默认关闭

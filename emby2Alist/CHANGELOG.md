@@ -1,6 +1,14 @@
 
 ### 文章更新记录
 
+#### 2024-11-20
+
+1.feat(emby2Alist&plex2Alist): alistRawUrlMapping
+
+2.fix(emby2Alist&plex2Alist): 修复 blockDownload 实现,支持屏蔽 Infuse 下载
+
+3.docs(emby2Alist): 更新多版本排序规则文档
+
 #### 2024-11-11
 
 1.115 最近风控比较严格, alist 驱动上前端能填写的最小值 1 已经无法匹配远端限流熔断策略,

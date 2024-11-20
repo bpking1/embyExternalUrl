@@ -14,6 +14,9 @@ import embyPlaybackInfo from "./modules/emby-playback-info.js";
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
+  // r.warn(`redirect2Pan headersIn: ${JSON.stringify(r.headersIn)}`);
+  // r.warn(`redirect2Pan args: ${JSON.stringify(r.args)}`);
+  // r.warn(`redirect2Pan remote_addr: ${r.variables.remote_addr}`);
 
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
@@ -99,8 +102,11 @@ async function redirect2Pan(r) {
     return internalRedirect(r); // use original link
   } else if ((routeMode === util.ROUTE_ENUM.block)
     || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
-    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))) {
-    return r.return(403, "blocked");
+    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))
+    // Infuse use VideoStreamPlay to download, UA diff, ignore apiType
+    || (routeMode === util.ROUTE_ENUM.blockDownload && ua.includes("Infuse"))
+  ) {
+    return blocked(r);
   }
 
   // file path mapping
@@ -167,10 +173,12 @@ async function redirect2Pan(r) {
     // clientSelfAlistRule, after fetch alist, cover raw_url
     let redirectUrl = util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes;
     const key = "alistRawUrlMapping";
-    const mappedUrl = util.doUrlMapping(r, redirectUrl, embyRes.notLocal, config[key], key);
-    if (mappedUrl) {
-      redirectUrl = mappedUrl;
-      ngx.log(ngx.WARN, `${key} mapped: ${redirectUrl}`);
+    if (config[key] && config[key].length > 0) {
+      const mappedUrl = util.doUrlMapping(r, redirectUrl, embyRes.notLocal, config[key], key);
+      if (mappedUrl) {
+        redirectUrl = mappedUrl;
+        ngx.log(ngx.WARN, `${key} mapped: ${redirectUrl}`);
+      }
     }
     return redirect(r, redirectUrl);
   }
@@ -631,7 +639,7 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
       cachedMsg = cachedRouteDictKey ? `hit cache ${cachedRouteDictKey}, ` : cachedMsg;
     }
 
-    const deviceId = urlUtil.getDeviceId(r.args);
+    const deviceId = urlUtil.getDeviceId(r);
     const idemVal = ngx.shared.idemDict.get(deviceId);
     if (config.embyNotificationsAdmin.enable && !idemVal) {
       embyApi.fetchNotificationsAdmin(
@@ -667,7 +675,7 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
       util.dictAdd("routeL1Dict", cacheKey, uri);
     }
 
-    const deviceId = urlUtil.getDeviceId(r.args);
+    const deviceId = urlUtil.getDeviceId(r);
     const idemVal = ngx.shared.idemDict.get(deviceId);
     const msgPrefix = `${cachedMsg}use original link: `;
     if (config.embyNotificationsAdmin.enable && !idemVal) {
@@ -729,6 +737,35 @@ function internalRedirectExpect(r, uri) {
   r.internalRedirect(uri);
 }
 
+async function blockedAfter(r) {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const xMedia = r[util.ARGS.rXMediaKey];
+    const msg = [
+      "blocked",
+      `uri: ${r.uri}`,
+      `remote_addr: ${r.variables.remote_addr}`,
+      `headersIn: ${JSON.stringify(r.headersIn)}`,
+      `args: ${JSON.stringify(r.args)}`,
+      `mediaSourceName: ${xMedia.Name}`,
+      `mediaSourcePath: ${xMedia.Path}`
+    ].join('\n');
+    r.warn(`blocked: ${msg}`);
+    if (config.embyNotificationsAdmin.enable) {
+      embyApi.fetchNotificationsAdmin(config.embyNotificationsAdmin.name, msg);
+    }
+  } catch (error) {
+    r.error(`error: blockedAfter: ${error}`);
+  }
+}
+
+function blocked(r) {
+  // need caller: return;
+  r.return(403, "blocked");
+  // async
+  blockedAfter(r);
+}
+
 export default {
   redirect2Pan,
   fetchEmbyFilePath,
@@ -737,4 +774,5 @@ export default {
   redirect,
   internalRedirect,
   internalRedirectExpect,
+  blocked,
 };

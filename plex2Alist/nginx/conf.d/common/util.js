@@ -11,8 +11,8 @@ const ROUTE_ENUM = {
   proxy: "proxy",
   redirect: "redirect",
   block: "block", // blockAll
-  // blockDownload: "blockDownload",
-  // blockPlay: "blockPlay",
+  blockDownload: "blockDownload",
+  blockPlay: "blockPlay",
 };
 
 const CHCHE_LEVEL_ENUM = {
