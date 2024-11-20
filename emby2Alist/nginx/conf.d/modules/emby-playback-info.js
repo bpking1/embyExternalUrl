@@ -7,7 +7,10 @@ function sourcesSort(mediaSources, rules) {
       let ruleVal = rules[key];
       let aVal = getNestedValue(a, key);
       let bVal = getNestedValue(b, key);
-      if (aVal === undefined) return bVal === undefined ? 0 : 1;
+      if (aVal === undefined) {
+        if (bVal === undefined) continue;
+        return 1;
+      }
       if (bVal === undefined) return -1;
       if (Array.isArray(ruleVal)) {
         for (let i in ruleVal) {
