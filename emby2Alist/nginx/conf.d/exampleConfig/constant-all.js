@@ -45,6 +45,11 @@ const strHead = {
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
+    blockDownload: ["Infuse-Download"],
+    infuse: {
+      direct: "Infuse-Direct",
+      download: "Infuse-Download",
+    },
     // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
   },
   "115": "115.com",
@@ -130,7 +135,7 @@ const routeRule = [
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 emby/jellyfin 码率为 bps 单位
-  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 -(1 * 1000 ** 2) + (1 * 1000 ** 2)],
+  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 - (1 * 1000 ** 2) + (1 * 1000 ** 2)],
   // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
   // ["blockDownload", "屏蔽下载", "r.headersIn.User-Agent", "includes", strHead.xUAs.clients3rdParty],
   // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
@@ -142,7 +147,7 @@ const routeRule = [
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
-// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
 // 参数3: 来源, 参数4: 目标
 const mediaPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
@@ -164,6 +169,15 @@ const mediaPathMapping = [
   // [[["720P 目录映射到 480P 目录", "r.XMedia.Bitrate", ">", 3 * 1000 ** 2],
   //   ["720P 目录映射到 480P 目录", "r.XMedia.Bitrate", "<=", 6 * 1000 ** 2],
   // ], 0, 0, "/720P/", "/480P/"],
+];
+
+// 仅针对 alist 返回的 raw_url 进行路径映射,优先级在 mediaPathMapping 和 clientSelfAlistRule 后,使用方法一样
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
+// 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
+// 参数3: 来源, 参数4: 目标
+const alistRawUrlMapping = [
+  // [0, 0, "/alias/movies", "/aliyun-01"],
 ];
 
 // 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
@@ -190,12 +204,12 @@ const redirectStrmLastLinkRule = [
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
 // 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数2: 匹配类型或来源(字符串参数类型),优先级高"filePath": 文件路径(Item.Path),默认为"alistRes": alist 返回的链接 raw_url
-// ,有分组时不可省略填写,可为表达式
+// ,有分组时不可省略填写,可为表达式,然后下面参数序号-1
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 // 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // IOS 客户端对于 115 的进度条拖动可能依赖于此
+  // Infuse 客户端对于 115 的进度条拖动可能依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
   // [2, strHead.ali, alistPublicAddr],
@@ -246,7 +260,7 @@ const transcodeConfig = {
 // 3: 关闭 nginx 缓存功能,已缓存文件不做处理
 const imageCachePolicy = 0;
 
-// 对接 emby 通知管理员设置,目前只发送是否直链成功,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
+// 对接 emby 通知管理员设置,目前只发送是否直链成功和屏蔽详情,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
 const embyNotificationsAdmin = {
   enable: false,
   includeUrl: false, // 链接太长,默认关闭
@@ -308,44 +322,47 @@ const directHlsConfig = {
 // PlaybackInfo 接口的一些增强配置
 const playbackInfoConfig = {
   enabled: true,
-  // 根据规则组指定播放源排序规则（与 redirectStrmLastLinkRule 配置类似，但必须设置分组名，且不支持 filePath）
-  //  sourcesSortRules 为旧版兼容排序规则，同时做为未匹配的默认排序规则，不要使用这个组名
+  // 根据规则组指定播放源排序规则(与 redirectStrmLastLinkRule 配置类似,但必须设置分组名)
+  // sourcesSortRules 为旧版兼容排序规则,同时做为未匹配的默认排序规则,不要使用这个组名
   // 匹配规则越靠前优先级越高
-  // 参数1: 分组名，组内为与关系(全部匹配)。排序规则key需要与分组名相同
-  // 参数2: 匹配类型或来源(字符串参数类型)
+  // 参数1: 分组名,组内为与关系(全部匹配),排序规则 key 需要与分组名相同
+  // 参数2: 匹配类型或来源(字符串参数类型),不支持 filePath 和 alistRes 变量
   // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
   // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
   sourcesSortFitRule: [
     // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 客户端为内网
-    // ["useGroup01", "r.args.X-Emby-Client", "startsWith", strHead.xEmbyClients.seekBug], // 客户端类型
+    // ["useGroup01", "r.args.X-Emby-Client", "startsWith", strHead.xEmbyClients.seekBug], // Emby 客户端类型
     // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[0]], // 公网
     // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[3]], // 公网
-    // ["useGroup03", "r.args.X-Emby-Client", 2, "Emby Web"], // 浏览器
-    // ["useGroup03", "r.headersIn.user-agent", 2, "Chrome"],
+    // ["useGroup03", "r.args.X-Emby-Client", 2, "Emby Web"], // Emby 客户端类型为浏览器
+    // ["useGroup03", "r.headersIn.user-agent", 2, "Chrome"], // 通用客户端 UA 标识
   ],
   // 多版本播放源排序规则,对接口数据 MediaSources 数组进行排序,优先级从上至下,数组内从左至右,支持正则表达式
-  // Key 使用'.'进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
-  // (如: 'MediaStreams.Video.Height'规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === 'Video']的对象的 Height 值)
-  // ':length'为关键字,用于数组长度排序
+  // key 使用"."进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
+  // (如: "MediaStreams.Video.Height"规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === "Video"]的对象的 Height 值)
+  // ":length"为关键字,用于数组长度排序
+  // value 只有三种类型, "asc": 正序, "desc": 倒序, 字符串/正则混合数组: 指定按关键字顺序排序
+  // 非正则情况下, value 不区分大小写(简化书写), 只有正则区分大小写
   sourcesSortRules: {
-    // 'Path': ['1080p', '720p', '480p', "hevc", "h265", "h264"],
-    // 'MediaStreams.Video.Height': 'desc',
-    // 'MediaStreams.Video.Codec': ["hevc", "h265", "h264"],
-    // 'MediaStreams.Subtitle:length': 'desc',
-    // 'MediaStreams.Video.BitRate': 'asc',
+    // "Path": ["1080p", "720p", "480p", "hevc", "h265", "h264"], // 按原文件名路径关键字排序
+    // "Path": [/^\d{4}p$/g, /^\d{3}p$/g, "hevc", "h265", "h264"], // 正则匹配 4 位数字排在 3 位数字前面并忽略大小写
+    // "MediaStreams.Video.Height": "desc", // 按视频高度倒序
+    // "MediaStreams.Video.Codec": ["AV1", "HEVC", "H264"], // 按视频编码排序
+    // "MediaStreams.Subtitle:length": "desc", // 更多字幕的排在前面
+    // "MediaStreams.Video.BitRate": "asc", // 码率正序
   },
   // useGroup01: {
-  //   'MediaStreams.Video.Width': 'desc',
-  //   'MediaStreams.Video.ExtendedVideoSubType': ['DoviProfile5', 'DoviProfile8', 'Hdr10', 'DoviProfile7', 'None'],
-  //   'MediaStreams.Video.BitRate': 'desc',
-  //   'MediaStreams.Video.RealFrameRate': 'desc',
+  //   "MediaStreams.Video.Width": "desc",
+  //   "MediaStreams.Video.ExtendedVideoSubType": ["DoviProfile5", "DoviProfile8", "Hdr10", "DoviProfile7", "None"], // 视频编码子类型
+  //   "MediaStreams.Video.BitRate": "desc", // 码率倒序
+  //   "MediaStreams.Video.RealFrameRate": "desc", // 帧率倒序
   // },
   // useGroup02: {
-  //   'MediaStreams.Video.BitRate': 'asc',
-  //   'MediaStreams.Video.RealFrameRate': 'asc',
+  //   "MediaStreams.Video.BitRate": "asc",
+  //   "MediaStreams.Video.RealFrameRate": "asc",
   // },
   // useGroup03: {
-  //   'MediaStreams.Video.VideoRange': ['SDR'],
+  //   "MediaStreams.Video.VideoRange": ["SDR"], // 视频动态范围
   // },
 }
 
@@ -394,6 +411,7 @@ export default {
   symlinkRule,
   routeRule,
   mediaPathMapping,
+  alistRawUrlMapping,
   redirectStrmLastLinkRule,
   clientSelfAlistRule,
   redirectCheckEnable,

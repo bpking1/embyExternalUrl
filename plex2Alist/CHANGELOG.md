@@ -1,6 +1,12 @@
 
 ### 文章更新记录
 
+#### 2024-11-20
+
+1.feat(emby2Alist&plex2Alist): alistRawUrlMapping
+
+2.fix(emby2Alist&plex2Alist): 修复 blockDownload 实现,支持屏蔽 Infuse 下载
+
 #### 2024-11-17
 
 1.强制 Infuse 支持 strm 播放,当然这是实验性质的,因为修改了文件名后缀,绕过了白名单检测,

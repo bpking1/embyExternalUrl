@@ -50,9 +50,17 @@ function getDefaultApiKey(rArgs) {
   return rArgs["X-Emby-Token"] ?? (rArgs.api_key ?? embyApiKey);
 }
 
-function getDeviceId(rArgs) {
+function getDeviceId(r) {
+  const rArgs = r.args;
+  let deviceId = rArgs["X-Emby-Device-Id"];
   // jellyfin and old emby tv clients use DeviceId/deviceId
-  return rArgs["X-Emby-Device-Id"] ? rArgs["X-Emby-Device-Id"] : rArgs.DeviceId ?? rArgs.deviceId;
+  if (!deviceId) {
+    deviceId = rArgs["DeviceId"] || rArgs["deviceId"];
+  }
+  if (!deviceId) {
+    deviceId = r.headersIn["DeviceId"];
+  }
+  return deviceId;
 }
 
 function getMediaSourceId(rArgs) {

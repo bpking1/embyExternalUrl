@@ -12,6 +12,9 @@ const xml = require("xml");
 
 async function redirect2Pan(r) {
   events.njsOnExit(`redirect2Pan: ${r.uri}`);
+  // r.warn(`redirect2Pan headersIn: ${JSON.stringify(r.headersIn)}`);
+  // r.warn(`redirect2Pan args: ${JSON.stringify(r.args)}`);
+  // r.warn(`redirect2Pan remote_addr: ${r.variables.remote_addr}`);
 
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
@@ -111,10 +114,12 @@ async function redirect2Pan(r) {
   if (util.ROUTE_ENUM.proxy === routeMode) {
     return internalRedirect(r); // use original link
   } else if ((routeMode === util.ROUTE_ENUM.block)
-    // || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
-    // || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))
+    || (routeMode === util.ROUTE_ENUM.blockDownload && apiType.endsWith("Download"))
+    || (routeMode === util.ROUTE_ENUM.blockPlay && apiType.endsWith("Play"))
+    // Infuse use VideoStreamPlay to download, UA diff, ignore apiType
+    || (routeMode === util.ROUTE_ENUM.blockDownload && ua.includes("Infuse"))
   ) {
-    return r.return(403, "blocked");
+    return blocked(r);
   }
 
   // strm support
@@ -125,7 +130,9 @@ async function redirect2Pan(r) {
   }
 
   // file path mapping
-  let mediaItemPath = util.doMediaPathMapping(r, mediaServerRes.path, notLocal);
+  const mediaPathMapping = config.mediaPathMapping.slice(); // warnning config.XX Objects is current VM shared variable
+  config.mediaMountPath.filter(s => s).map(s => mediaPathMapping.unshift([0, 0, s, ""]));
+  let mediaItemPath = util.doUrlMapping(r, mediaServerRes.path, notLocal, mediaPathMapping, "mediaPathMapping");
   ngx.log(ngx.WARN, `mapped plex file path: ${mediaItemPath}`);
 
   // strm file inner remote link redirect,like: http,rtsp
@@ -184,7 +191,16 @@ async function redirect2Pan(r) {
       return internalRedirect(r); // use original link
     }
     // clientSelfAlistRule, after fetch alist, cover raw_url
-    return redirect(r, util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes);
+    let redirectUrl = util.getClientSelfAlistLink(r, alistRes, alistFilePath) ?? alistRes;
+    const key = "alistRawUrlMapping";
+    if (config[key] && config[key].length > 0) {
+      const mappedUrl = util.doUrlMapping(r, redirectUrl, notLocal, config[key], key);
+      if (mappedUrl) {
+        redirectUrl = mappedUrl;
+        ngx.log(ngx.WARN, `${key} mapped: ${redirectUrl}`);
+      }
+    }
+    return redirect(r, redirectUrl);
   }
   r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {
@@ -642,6 +658,7 @@ function fillPartInfo(r, part, isXmlNode) {
   }
 }
 
+/** @deprecated: 废弃 */
 function modifyDirectoryHidden(r, dir, isXmlNode) {
   if (!dir) return;
   if (isXmlNode) {
@@ -743,6 +760,31 @@ function internalRedirectExpect(r, uri) {
   r.internalRedirect(uri);
 }
 
+async function blockedAfter(r) {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const xMedia = r[util.ARGS.rXMediaKey];
+    const msg = [
+      "blocked",
+      `uri: ${r.uri}`,
+      `remote_addr: ${r.variables.remote_addr}`,
+      `headersIn: ${JSON.stringify(r.headersIn)}`,
+      `args: ${JSON.stringify(r.args)}`,
+      `mediaPartFile: ${xMedia.Part[0].file}`
+    ].join('\n');
+    r.warn(`blocked: ${msg}`);
+  } catch (error) {
+    r.error(`error: blockedAfter: ${error}`);
+  }
+}
+
+function blocked(r) {
+  // need caller: return;
+  r.return(403, "blocked");
+  // async
+  blockedAfter(r);
+}
+
 export default {
   redirect2Pan,
   fetchPlexFilePath,
@@ -750,4 +792,5 @@ export default {
   redirect,
   internalRedirect,
   internalRedirectExpect,
+  blocked,
 };

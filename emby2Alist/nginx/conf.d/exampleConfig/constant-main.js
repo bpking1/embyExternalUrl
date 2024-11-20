@@ -52,6 +52,7 @@ export default {
   routeCacheConfig: proConfig.routeCacheConfig,
   routeRule: proConfig.routeRule,
   mediaPathMapping: proConfig.mediaPathMapping,
+  alistRawUrlMapping: proConfig.alistRawUrlMapping,
 
   symlinkRule: symlinkConfig.symlinkRule,
   redirectStrmLastLinkRule: strmConfig.redirectStrmLastLinkRule,

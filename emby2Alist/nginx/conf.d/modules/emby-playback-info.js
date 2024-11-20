@@ -12,11 +12,13 @@ function sourcesSort(mediaSources, rules) {
         return 1;
       }
       if (bVal === undefined) return -1;
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
       if (Array.isArray(ruleVal)) {
         for (let i in ruleVal) {
           let rule = ruleVal[i];
-          const hasRuleA = rule instanceof RegExp ? aVal.match(rule) : aVal.includes(rule);
-          const hasRuleB = rule instanceof RegExp ? bVal.match(rule) : bVal.includes(rule);
+          const hasRuleA = rule instanceof RegExp ? aVal.match(rule) : aVal.includes(rule.toLowerCase());
+          const hasRuleB = rule instanceof RegExp ? bVal.match(rule) : bVal.includes(rule.toLowerCase());
           if (hasRuleA && !hasRuleB) return -1;
           if (!hasRuleA && hasRuleB) return 1;
         }

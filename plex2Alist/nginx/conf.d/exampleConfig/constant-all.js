@@ -41,6 +41,11 @@ const strHead = {
     clientsPC: ["EmbyTheater"],
     clients3rdParty: ["Fileball", "Infuse", "SenPlayer", "VidHub"],
     player3rdParty: ["dandanplay", "VLC", "MXPlayer", "PotPlayer"],
+    blockDownload: ["Infuse-Download"],
+    infuse: {
+      direct: "Infuse-Direct",
+      download: "Infuse-Download",
+    },
     // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
   },
   "115": "115.com",
@@ -116,13 +121,19 @@ const routeRule = [
   // ["redirect", "filePath", 0, "/mnt/sda2"],
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 plex 码率为 Kbps 单位
-  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 -(1 * 1000) + (1 * 1000)],
+  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 - (1 * 1000) + (1 * 1000)],
+  // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
+  // ["blockDownload", "屏蔽下载01", "r.headersIn.User-Agent", "includes", strHead.xUAs.blockDownload],
+  // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
+  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
+  // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
+  // ["blockDownload", "屏蔽下载01", "filePath", "startsWith", ["/mnt/115"]],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
-// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
 // 参数3: 来源, 参数4: 目标
 const mediaPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
@@ -144,6 +155,15 @@ const mediaPathMapping = [
   // [[["720P 目录映射到 480P 目录", "r.XMedia.bitrate", ">", 3 * 1000],
   //   ["720P 目录映射到 480P 目录", "r.XMedia.bitrate", "<=", 6 * 1000],
   // ], 0, 0, "/720P/", "/480P/"],
+];
+
+// 仅针对 alist 返回的 raw_url 进行路径映射,优先级在 mediaPathMapping 和 clientSelfAlistRule 后,使用方法一样
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
+// 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
+// 参数3: 来源, 参数4: 目标
+const alistRawUrlMapping = [
+  // [0, 0, "/alias/movies", "/aliyun-01"],
 ];
 
 // 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
@@ -170,12 +190,12 @@ const redirectStrmLastLinkRule = [
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
 // 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数2: 匹配类型或来源(字符串参数类型),优先级高"filePath": 文件路径(Item.Path),默认为"alistRes": alist 返回的链接 raw_url
-// ,有分组时不可省略填写,可为表达式
+// ,有分组时不可省略填写,可为表达式,然后下面参数序号-1
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
 // 参数5: 指定转发给客户端的 alist 的 host 前缀,兼容 sign 参数
 const clientSelfAlistRule = [
-  // IOS 客户端对于 115 的进度条拖动可能依赖于此
+  // Infuse 客户端对于 115 的进度条拖动可能依赖于此
   // 如果 nginx 为 https,则此 alist 也必须 https,浏览器行为客户端会阻止非 https 请求
   [2, strHead["115"], alistPublicAddr],
   // [2, strHead.ali, alistPublicAddr],
@@ -218,6 +238,7 @@ export default {
   clientSelfAlistRule,
   redirectCheckEnable,
   mediaPathMapping,
+  alistRawUrlMapping,
   redirectStrmLastLinkRule,
   transcodeConfig,
   getPlexHost,

@@ -12,7 +12,7 @@ const ruleRef = commonConfig.ruleRef;
 // 3: 关闭 nginx 缓存功能,已缓存文件不做处理
 const imageCachePolicy = 0;
 
-// 对接 emby 通知管理员设置,目前只发送是否直链成功,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
+// 对接 emby 通知管理员设置,目前只发送是否直链成功和屏蔽详情,依赖 emby/jellyfin 的 webhook 配置并勾选外部通知
 const embyNotificationsAdmin = {
   enable: false,
   includeUrl: false, // 链接太长,默认关闭
@@ -74,44 +74,47 @@ const directHlsConfig = {
 // PlaybackInfo 接口的一些增强配置
 const playbackInfoConfig = {
   enabled: true,
-  // 根据规则组指定播放源排序规则（与 redirectStrmLastLinkRule 配置类似，但必须设置分组名，且不支持 filePath）
-  //  sourcesSortRules 为旧版兼容排序规则，同时做为未匹配的默认排序规则，不要使用这个组名
+  // 根据规则组指定播放源排序规则(与 redirectStrmLastLinkRule 配置类似,但必须设置分组名)
+  // sourcesSortRules 为旧版兼容排序规则,同时做为未匹配的默认排序规则,不要使用这个组名
   // 匹配规则越靠前优先级越高
-  // 参数1: 分组名，组内为与关系(全部匹配)。排序规则key需要与分组名相同
-  // 参数2: 匹配类型或来源(字符串参数类型)
+  // 参数1: 分组名,组内为与关系(全部匹配),排序规则 key 需要与分组名相同
+  // 参数2: 匹配类型或来源(字符串参数类型),不支持 filePath 和 alistRes 变量
   // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
   // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
   sourcesSortFitRule: [
     // ["useGroup01", "r.variables.remote_addr", 0, strHead.lanIp], // 客户端为内网
-    // ["useGroup01", "r.args.X-Emby-Client", "startsWith", strHead.xEmbyClients.seekBug], // 客户端类型
+    // ["useGroup01", "r.args.X-Emby-Client", "startsWith", strHead.xEmbyClients.seekBug], // Emby 客户端类型
     // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[0]], // 公网
     // ["useGroup02", "r.variables.remote_addr", "startsWith:not", strHead.lanIp[3]], // 公网
-    // ["useGroup03", "r.args.X-Emby-Client", 2, "Emby Web"], // 浏览器
-    // ["useGroup03", "r.headersIn.user-agent", 2, "Chrome"],
+    // ["useGroup03", "r.args.X-Emby-Client", 2, "Emby Web"], // Emby 客户端类型为浏览器
+    // ["useGroup03", "r.headersIn.user-agent", 2, "Chrome"], // 通用客户端 UA 标识
   ],
   // 多版本播放源排序规则,对接口数据 MediaSources 数组进行排序,优先级从上至下,数组内从左至右,支持正则表达式
-  // Key 使用'.'进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
-  // (如: 'MediaStreams.Video.Height'规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === 'Video']的对象的 Height 值)
-  // ':length'为关键字,用于数组长度排序
+  // key 使用"."进行层级,分割后的键按层级从 MediaSources 获取,根据分割键获取下一层值时若对象为数组,则过滤[Type === 分割键]的第一行数据
+  // (如: "MediaStreams.Video.Height"规则中 MediaSources.MediaStreams 值为数组,则取数组中[Type === "Video"]的对象的 Height 值)
+  // ":length"为关键字,用于数组长度排序
+  // value 只有三种类型, "asc": 正序, "desc": 倒序, 字符串/正则混合数组: 指定按关键字顺序排序
+  // 非正则情况下, value 不区分大小写(简化书写), 只有正则区分大小写
   sourcesSortRules: {
-    // 'Path': ['1080p', '720p', '480p', "hevc", "h265", "h264"],
-    // 'MediaStreams.Video.Height': 'desc',
-    // 'MediaStreams.Video.Codec': ["hevc", "h265", "h264"],
-    // 'MediaStreams.Subtitle:length': 'desc',
-    // 'MediaStreams.Video.BitRate': 'asc',
+    // "Path": ["1080p", "720p", "480p", "hevc", "h265", "h264"], // 按原文件名路径关键字排序
+    // "Path": [/^\d{4}p$/g, /^\d{3}p$/g, "hevc", "h265", "h264"], // 正则匹配 4 位数字排在 3 位数字前面并忽略大小写
+    // "MediaStreams.Video.Height": "desc", // 按视频高度倒序
+    // "MediaStreams.Video.Codec": ["AV1", "HEVC", "H264"], // 按视频编码排序
+    // "MediaStreams.Subtitle:length": "desc", // 更多字幕的排在前面
+    // "MediaStreams.Video.BitRate": "asc", // 码率正序
   },
   // useGroup01: {
-  //   'MediaStreams.Video.Width': 'desc',
-  //   'MediaStreams.Video.ExtendedVideoSubType': ['DoviProfile5', 'DoviProfile8', 'Hdr10', 'DoviProfile7', 'None'],
-  //   'MediaStreams.Video.BitRate': 'desc',
-  //   'MediaStreams.Video.RealFrameRate': 'desc',
+  //   "MediaStreams.Video.Width": "desc",
+  //   "MediaStreams.Video.ExtendedVideoSubType": ["DoviProfile5", "DoviProfile8", "Hdr10", "DoviProfile7", "None"], // 视频编码子类型
+  //   "MediaStreams.Video.BitRate": "desc", // 码率倒序
+  //   "MediaStreams.Video.RealFrameRate": "desc", // 帧率倒序
   // },
   // useGroup02: {
-  //   'MediaStreams.Video.BitRate': 'asc',
-  //   'MediaStreams.Video.RealFrameRate': 'asc',
+  //   "MediaStreams.Video.BitRate": "asc",
+  //   "MediaStreams.Video.RealFrameRate": "asc",
   // },
   // useGroup03: {
-  //   'MediaStreams.Video.VideoRange': ['SDR'],
+  //   "MediaStreams.Video.VideoRange": ["SDR"], // 视频动态范围
   // },
 }
 

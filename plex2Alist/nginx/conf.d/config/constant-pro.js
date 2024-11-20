@@ -23,6 +23,7 @@ const routeCacheConfig = {
 // 参数1: 指定处理模式,单规则的默认值为"proxy",但是注意整体规则都不匹配默认值为"redirect",然后下面参数序号-1
 // "proxy": 原始媒体服务器处理(中转流量), "redirect": 直链302, "block": 屏蔽媒体播放和下载
 // pelx 不需要 "transcode", 可用 "proxy" 代替,稍微有些歧义,这里只是不做修改,交给原始服务中转处理,具体是否转码由 plex 客户端自己判断上报的
+// "block": 屏蔽媒体播放和下载, "blockDownload": 只屏蔽下载, "blockPlay": 只屏蔽播放,
 // 参数2: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
 // 参数3: 匹配类型或来源(字符串参数类型) "filePath": 文件路径(Item.Path), "alistRes": alist返回的链接
 // 参数4: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
@@ -47,13 +48,19 @@ const routeRule = [
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
   // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 plex 码率为 Kbps 单位
-  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 -(1 * 1000) + (1 * 1000)],
+  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 - (1 * 1000) + (1 * 1000)],
+  // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
+  // ["blockDownload", "屏蔽下载01", "r.headersIn.User-Agent", "includes", strHead.xUAs.blockDownload],
+  // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
+  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
+  // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
+  // ["blockDownload", "屏蔽下载01", "filePath", "startsWith", ["/mnt/115"]],
 ];
 
 // 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
 // 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
 // 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
-// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
 // 参数3: 来源, 参数4: 目标
 const mediaPathMapping = [
   // [0, 0, "/aliyun-01", "/aliyun-02"],
@@ -77,8 +84,18 @@ const mediaPathMapping = [
   // ], 0, 0, "/720P/", "/480P/"],
 ];
 
+// 仅针对 alist 返回的 raw_url 进行路径映射,优先级在 mediaPathMapping 和 clientSelfAlistRule 后,使用方法一样
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
+// 参数1: 0: 默认做字符串替换replace一次, 1: 前插, 2: 尾插, 3: replaceAll替换全部
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
+// 参数3: 来源, 参数4: 目标
+const alistRawUrlMapping = [
+  // [0, 0, "/alias/movies", "/aliyun-01"],
+];
+
 export default {
   routeCacheConfig,
   routeRule,
   mediaPathMapping,
+  alistRawUrlMapping,
 }

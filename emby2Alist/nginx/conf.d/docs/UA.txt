@@ -15,8 +15,9 @@
 // 3rd party Clients
 01. Fileball/238 CFNetwork/1410.0.3 Darwin/22.6.0
 02. Infuse-Direct/7.8
-03. SenPlayer/4.0.8
-04. VidHub/1.7.6
+03. Infuse-Download/8.0.2
+04. SenPlayer/4.0.8
+05. VidHub/1.7.6
 
 // 3rd party Player
 01. dandanplay/android 4.1.0
