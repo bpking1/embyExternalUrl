@@ -625,14 +625,16 @@ function calculateHMAC(data, key) {
 function addAlistSign(url, alistToken, alistSignExpireTime) {
   let path = url.match(/https?:\/\/[^\/]+(\/[^?#]*)/)[1]
   const startIndex = path.indexOf("/d/")
-  if (url.indexOf("sign=") === -1 && startIndex !== -1) {
+  const signNX = url.indexOf("sign=") === -1
+  const expiredHour = alistSignExpireTime ?? 0
+  if ((signNX || expiredHour > 0) && startIndex !== -1) {
     // add sign param for alist
     if (url.indexOf("?") === -1) {
       url += "?"
-    } else {
+    } else if (signNX) {
       url += "&"
     }
-    const expiredHour = alistSignExpireTime ?? 0
+    console.log(url)
     let time = 0;
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
@@ -640,8 +642,16 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     path = decodeURIComponent(path.substring(startIndex + 2).replaceAll('//','/'))
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
-    const sign = calculateHMAC(signData, alistToken)
-    url = `${url}sign=${sign}:${time}`
+    const signPrefix = calculateHMAC(signData, alistToken)
+    const signValue = `${signPrefix}:${time}`
+    if (!signNX && expiredHour > 0) {
+      const oldSign = url.match(/sign=([^&]+)/)[1]
+      url = url.replace(oldSign, signValue)
+      ngx.log(ngx.WARN, `force replace old sign: ${oldSign} => ${signValue}`)
+    } else {
+      url = `${url}sign=${signValue}`
+      ngx.log(ngx.WARN, `add sign: ${signValue}`)
+    }
   }
   return url;
 }
