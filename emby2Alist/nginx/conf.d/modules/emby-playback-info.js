@@ -12,8 +12,8 @@ function sourcesSort(mediaSources, rules) {
         return 1;
       }
       if (bVal === undefined) return -1;
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
       if (Array.isArray(ruleVal)) {
         for (let i in ruleVal) {
           let rule = ruleVal[i];
