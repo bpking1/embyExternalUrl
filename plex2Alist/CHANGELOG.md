@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2024-11-21
+
+1.fix(emby2Alist&plex2Alist): 增强 addAlistSign 特定情况覆盖
+
 #### 2024-11-20
 
 1.feat(emby2Alist&plex2Alist): alistRawUrlMapping

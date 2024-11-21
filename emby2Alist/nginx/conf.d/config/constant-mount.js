@@ -14,7 +14,7 @@ const alistToken = "alsit-123456";
 // alist 是否启用了 sign
 const alistSignEnable = false;
 
-// alist 中设置的直链过期时间,以小时为单位
+// alist 中设置的直链过期时间,以小时为单位,严格对照 alist 设置 => 全局 => 直链有效期
 const alistSignExpireTime = 12;
 
 // alist 公网地址,用于需要 alist server 代理流量的情况,按需填写
