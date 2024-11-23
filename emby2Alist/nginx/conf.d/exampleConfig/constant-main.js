@@ -8,6 +8,7 @@ import symlinkConfig from "./config/constant-symlink.js";
 import strmConfig from "./config/constant-strm.js";
 import transcodeConfig from "./config/constant-transcode.js";
 import extConfig from "./config/constant-ext.js";
+import nginxConfig from "./config/constant-nginx.js";
 
 // 必填项,根据实际情况修改下面的设置
 
@@ -34,6 +35,10 @@ function getTranscodeType(r) {
 }
 function getImageCachePolicy(r) {
   return extConfig.imageCachePolicy;
+}
+
+function getUsersItemsLatestFilterEnable(r) {
+  return extConfig.itemHiddenRule.some(rule => !rule[2] || rule[2] == 0 || rule[2] == 4);
 }
 
 export default {
@@ -71,4 +76,8 @@ export default {
   getTranscodeEnable,
   getTranscodeType,
   getImageCachePolicy,
+  getUsersItemsLatestFilterEnable,
+
+  nginxConfig: nginxConfig.nginxConfig,
+  getDisableDocs: nginxConfig.getDisableDocs,
 }

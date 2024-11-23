@@ -1,6 +1,12 @@
 
 ### 文章更新记录
 
+#### 2024-11-24
+
+1.refactor(emby2Alist&plex2Alist): 优化 strMatches 的日志打印量
+
+2.feat(emby2Alist): itemHiddenRule 新增隐藏首页最新项目
+
 #### 2024-11-21
 
 1.fix(emby2Alist&plex2Alist): 增强 addAlistSign 特定情况覆盖

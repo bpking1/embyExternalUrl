@@ -279,6 +279,7 @@ const embyRedirectSendMessage = {
 // 参数2: 匹配目标,对象为 Item.Path
 // 参数3: 0: 默认同时过滤下列所有类型接口, 1: 只隐藏[搜索建议(不会过滤搜索接口)]接口,
 // 2: 只隐藏[更多类似(若当前浏览项目位于规则中,将跳过隐藏)]接口, 3: 只隐藏第三方使用的[海报推荐]接口
+// 4: 只隐藏[首页最新项目]接口,
 const itemHiddenRule = [
   // [0, "/mnt/sda1"],
   // [1, ".mp3", 1],
@@ -396,6 +397,9 @@ function getTranscodeType(r) {
 function getImageCachePolicy(r) {
   return imageCachePolicy;
 }
+function getUsersItemsLatestFilterEnable(r) {
+  return itemHiddenRule.some(rule => !rule[2] || rule[2] == 0 || rule[2] == 4);
+}
 
 export default {
   embyHost,
@@ -428,6 +432,7 @@ export default {
   getTranscodeEnable,
   getTranscodeType,
   getImageCachePolicy,
+  getUsersItemsLatestFilterEnable,
   nginxConfig,
   getDisableDocs,
 }

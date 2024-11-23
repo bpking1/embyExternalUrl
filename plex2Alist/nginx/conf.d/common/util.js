@@ -394,7 +394,8 @@ function strMatches(type, source, target) {
   } else {
     throw new Error("Invalid type: " + type);
   }
-  ngx.log(ngx.WARN, `strMatches result: ${flag}, type: ${type}, ${typeof source} source: ${source}, ${typeof target} target: ${target}`);
+  const logLevel = flag ? ngx.WARN : ngx.INFO;
+  ngx.log(logLevel, `strMatches result: ${flag}, type: ${type}, ${typeof source} source: ${source}, ${typeof target} target: ${target}`);
   return flag;
 }
 

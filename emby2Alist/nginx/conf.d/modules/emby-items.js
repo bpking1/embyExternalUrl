@@ -11,22 +11,11 @@ import emby from "../emby.js";
 async function itemsFilter(r) {
   events.njsOnExit(`itemsFilter: ${r.uri}`);
 
-  r.variables.request_uri += "&Fields=Path";
-  // urlUtil.appendUrlArg(r.variables.request_uri, "Fields", "Path");
-  const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
-    method: r.method,
-  });
-  let body;
-  if (subR.status === 200) {
-  	body = JSON.parse(subR.responseText);
-  } else {
-  	r.warn(`itemsFilter subrequest failed, status: ${subR.status}`);
-	  return emby.internalRedirect(r);
-  }
-  const itemHiddenRule = config.itemHiddenRule;
+  const subRes = await subrequestForPath(r);
+  const body = subRes.body;
+  const subR = subRes.subR;
+  const itemHiddenRule = config.itemHiddenRule.filter(rule => rule[2] != 4);
   if (itemHiddenRule && itemHiddenRule.length > 0) {
-    r.warn(`itemsFilter before: ${body.Items.length}`);
-
     const apiType = r.variables.apiType;
     r.warn(`itemsFilter apiType: ${apiType}`);
     let mainItemPath;
@@ -44,13 +33,14 @@ async function itemsFilter(r) {
       r.warn(`mainItemPath: ${mainItemPath}`);
     }
 
+    const beforeLength = body.Items.length;
     let itemHiddenCount = 0;
     if (body.Items) {
       body.Items = body.Items.filter(item => {
         if (!item.Path) {
           return true;
         }
-        return !itemHiddenRule.some(rule => {
+        const flag = !itemHiddenRule.some(rule => {
           if ((!rule[2] || rule[2] == 0 || rule[2] == 2) && !!mainItemPath 
             && util.strMatches(rule[0], mainItemPath, rule[1])) {
             return false;
@@ -75,13 +65,16 @@ async function itemsFilter(r) {
             return true;
           }
         });
+        delete item.Path;
+        return flag;
       });
     }
-    r.warn(`itemsFilter after: ${body.Items.length}`);
-    r.warn(`itemsFilter itemHiddenCount: ${itemHiddenCount}`);
+    const logLevel = itemHiddenCount > 0 ? ngx.WARN : ngx.INFO;
+    ngx.log(logLevel, `itemsFilter before: ${beforeLength}`);
+    ngx.log(logLevel, `itemsFilter after: ${body.length}`);
     if (body.TotalRecordCount) {
       body.TotalRecordCount -= itemHiddenCount;
-      r.warn(`itemsFilter TotalRecordCount: ${body.TotalRecordCount}`);
+      ngx.log(logLevel, `itemsFilter TotalRecordCount: ${body.TotalRecordCount}`);
     }
   }
 
@@ -89,6 +82,55 @@ async function itemsFilter(r) {
   return r.return(200, JSON.stringify(body));
 }
 
+async function usersItemsLatestFilter(r) {
+  events.njsOnExit(`usersItemsLatestFilter: ${r.uri}`);
+
+  const subRes = await subrequestForPath(r);
+  let body = subRes.body;
+  const subR = subRes.subR;
+  const itemHiddenRule = config.itemHiddenRule.filter(rule => !rule[2] || rule[2] == 0 || rule[2] == 4);
+  if (itemHiddenRule && itemHiddenRule.length > 0 && Array.isArray(body)) {
+    const beforeLength = body.length;
+    body = body.filter(item => {
+      if (!item.Path) {
+        return true;
+      }
+      const flag = !itemHiddenRule.some(rule => {
+        if (util.strMatches(rule[0], item.Path, rule[1])) {
+          r.warn(`itemPath hit itemHiddenRule: ${item.Path}`);
+          return true;
+        }
+      });
+      delete item.Path;
+      return flag;
+    });
+    const itemHiddenCount = beforeLength - body.length;
+    const logLevel = itemHiddenCount > 0 ? ngx.WARN : ngx.INFO;
+    ngx.log(logLevel, `usersItemsLatestFilter before: ${beforeLength}`);
+    ngx.log(logLevel, `usersItemsLatestFilter after: ${body.length}`);
+    ngx.log(logLevel, `usersItemsLatestFilter itemHiddenCount: ${itemHiddenCount}`);
+  }
+
+  util.copyHeaders(subR.headersOut, r.headersOut);
+  return r.return(200, JSON.stringify(body));
+}
+
+async function subrequestForPath(r) {
+  r.variables.request_uri += "&Fields=Path";
+  // urlUtil.appendUrlArg(r.variables.request_uri, "Fields", "Path");
+  const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
+    method: r.method,
+  });
+  if (subR.status === 200) {
+  	const body = JSON.parse(subR.responseText);
+    return { body, subR };
+  } else {
+  	r.warn(`${r.uri} subrequest failed, status: ${subR.status}`);
+	  return emby.internalRedirect(r);
+  }
+}
+
 export default {
   itemsFilter,
+  usersItemsLatestFilter,
 };
