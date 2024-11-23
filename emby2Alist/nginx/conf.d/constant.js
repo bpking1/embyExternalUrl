@@ -36,6 +36,10 @@ function getImageCachePolicy(r) {
   return extConfig.imageCachePolicy;
 }
 
+function getUsersItemsLatestFilterEnable(r) {
+  return extConfig.itemHiddenRule.some(rule => !rule[2] || rule[2] == 0 || rule[2] == 4);
+}
+
 export default {
   embyHost,
   embyApiKey,
@@ -72,6 +76,7 @@ export default {
   getTranscodeEnable,
   getTranscodeType,
   getImageCachePolicy,
+  getUsersItemsLatestFilterEnable,
 
   nginxConfig: nginxConfig.nginxConfig,
   getDisableDocs: nginxConfig.getDisableDocs,

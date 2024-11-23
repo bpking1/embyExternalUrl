@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2024-11-24
+
+1.refactor(emby2Alist&plex2Alist): 优化 strMatches 的日志打印量
+
 #### 2024-11-21
 
 1.fix(emby2Alist&plex2Alist): 增强 addAlistSign 特定情况覆盖
