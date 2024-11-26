@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2024-11-26
+
+1.feat(emby2Alist&plex2Alist): fallbackUseOriginal
+
 #### 2024-11-24
 
 1.refactor(emby2Alist&plex2Alist): 优化 strMatches 的日志打印量

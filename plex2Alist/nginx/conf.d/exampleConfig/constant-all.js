@@ -209,6 +209,9 @@ const clientSelfAlistRule = [
 // 响应重定向链接前是否检测有效性,无效链接时转给媒体服务器回源中转处理
 const redirectCheckEnable = false;
 
+// 媒体服务/alist 查询失败后是否使用原始链接回源中转流量处理,如无效则直接返回 500
+const fallbackUseOriginal = true;
+
 // 转码配置,默认 false,将按之前逻辑强制直接播放
 // plex 只能用自身服务转码,只有下面一个参数,多填写没用
 const transcodeConfig = {
@@ -237,6 +240,7 @@ export default {
   strHead,
   clientSelfAlistRule,
   redirectCheckEnable,
+  fallbackUseOriginal,
   mediaPathMapping,
   alistRawUrlMapping,
   redirectStrmLastLinkRule,

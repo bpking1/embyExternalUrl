@@ -50,6 +50,7 @@ async function redirect2Pan(r) {
     }
   }
 
+  const fallbackUseOriginal = config.fallbackUseOriginal ?? true;
   // fetch mount emby/jellyfin file path
   const itemInfo = util.getItemInfo(r);
   r.warn(`itemInfoUri: ${itemInfo.itemInfoUri}`);
@@ -61,7 +62,7 @@ async function redirect2Pan(r) {
   r.log(`embyRes: ${JSON.stringify(embyRes)}`);
   if (embyRes.message.startsWith("error")) {
     r.error(`fail to fetch fetchEmbyFilePath: ${embyRes.message},fallback use original link`);
-    return internalRedirect(r);
+    return fallbackUseOriginal ? internalRedirect(r) : r.return(500, embyRes.message);
   }
 
   // strm file internal text maybe encode
@@ -185,7 +186,7 @@ async function redirect2Pan(r) {
   r.warn(`alistRes: ${alistRes}`);
   if (alistRes.startsWith("error403")) {
     r.error(`fail to fetch fetchAlistPathApi: ${alistRes},fallback use original link`);
-    return internalRedirect(r);
+    return fallbackUseOriginal ? internalRedirect(r) : r.return(500, alistRes);
   }
   if (alistRes.startsWith("error500")) {
     r.warn(`will req alist /api/fs/list to rerty`);
@@ -200,7 +201,7 @@ async function redirect2Pan(r) {
     );
     if (foldersRes.startsWith("error")) {
       r.error(`fail to fetch /api/fs/list: ${foldersRes},fallback use original link`);
-      return internalRedirect(r);
+      return fallbackUseOriginal ? internalRedirect(r) : r.return(500, foldersRes);
     }
     const folders = foldersRes.split(",").sort();
     for (let i = 0; i < folders.length; i++) {
@@ -219,10 +220,10 @@ async function redirect2Pan(r) {
       }
     }
     r.error(`fail to fetch alist resource: not found,fallback use original link`);
-    return internalRedirect(r);
+    return fallbackUseOriginal ? internalRedirect(r) : r.return(500, "fail to fetch alist resource");
   }
   r.error(`fail to fetch fetchAlistPathApi: ${alistRes},fallback use original link`);
-  return internalRedirect(r);
+  return fallbackUseOriginal ? internalRedirect(r) : r.return(500, alistRes);
 }
 
 // 拦截 PlaybackInfo 请求
