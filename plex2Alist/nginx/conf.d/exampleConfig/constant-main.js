@@ -37,6 +37,8 @@ export default {
   alistSignExpireTime: mountConfig.alistSignExpireTime,
   alistPublicAddr: mountConfig.alistPublicAddr,
   clientSelfAlistRule: mountConfig.clientSelfAlistRule,
+  redirectCheckEnable: mountConfig.redirectCheckEnable,
+  fallbackUseOriginal: mountConfig.fallbackUseOriginal,
 
   routeCacheConfig: proConfig.routeCacheConfig,
   routeRule: proConfig.routeRule,
