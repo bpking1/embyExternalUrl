@@ -5,6 +5,8 @@
 
 1.refactor(emby2Alist&plex2Alist): 优化日志打印开始行,以区分原始 error.log 内容和 njs 日志分隔
 
+2.feat(plex2Alist): 解决上游服务双重响应头问题,plex 自身内部不规范,与此脚本无关
+
 #### 2024-11-26
 
 1.feat(emby2Alist&plex2Alist): fallbackUseOriginal
