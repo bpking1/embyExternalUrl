@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.15
+// @version      1.1.16
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -131,6 +131,7 @@
             { id: "icon-IINA", fontSize: "1.4em" },
             { id: "icon-NPlayer", fontSize: "1.3em" },
             { id: "icon-MXPlayer", fontSize: "1.4em" },
+            { id: "icon-MXPlayerPro", fontSize: "1.4em" },
             { id: "icon-infuse", fontSize: "1.4em" },
             { id: "icon-StellarPlayer", fontSize: "1.4em" },
             { id: "icon-MPV", fontSize: "1.4em" },
