@@ -3,6 +3,7 @@
 // NJS events
 
 function njsOnExit(mark, callbacks, r) {
+  njsOnBeginNotice(mark);
   const eventName = "exit";
   if (callbacks && Array.isArray(callbacks)) {
     callbacks.map(callback => {
@@ -16,6 +17,10 @@ function njsOnExit(mark, callbacks, r) {
 
 function njsOn(eventName, callback) {
   njs.on(eventName, callback);
+}
+
+function njsOnBeginNotice(mark) {
+  ngx.log(ngx.WARN, `=== ${mark}, the NJS VM is beginning ===`);
 }
 
 function njsOnExitNotice(mark) {

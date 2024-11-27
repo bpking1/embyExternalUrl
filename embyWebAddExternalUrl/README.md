@@ -74,6 +74,9 @@ Emby Web, iconOnly: true
 
 ### CHANGELOG
 
+#### 1.1.16
+1. 补充丢失的 icon-MXPlayerPro
+
 #### 1.1.15
 1. 添加几个播放器支持
 2. 默认开启隐藏其他平台播放器图标

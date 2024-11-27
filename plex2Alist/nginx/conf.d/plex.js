@@ -674,6 +674,19 @@ function modifyDirectoryHidden(r, dir, isXmlNode) {
   r.warn(`${dir.title}, modify hidden 2 => 0`);
 }
 
+// js_header_filter directive for debug test
+// function libraryStreams(r) {
+//   events.njsOnExit(`libraryStreams: ${r.uri}`);
+
+//   // let cl = r.headersOut["Content-Length"];
+//   // if (Array.isArray(cl)) {
+//   //   r.warn(`upstream sent duplicate header line: "Content-Length: ${JSON.stringify(cl)} "`);
+//   //   cl = cl.pop();
+//   // }
+//   r.warn(`libraryStreams headersIn: ${JSON.stringify(r.headersIn)}`);
+//   r.warn(`libraryStreams headersOut: ${JSON.stringify(r.headersOut)}`);
+// }
+
 async function redirectAfter(r, url, cachedRouteDictKey) {
   try {
     await new Promise(resolve => setTimeout(resolve, 0));
