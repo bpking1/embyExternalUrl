@@ -18,6 +18,10 @@ async function redirect2Pan(r) {
   // r.warn(`redirect2Pan args: ${JSON.stringify(r.args)}`);
   // r.warn(`redirect2Pan remote_addr: ${r.variables.remote_addr}`);
 
+  if (!allowRedirect(r)) {
+    return internalRedirect(r);
+  }
+
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
 
@@ -226,6 +230,31 @@ async function redirect2Pan(r) {
   return fallbackUseOriginal ? internalRedirect(r) : r.return(500, alistRes);
 }
 
+function allowRedirect(r) {
+  const redirectConfig = config.redirectConfig;
+  if (!redirectConfig) {
+    return true;
+  }
+  if (!redirectConfig.enable) {
+    r.warn(`redirectConfig.enable: ${redirectConfig.enable}`);
+    return false;
+  }
+  const apiType = r.variables.apiType ?? "";
+  r.warn(`apiType: ${apiType}, redirectConfig: ${JSON.stringify(redirectConfig)}`);
+  const enableMap = {
+    TranscodePlay: redirectConfig.enableVideoLivePlay,
+    VideoStreamPlay: redirectConfig.enableVideoStreamPlay,
+    AudioStreamPlay: redirectConfig.enableAudioStreamPlay,
+    ItemsDownload: redirectConfig.enableItemsDownload,
+    SyncDownload: redirectConfig.enableSyncDownload,
+  };
+  return Object.entries(enableMap).some(entry => {
+    const key = entry[0];
+    const value = entry[1];
+    return value && (apiType.endsWith(key) || apiType === key)
+  });
+}
+
 // 拦截 PlaybackInfo 请求
 async function transferPlaybackInfo(r) {
   events.njsOnExit(`transferPlaybackInfo: ${r.uri}`);
@@ -240,11 +269,10 @@ async function transferPlaybackInfo(r) {
   }
 
   let start = Date.now();
-  const isPlayback = r.args.IsPlayback === "true";
   // replay the request
   const proxyUri = urlUtil.proxyUri(r.uri);
-  r.warn(`playbackinfo proxy uri: ${proxyUri}`);
   const query = urlUtil.generateUrl(r, "", "").substring(1);
+  r.warn(`playbackinfo proxy uri: ${proxyUri}`);
   r.warn(`playbackinfo proxy query string: ${query}`);
   const response = await r.subrequest(proxyUri, {
     method: r.method,
@@ -256,105 +284,15 @@ async function transferPlaybackInfo(r) {
       r.log(`main request headersOut: ${JSON.stringify(r.headersOut)}`);
       r.log(`subrequest headersOut: ${JSON.stringify(response.headersOut)}`);
       r.warn(`origin playbackinfo: ${response.responseText}`);
-      const transcodeConfig = config.transcodeConfig; // routeRule
-      const routeCacheConfig = config.routeCacheConfig;
-      let extMediaSources = []; // virtualMediaSources
-      for (let i = 0; i < body.MediaSources.length; i++) {
-        const source = body.MediaSources[i];
-        // if (source.IsRemote) {
-        //   // live streams are not blocked
-        //   // return r.return(200, response.responseText);
-        // }
-        // 防止客户端转码（转容器）
-        modifyDirectPlaySupports(source, true);
 
-        r[util.ARGS.rXMediaKey] = source;
-        const isStrm = util.checkIsStrmByMediaSource(source);
-        const notLocal = source.IsRemote || isStrm;
-        // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
-        if (config.directHlsConfig && config.directHlsConfig.enable) {
-          const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
-          if (vMediaSources && vMediaSources.length > 0) {
-            extMediaSources = extMediaSources.concat(vMediaSources);
-          }
-        }
-        // routeRule
-        source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
-        if (transcodeConfig.enable) {
-          const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
-          r.warn(`playbackinfo routeMode: ${routeMode}`);
-          source.XRouteMode = routeMode; // for debug
-          if (util.ROUTE_ENUM.redirect === routeMode) {
-            if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
-            // 1. first priority is user clients choice video bitrate < source.Bitrate
-            // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
-            // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
-            if (
-              (transcodeConfig.enableStrmTranscode || !isStrm)
-              && source.SupportsTranscoding && source.TranscodingUrl
-              && (
-                // https://dev.emby.media/reference/pluginapi/MediaBrowser.Model.Session.TranscodeReason.html
-                source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit")
-                  ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
-                  : true
-              )
-            ) {
-              r.warn(`client reported and server judgment to transcode, cover routeMode`);
-              source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
-              modifyDirectPlaySupports(source, false);
-              continue;
-            }
-          } else if (util.ROUTE_ENUM.transcode === routeMode) {
-            r.warn(`routeMode modify playback supports`);
-            // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
-            modifyDirectPlaySupports(source, false);
-            continue;
-          }
-          // PlaybackInfo temporary not block
-          // else if (util.ROUTE_ENUM.block === routeMode) {
-          //   return r.return(403, "blocked");
-          // }
-          // util.ROUTE_ENUM.proxy == routeMode, because subdivided transcode, proxy do't modify
-        } else {
-          source.SupportsTranscoding = false;
-          if (!transcodeConfig.redirectTransOptEnable) {
-            r.warn(`transcodeConfig.enable && redirectTransOptEnable all false, remove origin transcode vars`);
-            delete source.TranscodingUrl;
-            delete source.TranscodingSubProtocol;
-            delete source.TranscodingContainer;
-          }
-        }
-
-        r.warn(`modify direct play info`);
-        modifyDirecPlayInfo(r, source);
-
-        // async cachePreload
-        if (routeCacheConfig.enable && routeCacheConfig.enableL2
-          && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
-          cachePreload(r, `${urlUtil.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
-        }
+      playbackInfoHandler(r, body);
+      const isLive = body.MediaSources[0].IsInfiniteStream;
+      if (!isLive) {
+        mediaSourcesAfterHandler(r, body.MediaSources);
+        // virtualMediaSources
+        const extMediaSources = await vMediaSourcesHandler(r, body);
+        body.MediaSources = body.MediaSources.concat(extMediaSources);
       }
-
-      if (config.playbackInfoConfig && config.playbackInfoConfig.enabled) {
-        let matchedRuleName;
-        if (config.playbackInfoConfig.sourcesSortFitRule && config.playbackInfoConfig.sourcesSortFitRule.length > 0) {
-          let rule = util.simpleRuleFilter(
-              r, config.playbackInfoConfig.sourcesSortFitRule, null, null, "sourcesSortFitRule"
-          );
-          if (rule && rule.length > 0) {
-            matchedRuleName = rule[0];
-          }
-        }
-        if (!matchedRuleName) {
-          matchedRuleName = "sourcesSortRules";
-        }
-        if (!config.playbackInfoConfig[matchedRuleName]) {
-          r.warn(`sourceSortRules for ${matchedRuleName} does not exist.`);
-        } else {
-          body.MediaSources = embyPlaybackInfo.sourcesSort(body.MediaSources, config.playbackInfoConfig[matchedRuleName]);
-        }
-      }
-      body.MediaSources = body.MediaSources.concat(extMediaSources); // virtualMediaSources
 
       util.copyHeaders(response.headersOut, r.headersOut);
       const jsonBody = JSON.stringify(body);
@@ -362,13 +300,128 @@ async function transferPlaybackInfo(r) {
       let end = Date.now();
       r.warn(`${end - start}ms, transfer playbackinfo: ${jsonBody}`);
       return r.return(200, jsonBody);
+    } else {
+      r.warn(`playbackinfo body.MediaSources.length: ${body.MediaSources.length}`);
     }
   }
-  r.warn(`playbackinfo subrequest failed, status: ${response.status}`);
+  r.warn(`playbackinfo subrequest not expected, status: ${response.status}`);
   return internalRedirect(r);
 }
 
-function modifyDirecPlayInfo(r, source) {
+function playbackInfoHandler(r, upstreamBody) {
+  modifyDirectPlayInfo(r, upstreamBody);
+}
+
+async function vMediaSourcesHandler(r, upstreamBody) {
+  const body = upstreamBody;
+  let extMediaSources = [];
+  body.MediaSources.map(async source => {
+    const isStrm = util.checkIsStrmByMediaSource(source);
+    const notLocal = source.IsRemote || isStrm;
+    // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
+    if (config.directHlsConfig && config.directHlsConfig.enable) {
+      const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
+      if (vMediaSources && vMediaSources.length > 0) {
+        extMediaSources = extMediaSources.concat(vMediaSources);
+      }
+    }
+  });
+  return extMediaSources;
+}
+
+function modifyDirectPlayInfo(r, upstreamBody) {
+  const body = upstreamBody;
+  const isLive = body.MediaSources[0].IsInfiniteStream;
+  const redirectConfig = config.redirectConfig;
+  if (isLive && redirectConfig && !redirectConfig.enableVideoLivePlay) {
+    return;
+  }
+  const transcodeConfig = config.transcodeConfig; // routeRule
+  for (let i = 0; i < body.MediaSources.length; i++) {
+    const source = body.MediaSources[i];
+    r[util.ARGS.rXMediaKey] = source;
+    // if (source.IsRemote) {
+    //   // live streams are not blocked
+    //   // return r.return(200, response.responseText);
+    // }
+    // 防止客户端转码（转容器）
+    modifyDirectPlaySupports(source, true);
+
+    const isStrm = util.checkIsStrmByMediaSource(source);
+    const notLocal = source.IsRemote || isStrm;
+    // routeRule
+    source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
+    if (transcodeConfig.enable) {
+      const routeMode = util.getRouteMode(r, source.Path, false, notLocal);
+      r.warn(`playbackinfo routeMode: ${routeMode}`);
+      source.XRouteMode = routeMode; // for debug
+      if (util.ROUTE_ENUM.redirect === routeMode) {
+        if (!transcodeConfig.redirectTransOptEnable) source.SupportsTranscoding = false;
+        // 1. first priority is user clients choice video bitrate < source.Bitrate
+        // 2. strict cover routeMode, do't use r.args.StartTimeTicks === "0"
+        // 3. source.TranscodingUrl is important, sometimes SupportsTranscoding true but it's empty
+        if (
+          (transcodeConfig.enableStrmTranscode || !isStrm)
+          && source.SupportsTranscoding && source.TranscodingUrl
+          && (
+            // https://dev.emby.media/reference/pluginapi/MediaBrowser.Model.Session.TranscodeReason.html
+            source.TranscodingUrl.includes("TranscodeReasons=ContainerBitrateExceedsLimit")
+              ? parseInt(r.args.MaxStreamingBitrate) < source.Bitrate
+              : true
+          )
+        ) {
+          r.warn(`client reported and server judgment to transcode, cover routeMode`);
+          source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
+          modifyDirectPlaySupports(source, false);
+          continue;
+        }
+      } else if (util.ROUTE_ENUM.transcode === routeMode
+        || (util.ROUTE_ENUM.proxy === routeMode && isLive)
+      ) {
+        r.warn(`routeMode modify playback supports`);
+        // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
+        modifyDirectPlaySupports(source, false);
+        continue;
+      }
+      // PlaybackInfo temporary not block
+      // else if (util.ROUTE_ENUM.block === routeMode) {
+      //   return r.return(403, "blocked");
+      // }
+      // util.ROUTE_ENUM.proxy == routeMode, because subdivided transcode, proxy do't modify
+    } else {
+      source.SupportsTranscoding = false;
+      if (!transcodeConfig.redirectTransOptEnable) {
+        r.warn(`transcodeConfig.enable && redirectTransOptEnable all false, remove origin transcode vars`);
+        delete source.TranscodingUrl;
+        delete source.TranscodingSubProtocol;
+        delete source.TranscodingContainer;
+      }
+    }
+
+    r.warn(`modifyDirectStreamUrl`);
+    modifyDirectStreamUrl(r, source);
+
+    mediaSourceBeforeHandler(r, source);
+  }
+}
+
+function modifyDirectPlaySupports(source, flag) {
+  source.SupportsDirectPlay = flag;
+  source.SupportsDirectStream = flag;
+  let msg = `modify direct play supports all ${flag}`;
+  if (!flag && source.TranscodingUrl) {
+    source.TranscodingUrl = urlUtil.appendUrlArg(
+      source.TranscodingUrl,
+      util.ARGS.useProxyKey,
+      "1"
+    );
+    source.XModifyTranscodingUrlSuccess = true; // for debug
+    msg += ", and add useProxyKey"
+  }
+  ngx.log(ngx.WARN, msg);
+}
+
+function modifyDirectStreamUrl(r, source) {
   source.XOriginDirectStreamUrl = source.DirectStreamUrl; // for debug
   let localtionPath = source.IsInfiniteStream ? "master" : "stream";
   const fileExt = source.IsInfiniteStream
@@ -388,20 +441,45 @@ function modifyDirecPlayInfo(r, source) {
   source.XModifyDirectStreamUrlSuccess = true; // for debug
 }
 
-function modifyDirectPlaySupports(source, flag) {
-  source.SupportsDirectPlay = flag;
-  source.SupportsDirectStream = flag;
-  let msg = `modify direct play supports all ${flag}`;
-  if (!flag && source.TranscodingUrl) {
-    source.TranscodingUrl = urlUtil.appendUrlArg(
-      source.TranscodingUrl,
-      util.ARGS.useProxyKey,
-      "1"
-    );
-    source.XModifyTranscodingUrlSuccess = true; // for debug
-    msg += ", and add useProxyKey"
+function mediaSourceBeforeHandler(r, mediaSource) {
+  routeCacheL2PreloadHandler(r, mediaSource);
+}
+
+function mediaSourcesAfterHandler(r, mediaSources) {
+  sourcesSortFitHandler(r, mediaSources);
+}
+
+function sourcesSortFitHandler(r, mediaSources) {
+  if (config.playbackInfoConfig && config.playbackInfoConfig.enabled) {
+    let matchedRuleName;
+    if (config.playbackInfoConfig.sourcesSortFitRule && config.playbackInfoConfig.sourcesSortFitRule.length > 0) {
+      const rule = util.simpleRuleFilter(
+        r, config.playbackInfoConfig.sourcesSortFitRule, null, null, "sourcesSortFitRule"
+      );
+      if (rule && rule.length > 0) {
+        matchedRuleName = rule[0];
+      }
+    }
+    if (!matchedRuleName) {
+      matchedRuleName = "sourcesSortRules";
+    }
+    if (!config.playbackInfoConfig[matchedRuleName]) {
+      r.warn(`sourceSortRules for ${matchedRuleName} does not exist.`);
+    } else {
+      mediaSources = embyPlaybackInfo.sourcesSort(mediaSources, config.playbackInfoConfig[matchedRuleName]);
+    }
   }
-  ngx.log(ngx.WARN, msg);
+}
+
+function routeCacheL2PreloadHandler(r, mediaSource) {
+  const source = mediaSource;
+  const isPlayback = r.args.IsPlayback === "true";
+  const routeCacheConfig = config.routeCacheConfig;
+  // async cachePreload
+  if (routeCacheConfig.enable && routeCacheConfig.enableL2
+    && !isPlayback && !source.DirectStreamUrl.includes(".m3u")) {
+    cachePreload(r, `${urlUtil.getCurrentRequestUrlPrefix(r)}/emby${source.DirectStreamUrl}`, util.CHCHE_LEVEL_ENUM.L2);
+  }
 }
 
 async function modifyBaseHtmlPlayer(r) {
@@ -610,19 +688,6 @@ async function preload(r, url) {
   });
 }
 
-// js_header_filter directive for debug test
-// function libraryStreams(r) {
-//   events.njsOnExit(`libraryStreams: ${r.uri}`);
-
-//   // let cl = r.headersOut["Content-Length"];
-//   // if (Array.isArray(cl)) {
-//   //   r.warn(`upstream sent duplicate header line: "Content-Length: ${JSON.stringify(cl)} "`);
-//   //   cl = cl.pop();
-//   // }
-//   r.warn(`libraryStreams headersIn: ${JSON.stringify(r.headersIn)}`);
-//   r.warn(`libraryStreams headersOut: ${JSON.stringify(r.headersOut)}`);
-// }
-
 async function redirectAfter(r, url, cachedRouteDictKey) {
   try {
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -651,6 +716,10 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
         cachedMsg += `cache ${routeDictKey} added, `;
       }
       cachedMsg = cachedRouteDictKey ? `hit cache ${cachedRouteDictKey}, ` : cachedMsg;
+    }
+
+    if (r.uri.includes(".m3u")) {
+      return r.warn(`skip live multiple notifications`);
     }
 
     const deviceId = urlUtil.getDeviceId(r);
@@ -687,6 +756,10 @@ async function internalRedirectAfter(r, uri, cachedRouteDictKey) {
       // webClient download only have itemId on pathParam
       const cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
       util.dictAdd("routeL1Dict", cacheKey, uri);
+    }
+
+    if (r.uri.includes(".m3u")) {
+      return r.warn(`skip live multiple notifications`);
     }
 
     const deviceId = urlUtil.getDeviceId(r);
@@ -782,6 +855,7 @@ function blocked(r) {
 
 export default {
   redirect2Pan,
+  allowRedirect,
   fetchEmbyFilePath,
   transferPlaybackInfo,
   modifyBaseHtmlPlayer,

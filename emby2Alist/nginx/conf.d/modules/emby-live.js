@@ -21,6 +21,10 @@ async function directLive(r) {
     return Emby.redirect(r, vMediaUrl);
   }
 
+  if (!Emby.allowRedirect(r)) {
+    return Emby.internalRedirect(r);
+  }
+
   const embyHost = config.embyHost;
   const itemInfo = util.getItemInfo(r);
   // 1 get the ItemId
