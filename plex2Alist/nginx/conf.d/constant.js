@@ -39,6 +39,7 @@ export default {
   redirectCheckEnable: mountConfig.redirectCheckEnable,
   fallbackUseOriginal: mountConfig.fallbackUseOriginal,
 
+  redirectConfig: proConfig.redirectConfig,
   routeCacheConfig: proConfig.routeCacheConfig,
   routeRule: proConfig.routeRule,
   mediaPathMapping: proConfig.mediaPathMapping,

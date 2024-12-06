@@ -7,13 +7,25 @@ const alistPublicAddr = mountConfig.alistPublicAddr;
 
 // 选填项,高级配置,用不到保持默认即可
 
+// 重定向/直链开关配置,关闭的效果为还原为严格反代逻辑,即中转上游源服务流量
+// 此为粗颗粒度控制,优先级最高,细颗粒控制依旧使用路由规则管理
+const redirectConfig = {
+  enable: true, // 允许直链的总开关,false 等同覆盖下列所有为 false
+  // 允许电视直播直链,关闭后特例将忽略 transcodeConfig.enable 值,因直播 m3u 特殊表现为转码播放,实际并未占用服务端硬件转码
+  enableVideoLivePlay: true,
+  enableVideoStreamPlay: true, // 允许视频串流播放直链
+  enableAudioStreamPlay: true, // 允许音频串流播放直链
+  enableItemsDownload: true, // 允许网页下载项目直链
+  enableSyncDownload: true, // 允许官方客户端下载项目直链
+};
+
 // 路由缓存配置
 const routeCacheConfig = {
   // 总开关,是否开启路由缓存,此为一级缓存,添加阶段为 redirect 和 proxy 之前
   // 短时间内同客户端访问相同资源不会再做判断和请求 alist,有限的防抖措施,出现问题可以关闭此选项
   enable: true,
   // 二级缓存开关,仅针对直链,添加阶段为进入单集详情页,clientSelfAlistRule 中的和首页直接播放的不生效
-  // 非 web 端且限 UA 的不建议使用,生效率太低,因部分客户端详情页 UA 和播放器 UA 存在不同的情况
+  // 非 web 端且限 UA 的不建议使用,效率太低,因部分客户端详情页 UA 和播放器 UA 存在不同的情况
   enableL2: false,
   // 缓存键表达式,默认值好处是命中范围大,但会导致 routeRule 中针对设备的规则失效,多个变量可自行组合修改,冒号分隔
   // 注意 jellyfin 是小写开头 mediaSourceId
@@ -43,6 +55,7 @@ const routeRule = [
   // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
   // 注意非"proxy"无法使用"alistRes"条件,因为没有获取 alist 直链的过程
   // ["proxy", "filePath", 0, "/mnt/sda1"],
+  // ["proxy", "直播走中转01", "r.XMedia.IsInfiniteStream", "===", true],
   // ["redirect", "filePath", 0, "/mnt/sda2"],
   // ["transcode", "filePath", 0, "/mnt/sda3"],
   // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.XXX],
@@ -95,6 +108,7 @@ const alistRawUrlMapping = [
 ];
 
 export default {
+  redirectConfig,
   routeCacheConfig,
   routeRule,
   mediaPathMapping,

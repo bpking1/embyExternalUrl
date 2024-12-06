@@ -319,10 +319,10 @@ function delVMediaSourceChcheById(vSourceId, ua) {
 // only for emby-live.js
 async function getUrlByVMediaSources(r) {
   const ua = r.headersIn["User-Agent"];
-  r.warn(`getUrlByVMediaSources, UA: ${ua}`);
   let rvt = "";
   const directHlsConfig = config.directHlsConfig;
   if (directHlsConfig.enable) {
+    r.warn(`getUrlByVMediaSources, UA: ${ua}`);
     const mediaSourceId = urlUtil.getMediaSourceId(r.args);
     ngx.log(ngx.WARN, `getUrlByVMediaSources mediaSourceId: ${mediaSourceId}`);
     const vMediaSource = getVMediaSourceChcheById(mediaSourceId, ua);

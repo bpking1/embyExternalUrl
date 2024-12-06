@@ -2,7 +2,7 @@
 | 名称 | 功能 |
 | - | :- |
 | [emby2Alist](./emby2Alist/README.md) | emby/jellyfin 重定向到 alist 直链 |
-| embyAddExternalUrl | emby/jellyfin 全客户端(除TV端)添加调用外部播放器按钮 |
+| embyAddExternalUrl | emby/jellyfin 全客户端(除老TV端)添加调用外部播放器按钮 |
 | [embyWebAddExternalUrl](./embyWebAddExternalUrl/README.md) | emby/jellyfin/alistWeb 调用外部播放器用户脚本,只支持网页 |
 | [plex2Alist](./plex2Alist/README.md) | plex 重定向到 alist 直链 |
 
@@ -58,16 +58,6 @@ docker logs -f nginx-embyUrl 2>&1 | grep error
 3. 将 emby.conf 最上面的 js_import 复制到 emby2Alist 的 emby.conf 相同位置
 
 4. 重启 ngixn 或者输入命令 nginx -s reload 重载配置文件,注意此时使用 emby2Alist 的 nginx 对应端口访问
-
-## 三.集成版 docker 一键部署
-
-1. 简化配置,拉取镜像映射配置文件即可一键启动。 
-
-2. 支持 SSL,内置 acme 自动申请证书、定时更新证书。
-
-3. 支持重启自动更新,简化更新流程。
-
-[项目地址](https://github.com/thsrite/MediaLinker?tab=readme-ov-file)
 
 ### emby调用外部播放器用户脚本,只支持网页:
 

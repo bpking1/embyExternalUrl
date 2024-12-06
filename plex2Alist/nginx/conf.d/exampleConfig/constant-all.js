@@ -76,6 +76,14 @@ const ruleRef = {
   // ],
 };
 
+// 重定向/直链开关配置,关闭的效果为还原为严格反代逻辑,即中转上游源服务流量
+// 此为粗颗粒度控制,优先级最高,细颗粒控制依旧使用路由规则管理
+const redirectConfig = {
+  enable: true, // 允许直链的总开关,false 等同覆盖下列所有为 false
+  enablePartStreamPlayOrDownload: true, // 允许串流播放或下载的直链
+  enableVideoTranscodePlay: true, // 允许转码播放的直链
+};
+
 // 路由缓存配置
 const routeCacheConfig = {
   // 总开关,是否开启路由缓存,此为一级缓存,添加阶段为 redirect 和 proxy 之前
@@ -229,6 +237,7 @@ function getTranscodeEnable(r) {
 export default {
   plexHost,
   mediaMountPath,
+  redirectConfig,
   routeCacheConfig,
   symlinkRule,
   routeRule,

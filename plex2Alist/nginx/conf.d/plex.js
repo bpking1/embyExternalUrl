@@ -16,6 +16,10 @@ async function redirect2Pan(r) {
   // r.warn(`redirect2Pan args: ${JSON.stringify(r.args)}`);
   // r.warn(`redirect2Pan remote_addr: ${r.variables.remote_addr}`);
 
+  if (!allowRedirect(r)) {
+    return internalRedirect(r);
+  }
+
   const ua = r.headersIn["User-Agent"];
   r.warn(`redirect2Pan, UA: ${ua}`);
 
@@ -244,6 +248,28 @@ async function redirect2Pan(r) {
   }
   r.error(`fail to fetch fetchAlistPathApi: ${alistRes},fallback use original link`);
   return fallbackUseOriginal ? internalRedirect(r) : r.return(500, alistRes);
+}
+
+function allowRedirect(r) {
+  const redirectConfig = config.redirectConfig;
+  if (!redirectConfig) {
+    return true;
+  }
+  if (!redirectConfig.enable) {
+    r.warn(`redirectConfig.enable: ${redirectConfig.enable}`);
+    return false;
+  }
+  const apiType = r.variables.apiType ?? "";
+  r.warn(`apiType: ${apiType}, redirectConfig: ${JSON.stringify(redirectConfig)}`);
+  const enableMap = {
+    PartStreamPlayOrDownload: redirectConfig.enablePartStreamPlayOrDownload,
+    VideoTranscodePlay: redirectConfig.enableVideoTranscodePlay,
+  };
+  return Object.entries(enableMap).some(entry => {
+    const key = entry[0];
+    const value = entry[1];
+    return value && (apiType.endsWith(key) || apiType === key)
+  });
 }
 
 // copy from emby2Alist/nginx/conf.d/emby.js
