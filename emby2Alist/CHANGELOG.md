@@ -5,6 +5,8 @@
 
 1.feat(emby2Alist&plex2Alist): 新增 redirectConfig 参数
 
+2.fix(emby2Alist&plex2Alist): 统一 encodeURIComponent
+
 #### 2024-11-27
 
 1.refactor(emby2Alist&plex2Alist): 优化日志打印开始行,以区分原始 error.log 内容和 njs 日志分隔

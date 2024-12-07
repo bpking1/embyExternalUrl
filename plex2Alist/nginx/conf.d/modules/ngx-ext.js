@@ -24,7 +24,7 @@ async function fetchLastLink(oriLink, authType, authInfo, ua) {
   if (config.alistSignEnable) {
     oriLink = util.addAlistSign(oriLink, config.alistToken, config.alistSignExpireTime);
   }
-  const url = encodeURI(oriLink);
+  const url = encodeURIComponent(oriLink);
   const urlParts = urlUtil.parseUrl(url);
   const hostValue = `${urlParts.host}:${urlParts.port}`;
   ngx.log(ngx.WARN, `fetchLastLink add Host: ${hostValue}`);
