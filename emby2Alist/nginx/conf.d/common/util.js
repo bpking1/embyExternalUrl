@@ -500,7 +500,7 @@ function getClientSelfAlistLink(r, filePath, alistFilePath) {
     }
     const alistPublicAddr = rule.length === 3 ? rule[2] : config.alistPublicAddr;
     //  @param {String} filePath mediaFilePath or alistRes link
-    return `${alistPublicAddr}/d${encodeURI(alistFilePath || filePath)}`;
+    return `${alistPublicAddr}/d${encodeURIComponent(alistFilePath || filePath)}`;
   }
 }
 

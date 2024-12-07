@@ -416,7 +416,7 @@ async function getPlexItemInfo(r) {
       const plexRes = await fetchPlexFileFullName(`${plexHost}${r.uri}?download=1&${util.ARGS.plexTokenKey}=${api_key}`);
       if (!plexRes.startsWith("error")) {
         const plexFileName = plexRes.substring(0, plexRes.lastIndexOf("."));
-        itemInfoUri = `${plexHost}/search?query=${encodeURI(plexFileName)}&${util.ARGS.plexTokenKey}=${api_key}`;
+        itemInfoUri = `${plexHost}/search?query=${encodeURIComponent(plexFileName)}&${util.ARGS.plexTokenKey}=${api_key}`;
       } else {
         r.warn(plexRes);
       }

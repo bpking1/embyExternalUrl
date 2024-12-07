@@ -206,7 +206,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
         transServer.host, 
         transServer.apiKey,
         {
-          SearchTerm: encodeURI(currentItem.itemName),
+          SearchTerm: encodeURIComponent(currentItem.itemName),
           Limit: 10,
           Recursive: true,
           Fields: "ProviderIds,Path,MediaSources",
@@ -224,7 +224,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
     //     transServer.host, 
     //     transServer.apiKey,
     //     {
-    //       SearchTerm: encodeURI(currentItem.itemName),
+    //       SearchTerm: encodeURIComponent(currentItem.itemName),
     //       Limit: 10,
     //       Recursive: true,
     //       Fields: "ProviderIds,Path,MediaSources",
