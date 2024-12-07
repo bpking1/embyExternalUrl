@@ -24,7 +24,6 @@ https://greasyfork.org/zh-CN/scripts/514529
 2. 修改服务端的`../emby-server/system/dashboard-ui/index.html`最下方,/body 标签上,`<script src="apploader.js" defer></script>`这行的下方添加,
 ```js
 ...
-    <script src="apploader.js" defer></script>
     <script src="https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/embyLaunchPotplayer.js" defer></script>
 </body>
 ```
@@ -46,10 +45,6 @@ https://github.com/chen3861229/dd-danmaku#%E5%AE%89%E8%A3%85
 
 ```js
 const iconConfig = {
-    // 隐藏异构平台的播放器图标
-    hideByOS: true,
-    // 启用后将只显示图标,不显示文字
-    iconOnly: false,
     // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
     // 1.add icons from jsdelivr, network
     baseUrl: "https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/icons",
@@ -73,6 +68,9 @@ Emby Web, iconOnly: true
 ![image](https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/preview/preview02.png)
 
 ### CHANGELOG
+
+#### 1.1.17
+1. 优化图标/文字模式,隐藏其他平台播放器,两个开关的数据隔离
 
 #### 1.1.16
 1. 补充丢失的 icon-MXPlayerPro
