@@ -7,7 +7,9 @@
 
 2.fix(emby2Alist&plex2Alist): 统一 encodeURIComponent
 
-3.fix(emby2Alist): 遵守上游的直接播放判断
+3.fix(emby2Alist&plex2Alist): 区分远程链接的解码范围
+
+4.fix(emby2Alist): 遵守上游的直接播放判断
 
 #### 2024-11-27
 
