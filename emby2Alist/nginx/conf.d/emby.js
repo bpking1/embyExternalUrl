@@ -72,11 +72,14 @@ async function redirect2Pan(r) {
   // strm file internal text maybe encode
   r.warn(`notLocal: ${embyRes.notLocal}`);
   if (embyRes.notLocal) {
-    // need careful encode filePathPart, other don't encode
     const filePathPart = urlUtil.getFilePathPart(embyRes.path);
     if (filePathPart) {
-      r.warn(`notLocal:true and is CloudDrive/AList link, decodeURIComponent filePathPart before: ${embyRes.path}`);
+      // need careful encode filePathPart, other don't encode
+      r.warn(`is CloudDrive/AList link, decodeURIComponent filePathPart before: ${embyRes.path}`);
       embyRes.path = embyRes.path.replace(filePathPart, decodeURIComponent(filePathPart));
+    } else {
+      r.warn(`not is CloudDrive/AList link, decodeURIComponent filePath before: ${embyRes.path}`);
+      embyRes.path = decodeURIComponent(embyRes.path);
     }
   }
 
