@@ -370,14 +370,24 @@ function modifyDirectPlayInfo(r, upstreamBody) {
               : true
           )
         ) {
-          r.warn(`client reported and server judgment to transcode, cover routeMode`);
+          r.warn(`client reported and upstream judgment to transcode, cover routeMode`);
           source.XRouteMode = util.ROUTE_ENUM.transcode; // for debug
           modifyDirectPlaySupports(source, false);
           continue;
         }
-      } else if (util.ROUTE_ENUM.transcode === routeMode
-        || (util.ROUTE_ENUM.proxy === routeMode && isLive)
-      ) {
+      } else if (util.ROUTE_ENUM.transcode === routeMode) {
+        if (!source.TranscodingUrl) {
+          // can force modify TranscodingUrl, but following upstream is better
+          // because upstream self have a WebUI settings
+          ngx.log(ngx.WARN, "upstream MediaSource.TranscodingUrl is empty,judgment to DirectPlay");
+          source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
+        } else {
+          r.warn(`routeMode modify playback supports`);
+          // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
+          modifyDirectPlaySupports(source, false);
+          continue;
+        }
+      } else if (util.ROUTE_ENUM.proxy === routeMode && isLive) {
         r.warn(`routeMode modify playback supports`);
         // because clients prefer SupportsDirectPlay > SupportsDirectStream > SupportsTranscoding
         modifyDirectPlaySupports(source, false);

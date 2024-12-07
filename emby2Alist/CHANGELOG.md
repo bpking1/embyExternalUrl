@@ -7,6 +7,8 @@
 
 2.fix(emby2Alist&plex2Alist): 统一 encodeURIComponent
 
+3.fix(emby2Alist): 遵守上游的直接播放判断
+
 #### 2024-11-27
 
 1.refactor(emby2Alist&plex2Alist): 优化日志打印开始行,以区分原始 error.log 内容和 njs 日志分隔
