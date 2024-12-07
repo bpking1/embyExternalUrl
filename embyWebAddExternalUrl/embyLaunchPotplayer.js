@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.16
+// @version      1.1.17
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -18,10 +18,6 @@
 (function () {
     'use strict';
     const iconConfig = {
-        // 隐藏异构平台的播放器图标
-        hideByOS: true,
-        // 启用后将只显示图标,不显示文字
-        iconOnly: false,
         // 图标来源,以下三选一,注释为只留一个,3 的优先级最高
         // 1.add icons from jsdelivr, network
         baseUrl: "https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/icons",
@@ -36,41 +32,61 @@
     const useRealFileName = false;
     // 以下为内部使用变量,请勿更改
     let isEmby = "";
+    const mark = "embyLaunchPotplayer";
+    const playBtnsWrapperId = "ExternalPlayersBtns";
+    const lsKeys = {
+        iconOnly: `${mark}-iconOnly`,
+        hideByOS: `${mark}-hideByOS`,
+    };
+    const OS = {
+        isAndroid: () => /android/i.test(navigator.userAgent),
+        isIOS: () => /iPad|iPhone|iPod/i.test(navigator.userAgent),
+        isMacOS: () => /Macintosh|MacIntel/i.test(navigator.userAgent),
+        isApple: () => OS.isMacOS() || OS.isIOS(),
+        isWindows: () => /compatible|Windows/i.test(navigator.userAgent),
+        isMobile: () => OS.isAndroid() || OS.isIOS(),
+        isUbuntu: () => /Ubuntu/i.test(navigator.userAgent),
+        // isAndroidEmbyNoisyX: () => OS.isAndroid() && ApiClient.appVersion().includes('-'),
+        // isEmbyNoisyX: () => ApiClient.appVersion().includes('-'),
+        isOthers: () => Object.entries(OS).filter(([key, val]) => key !== 'isOthers').every(([key, val]) => !val()),
+    };
+    const playBtns = [
+        { id: "embyPot", title: "Potplayer", iconId: "icon-PotPlayer"
+            , onClick: embyPot, osCheck: [OS.isWindows], },
+        { id: "embyVlc", title: "VLC", iconId: "icon-VLC", onClick: embyVlc, },
+        { id: "embyIINA", title: "IINA", iconId: "icon-IINA"
+            , onClick: embyIINA, osCheck: [OS.isMacOS], },
+        { id: "embyNPlayer", title: "NPlayer", iconId: "icon-NPlayer", onClick: embyNPlayer, },
+        { id: "embyMX", title: "MXPlayer", iconId: "icon-MXPlayer"
+            , onClick: embyMX, osCheck: [OS.isAndroid], },
+        { id: "embyMXPro", title: "MXPlayerPro", iconId: "icon-MXPlayerPro"
+            , onClick: embyMXPro, osCheck: [OS.isAndroid], },
+        { id: "embyInfuse", title: "Infuse", iconId: "icon-infuse"
+            , onClick: embyInfuse, osCheck: [OS.isApple], },
+        { id: "embyStellarPlayer", title: "恒星播放器", iconId: "icon-StellarPlayer"
+            , onClick: embyStellarPlayer, osCheck: [OS.isWindows, OS.isMacOS, OS.isAndroid], },
+        { id: "embyMPV", title: "MPV", iconId: "icon-MPV", onClick: embyMPV, },
+        { id: "embyDDPlay", title: "弹弹Play", iconId: "icon-DDPlay"
+            , onClick: embyDDPlay, osCheck: [OS.isWindows, OS.isAndroid], },
+        { id: "embyFileball", title: "Fileball", iconId: "icon-Fileball"
+            , onClick: embyFileball, osCheck: [OS.isApple], },
+        { id: "embyOmniPlayer", title: "OmniPlayer", iconId: "icon-OmniPlayer"
+            , onClick: embyOmniPlayer, osCheck: [OS.isMacOS], },
+        { id: "embyFigPlayer", title: "FigPlayer", iconId: "icon-FigPlayer"
+            , onClick: embyFigPlayer, osCheck: [OS.isMacOS], },
+        { id: "embySenPlayer", title: "SenPlayer", iconId: "icon-SenPlayer"
+            , onClick: embySenPlayer, osCheck: [OS.isIOS], },
+        { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", onClick: embyCopyUrl, },
+        { id: "hideByOS", title: "异构播放器", iconId: "", onClick: hideByOSHandler, },
+        { id: "iconOnly", title: "显示模式", iconId: "", onClick: iconOnlyHandler, },
+    ];
+
     function init() {
-        const playBtnsId = "ExternalPlayersBtns";
-        let playBtns = document.getElementById(playBtnsId);
-        if (playBtns) {
-            playBtns.remove();
+        let playBtnsWrapper = document.getElementById(playBtnsWrapperId);
+        if (playBtnsWrapper) {
+            playBtnsWrapper.remove();
         }
         let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        const buttons = [
-            { id: "embyPot", title: "Potplayer", iconId: "icon-PotPlayer"
-                , onClick: embyPot, osCheck: [OS.isWindows], },
-            { id: "embyVlc", title: "VLC", iconId: "icon-VLC", onClick: embyVlc, },
-            { id: "embyIINA", title: "IINA", iconId: "icon-IINA"
-                , onClick: embyIINA, osCheck: [OS.isMacOS], },
-            { id: "embyNPlayer", title: "NPlayer", iconId: "icon-NPlayer", onClick: embyNPlayer, },
-            { id: "embyMX", title: "MXPlayer", iconId: "icon-MXPlayer"
-                , onClick: embyMX, osCheck: [OS.isAndroid], },
-            { id: "embyMXPro", title: "MXPlayerPro", iconId: "icon-MXPlayerPro"
-                , onClick: embyMXPro, osCheck: [OS.isAndroid], },
-            { id: "embyInfuse", title: "Infuse", iconId: "icon-infuse"
-                , onClick: embyInfuse, osCheck: [OS.isApple], },
-            { id: "embyStellarPlayer", title: "恒星播放器", iconId: "icon-StellarPlayer"
-                , onClick: embyStellarPlayer, osCheck: [OS.isWindows, OS.isMacOS, OS.isAndroid], },
-            { id: "embyMPV", title: "MPV", iconId: "icon-MPV", onClick: embyMPV, },
-            { id: "embyDDPlay", title: "弹弹Play", iconId: "icon-DDPlay"
-                , onClick: embyDDPlay, osCheck: [OS.isWindows, OS.isAndroid], },
-            { id: "embyFileball", title: "Fileball", iconId: "icon-Fileball"
-                , onClick: embyFileball, osCheck: [OS.isApple], },
-            { id: "embyOmniPlayer", title: "OmniPlayer", iconId: "icon-OmniPlayer"
-                , onClick: embyOmniPlayer, osCheck: [OS.isMacOS], },
-            { id: "embyFigPlayer", title: "FigPlayer", iconId: "icon-FigPlayer"
-                , onClick: embyFigPlayer, osCheck: [OS.isMacOS], },
-            { id: "embySenPlayer", title: "SenPlayer", iconId: "icon-SenPlayer"
-                , onClick: embySenPlayer, osCheck: [OS.isIOS], },
-            { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", onClick: embyCopyUrl, }
-        ];
         function generateButtonHTML({ id, title, iconId }) {
             return `
                 <button
@@ -80,18 +96,15 @@
                     title="${title}"
                 >
                     <div class="detailButton-content">
-                        <i class="md-icon detailButton-icon button-icon ${!iconConfig.iconOnly ? 'button-icon-left' : ''}" 
-                            id="${iconId}">　</i>
-                        ${!iconConfig.iconOnly ? `<span class="button-text">${title}</span>` : ''}
+                        <i class="md-icon detailButton-icon button-icon button-icon-left" id="${iconId}">　</i>
+                        <span class="button-text">${title}</span>
                     </div>
                 </button>
             `;
         }
-        let buttonHtml = `<div id="${playBtnsId}" class="detailButtons flex align-items-flex-start flex-wrap-wrap">`;
-        buttons.forEach(btn => {
-            if (!iconConfig.hideByOS || !btn.osCheck || btn.osCheck.some(check => check())) {
-                buttonHtml += generateButtonHTML(btn);
-            }
+        let buttonHtml = `<div id="${playBtnsWrapperId}" class="detailButtons flex align-items-flex-start flex-wrap-wrap">`;
+        playBtns.forEach(btn => {
+            buttonHtml += generateButtonHTML(btn);
         });
         buttonHtml += `</div>`;
 
@@ -116,7 +129,7 @@
         }
 
         // add event
-        buttons.forEach(btn => {
+        playBtns.forEach(btn => {
             const btnEle = document.querySelector(`#${btn.id}`);
             if (btnEle) {
                 btnEle.onclick = btn.onClick;
@@ -157,6 +170,8 @@
                 `;
             }
         });
+        hideByOSHandler();
+        iconOnlyHandler();
     }
 
     // copy from ./iconsExt,如果更改了以下内容,请同步更改 ./iconsExt.js
@@ -513,6 +528,43 @@
         window.open(url, "_self");
     }
 
+    function hideByOSHandler(event) {
+        let flag = localStorage.getItem(lsKeys.hideByOS) === "1";
+        if (event) {
+            flag = !flag;
+            localStorage.setItem(lsKeys.hideByOS, flag ? "1" : "0");
+        }
+        const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
+        const buttonEleArr = playBtnsWrapper.querySelectorAll("button");
+        buttonEleArr.forEach(btnEle => {
+            const btn = playBtns.find(btn => btn.id === btnEle.id);
+            const shouldHide = flag && btn.osCheck && !btn.osCheck.some(check => check());
+            console.log(`${btn.id} Should Hide: ${shouldHide}`);
+            btnEle.style.display = shouldHide ? 'none' : 'block';
+        });
+        const btn = document.getElementById("hideByOS");
+        btn.classList.toggle("button-submit", flag);
+    }
+
+    function iconOnlyHandler(event) {
+        let flag = localStorage.getItem(lsKeys.iconOnly) === "1";
+        if (event) {
+            flag = !flag;
+            localStorage.setItem(lsKeys.iconOnly, flag ? "1" : "0");
+        }
+        const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
+        const spans = playBtnsWrapper.querySelectorAll("span");
+        spans.forEach(span => {
+            span.hidden = flag;
+        });
+        const iArr = playBtnsWrapper.querySelectorAll("i");
+        iArr.forEach(iEle => {
+            iEle.classList.toggle("button-icon-left", !flag);
+        });
+        const btn = document.getElementById("iconOnly");
+        btn.classList.toggle("button-submit", flag);
+    }
+
     async function embyCopyUrl() {
         const mediaInfo = await getEmbyMediaInfo();
         const streamUrl = encodeURI(mediaInfo.streamUrl);
@@ -552,19 +604,6 @@
         }
         return false;
     }
-
-    const OS = {
-        isAndroid: () => /android/i.test(navigator.userAgent),
-        isIOS: () => /iPad|iPhone|iPod/i.test(navigator.userAgent),
-        isMacOS: () => /Macintosh|MacIntel/i.test(navigator.userAgent),
-        isApple: () => OS.isMacOS() || OS.isIOS(),
-        isWindows: () => /compatible|Windows/i.test(navigator.userAgent),
-        isMobile: () => OS.isAndroid() || OS.isIOS(),
-        isUbuntu: () => /Ubuntu/i.test(navigator.userAgent),
-        // isAndroidEmbyNoisyX: () => OS.isAndroid() && ApiClient.appVersion().includes('-'),
-        // isEmbyNoisyX: () => ApiClient.appVersion().includes('-'),
-        isOthers: () => Object.entries(OS).filter(([key, val]) => key !== 'isOthers').every(([key, val]) => !val()),
-    };
 
     // emby/jellyfin CustomEvent
     // see: https://github.com/MediaBrowser/emby-web-defaultskin/blob/822273018b82a4c63c2df7618020fb837656868d/nowplaying/videoosd.js#L691
