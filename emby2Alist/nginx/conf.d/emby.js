@@ -450,7 +450,7 @@ function modifyDirectStreamUrl(r, source) {
   }
   source.DirectStreamUrl = urlUtil.generateDirectStreamUrl(r, source.Id, resourceKey);
   // a few players not support special character
-  source.DirectStreamUrl = encodeURIComponent(source.DirectStreamUrl);
+  source.DirectStreamUrl = encodeURI(source.DirectStreamUrl);
   source.XModifyDirectStreamUrlSuccess = true; // for debug
 }
 

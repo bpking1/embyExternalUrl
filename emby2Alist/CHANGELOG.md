@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2024-12-08
+
+1.fix(emby2Alist&plex2Alist): 回退部分 encodeURI
+
 #### 2024-12-07
 
 1.feat(emby2Alist&plex2Alist): 新增 redirectConfig 参数
