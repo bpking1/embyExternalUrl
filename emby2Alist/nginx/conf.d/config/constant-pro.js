@@ -61,12 +61,24 @@ const routeRule = [
   // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.XXX],
   // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
   // ["block", "filePath", 0, "/mnt/sda4"],
-  // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 emby/jellyfin 码率为 bps 单位
-  // ["transcode", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 - (1 * 1000 ** 2) + (1 * 1000 ** 2)],
+
+  // 高级分组规则,XMedia 为固定值,等于 Emby.MediaSources 数组中的单个目标对象
+  // 注意设备id具有唯一性,不会跟随切换用户变更,取值参考 /PlaybackInfo 接口的出入参数
+  // r.XMedia.MediaStreams 数组比较特殊,路由规则暂未做关键词抽取,但目前匹配视频流规则够用,多音频/字幕流不太好写规则
+  // r.XMedia.MediaStreams.0 一般为视频流对象,不支持 r.XMedia.MediaStreams[0] 写法
+
+  // 此条规则代表大于等于 3Mbps 码率的允许转码,平方使用双星号表示,无意义加减仅为示例,注意 emby/jellyfin 码率为 bps 单位
+  // ["transcode", "高码率允许转码01", "r.XMedia.Bitrate", ">=", 3 * 1000 ** 2 + (1 * 1000 ** 2) - (1 * 1000 ** 2)],
+  // 可选规则,结合上条规则做分组,同时满足才能生效,否则继续向下匹配
+  // ["transcode", "高码率允许转码01", "r.args.X-Emby-Device-Id", "===", ["设备id01", "设备id02"]],
+  // 此条规则代表 4K 分辨率的允许转码,但假如设备自身上报和上游决定走转码,不满足的也会转码,遵守上游倾向为播放成功率考虑
+  // ["transcode", "高分辨率允许转码01", "r.XMedia.MediaStreams.0.DisplayTitle", "includes", "4K"],
+  // 可选替换上条规则,更精确的分辨率规则,例如 21:9 视频,或某些 2.5 K 视频等不在标准分辨率划分内的
+  // ["transcode", "高分辨率允许转码01", "r.XMedia.MediaStreams.0.Width", ">=", 4320],
   // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
   // ["blockDownload", "屏蔽下载01", "r.headersIn.User-Agent", "includes", strHead.xUAs.blockDownload],
   // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
-  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
+  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["用户id01", "用户id02"]],
   // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
   // ["blockDownload", "屏蔽下载01", "filePath", "startsWith", ["/mnt/115"]],
 ];

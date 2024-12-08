@@ -45,22 +45,23 @@ const routeRule = [
   // docker 注意必须为 host 模式,不然此变量全部为内网ip,判断无效,nginx 内置变量不带$,客户端地址($remote_addr)
   // ["r.variables.remote_addr", 0, strHead.lanIp],
   // ["r.headersIn.User-Agent", 2, "IE"], // 请求头参数,客户端UA
-  // ["r.args.X-Emby-Device-Id", 0, "d4f30461-ec5c-488d-b04a-783e6f419eb1"], // 链接入参,设备id
-  // ["r.args.X-Emby-Device-Name", 0, "Microsoft Edge Windows"], // 链接入参,设备名称
-  // ["r.args.UserId", 0, "ac0d220d548f43bbb73cf9b44b2ddf0e"], // 链接入参,用户id
-  // 注意非"proxy"无法使用"alistRes"条件,因为没有获取 alist 直链的过程
-  // ["proxy", "filePath", 0, "/mnt/sda1"],
-  // ["redirect", "filePath", 0, "/mnt/sda2"],
-  // ["transcode", "filePath", 0, "/mnt/sda3"],
-  // ["transcode", "115-local", "r.args.X-Emby-Client", 0, strHead.xEmbyClients.XXX],
-  // ["transcode", "115-local", "filePath", 0, "/mnt/115"],
-  // ["block", "filePath", 0, "/mnt/sda4"],
-  // 此条规则代表大于等于 3Mbps 码率的走转码,XMedia 为固定值,平方使用双星号表示,无意义减加仅为示例,注意 plex 码率为 Kbps 单位
-  // ["transcode", "r.XMedia.bitrate", ">=", 3 * 1000 - (1 * 1000) + (1 * 1000)],
+
+  // 可参照 Emby 配置文件,但受限于脚本对于 Plex 获取文件路径的缓存实现,目前可能 XMedia 对象为空,只能使用接口入参
+  // 注意设备id具有唯一性,不会跟随切换用户变更,Plex 接口入参不存在用户id,取值参考 /library/metadata/xxx 接口的出入参数
+  // 高级分组规则,XMedia 为固定值,等于 Plex.MediaContainer.Metadata[0].Media[目标索引] 对象
+  // r.XMedia.Part.0.Stream 数组比较特殊,路由规则暂未做关键词抽取,但目前匹配视频流规则够用,多音频/字幕流不太好写规则
+  // r.XMedia.Part.0.Stream.0 一般为视频流对象,不支持 r.XMedia.Part[0].Stream[0] 写法
+
+  // 此条规则代表大于等于 3Mbps 码率的允许转码,平方使用双星号表示,无意义加减仅为示例,注意 plex 码率为 kbps 单位
+  // ["transcode", "高码率允许转码01", "r.XMedia.bitrate", ">=", 3 * 1000 + (1 * 1000) - (1 * 1000)],
+  // 可选规则,结合上条规则做分组,同时满足才能生效,否则继续向下匹配
+  // ["transcode", "高码率允许转码01", "r.args.X-Plex-Client-Identifier", "===", ["设备id01", "设备id02"]],
+  // 此条规则代表 4K 分辨率的允许转码,但假如设备自身上报和上游决定走转码,不满足的也会转码,遵守上游倾向为播放成功率考虑
+  // ["transcode", "高分辨率允许转码01", "r.XMedia.Part.0.Stream.0.displayTitle", "includes", "4K"],
+  // 可选替换上条规则,更精确的分辨率规则,例如 21:9 视频,或某些 2.5 K 视频等不在标准分辨率划分内的
+  // ["transcode", "高分辨率允许转码01", "r.XMedia.Part.0.Stream.0.width", ">=", 4320],
   // 精确屏蔽指定功能,注意同样是整体规则都不匹配默认走"redirect",即不屏蔽,建议只用下方一条,太复杂的话需要自行测试
   // ["blockDownload", "屏蔽下载01", "r.headersIn.User-Agent", "includes", strHead.xUAs.blockDownload],
-  // 非必须,该分组内细分为用户 id 白名单,结合上面一条代表 "屏蔽指定标识客户端的非指定用户的下载"
-  // ["blockDownload", "屏蔽下载01", "r.args.UserId", "startsWith:not", ["ac0d220d548f43bbb73cf9b44b2ddf0e"]],
   // 非必须,该分组内细分为入库路径黑名单,结合上面两条代表 "屏蔽指定标识客户端的非指定用户的指定入库路径的下载"
   // ["blockDownload", "屏蔽下载01", "filePath", "startsWith", ["/mnt/115"]],
 ];

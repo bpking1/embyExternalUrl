@@ -147,7 +147,7 @@ async function getTransServer(r) {
     target = serverArr.sort((a, b) => a.transcodeNum - b.transcodeNum)[0];
   }
   let end = Date.now();
-  r.warn(`${end - start}ms, find target server: ${target.host}`);
+  r.warn(`cost ${end - start}ms, find target server: ${target.host}`);
   if (target.host == config.embyHost) {
     r.warn(`find target server same as currentServer`);
     return emby.internalRedirectExpect(r);
@@ -206,7 +206,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
         transServer.host, 
         transServer.apiKey,
         {
-          SearchTerm: encodeURIComponent(currentItem.itemName),
+          SearchTerm: encodeURI(currentItem.itemName),
           Limit: 10,
           Recursive: true,
           Fields: "ProviderIds,Path,MediaSources",
@@ -224,7 +224,7 @@ async function mediaItemMatch(r, currentItem, transServer, keys) {
     //     transServer.host, 
     //     transServer.apiKey,
     //     {
-    //       SearchTerm: encodeURIComponent(currentItem.itemName),
+    //       SearchTerm: encodeURI(currentItem.itemName),
     //       Limit: 10,
     //       Recursive: true,
     //       Fields: "ProviderIds,Path,MediaSources",

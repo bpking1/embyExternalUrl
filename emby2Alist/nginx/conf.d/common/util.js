@@ -586,22 +586,22 @@ async function cost(func) {
       await rvt.then(
         realRvt => {
           const end = Date.now();
-          ngx.log(ngx.WARN, `${end - start}ms, ${func.name} async function cost`);
+          ngx.log(ngx.WARN, `cost ${end - start}ms, ${func.name} async function cost`);
           // return realRvt;
         },
         error => {
           const end = Date.now();
-          ngx.log(ngx.ERR, `${end - start}ms, ${func.name} async function throw an error`);
+          ngx.log(ngx.ERR, `cost ${end - start}ms, ${func.name} async function throw an error`);
           throw error;
         }
       );
     } else {
       const end = Date.now();
-      ngx.log(ngx.WARN, `${end - start}ms, ${func.name} function cost`);
+      ngx.log(ngx.WARN, `cost ${end - start}ms, ${func.name} function cost`);
     }
   } catch (error) {
     const end = Date.now();
-    ngx.log(ngx.ERR, `${end - start}ms, ${func.name} sync function throw an error`);
+    ngx.log(ngx.ERR, `cost ${end - start}ms, ${func.name} sync function throw an error`);
     throw error;
   }
   return rvt;
