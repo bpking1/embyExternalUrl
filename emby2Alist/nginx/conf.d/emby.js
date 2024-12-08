@@ -301,7 +301,7 @@ async function transferPlaybackInfo(r) {
       const jsonBody = JSON.stringify(body);
       r.headersOut["Content-Type"] = "application/json;charset=utf-8";
       let end = Date.now();
-      r.warn(`${end - start}ms, transfer playbackinfo: ${jsonBody}`);
+      r.warn(`cost ${end - start}ms, transfer playbackinfo: ${jsonBody}`);
       return r.return(200, jsonBody);
     } else {
       r.warn(`playbackinfo body.MediaSources.length: ${body.MediaSources.length}`);
