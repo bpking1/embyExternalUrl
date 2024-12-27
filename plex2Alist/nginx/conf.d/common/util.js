@@ -1,4 +1,5 @@
 import config from "../constant.js";
+import urlUtil from "./url-util.js";
 
 const ARGS = {
   plexTokenKey: "X-Plex-Token",
@@ -262,6 +263,9 @@ function getMatchedRule(r, ruleArr3D, filePath) {
     let sourceStr = filePath;
     if (!Object.values(SOURCE_STR_ENUM).includes(rule[0])) {
       sourceStr = parseExpression(r, rule[0]);
+      if (rule[0] === 'r.variables.remote_addr') {
+        sourceStr = urlUtil.getRealIp(r);
+      }
     }
     let flag = false;
     ngx.log(ngx.WARN, `sourceStrValue, ${rule[0]} = ${sourceStr}`);
