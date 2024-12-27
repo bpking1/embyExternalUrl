@@ -472,7 +472,17 @@ function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
   }
 }
 
+/**
+ * getClientSelfAlistLink
+ * @param {Object} r nginx objects, HTTP Request
+ * @param {String} filePath mediaFilePath or alist raw_url, like: http://xxx
+ * @param {String} alistFilePath null or mapped mediaItemPath, like: /file.mp4 or any string, depend on mediaPathMapping rule
+ * @returns alist dUrl
+ */
 function getClientSelfAlistLink(r, filePath, alistFilePath) {
+  if (!filePath) {
+    return r.warn(`args[1] filePath is required`);
+  }
   let rule = simpleRuleFilter(r, config.clientSelfAlistRule, filePath, SOURCE_STR_ENUM.alistRes, "clientSelfAlistRule");
   if (rule && rule.length > 0) {
     if (!Number.isInteger(rule[0])) {
@@ -481,8 +491,13 @@ function getClientSelfAlistLink(r, filePath, alistFilePath) {
       rule = rule.slice(2);
     }
     const alistPublicAddr = rule.length === 3 ? rule[2] : config.alistPublicAddr;
-    //  @param {String} filePath mediaFilePath or alistRes link
-    return `${alistPublicAddr}/d${encodeURIComponent(alistFilePath || filePath)}`;
+    if (alistFilePath && alistFilePath.startsWith("/")) {
+      alistFilePath = alistFilePath.substring(1);
+    }
+    if (filePath.startsWith("/")) {
+      filePath = filePath.substring(1);
+    }
+    return `${alistPublicAddr}/d/${encodeURIComponent(alistFilePath || filePath)}`;
   }
 }
 
