@@ -512,13 +512,16 @@ function getClientSelfAlistLink(r, filePath, alistFilePath) {
       rule = rule.slice(2);
     }
     const alistPublicAddr = rule.length === 3 ? rule[2] : config.alistPublicAddr;
-    if (alistFilePath && alistFilePath.startsWith("/")) {
-      alistFilePath = alistFilePath.substring(1);
-    }
-    if (filePath.startsWith("/")) {
-      filePath = filePath.substring(1);
-    }
-    return `${alistPublicAddr}/d/${encodeURIComponent(alistFilePath || filePath)}`;
+    // if (alistFilePath && alistFilePath.startsWith("/")) {
+    //   alistFilePath = alistFilePath.substring(1);
+    // }
+    // if (filePath.startsWith("/")) {
+    //   filePath = filePath.substring(1);
+    // }
+    // encodeURIComponent because of "#" in path
+    let realFilePath = encodeURIComponent(alistFilePath || filePath);
+    realFilePath = realFilePath.replaceAll("%2F", "/");
+    return `${alistPublicAddr}/d${realFilePath}`;
   }
 }
 
