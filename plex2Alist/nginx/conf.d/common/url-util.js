@@ -78,6 +78,19 @@ function parseUrl(url) {
   return null;
 }
 
+function getRealIp(r) {
+  const headers = r.headersIn;
+  const ip = headers["X-Forwarded-For"] ||
+      headers["X-Real-IP"] ||
+      headers["Proxy-Client-IP"] ||
+      headers["Proxy-Client-IP"] ||
+      headers["WL-Proxy-Client-IP"] ||
+      headers["HTTP_CLIENT_IP"] ||
+      headers["HTTP_X_FORWARDED_FOR"] ||
+      r.variables.remote_addr;
+  return ip;
+}
+
 export default {
   proxyUri,
   appendUrlArg,
@@ -85,4 +98,5 @@ export default {
   getCurrentRequestUrlPrefix,
   getFilePathPart,
   parseUrl,
+  getRealIp,
 }

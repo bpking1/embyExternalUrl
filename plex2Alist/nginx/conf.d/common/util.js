@@ -1,4 +1,5 @@
 import config from "../constant.js";
+import urlUtil from "./url-util.js";
 
 const ARGS = {
   plexTokenKey: "X-Plex-Token",
@@ -262,6 +263,9 @@ function getMatchedRule(r, ruleArr3D, filePath) {
     let sourceStr = filePath;
     if (!Object.values(SOURCE_STR_ENUM).includes(rule[0])) {
       sourceStr = parseExpression(r, rule[0]);
+      if (rule[0] === 'r.variables.remote_addr') {
+        sourceStr = urlUtil.getRealIp(r);
+      }
     }
     let flag = false;
     ngx.log(ngx.WARN, `sourceStrValue, ${rule[0]} = ${sourceStr}`);
@@ -491,13 +495,16 @@ function getClientSelfAlistLink(r, filePath, alistFilePath) {
       rule = rule.slice(2);
     }
     const alistPublicAddr = rule.length === 3 ? rule[2] : config.alistPublicAddr;
-    if (alistFilePath && alistFilePath.startsWith("/")) {
-      alistFilePath = alistFilePath.substring(1);
-    }
-    if (filePath.startsWith("/")) {
-      filePath = filePath.substring(1);
-    }
-    return `${alistPublicAddr}/d/${encodeURIComponent(alistFilePath || filePath)}`;
+    // if (alistFilePath && alistFilePath.startsWith("/")) {
+    //   alistFilePath = alistFilePath.substring(1);
+    // }
+    // if (filePath.startsWith("/")) {
+    //   filePath = filePath.substring(1);
+    // }
+    // encodeURIComponent because of "#" in path
+    let realFilePath = encodeURIComponent(alistFilePath || filePath);
+    realFilePath = realFilePath.replaceAll("%2F", "/");
+    return `${alistPublicAddr}/d${realFilePath}`;
   }
 }
 
