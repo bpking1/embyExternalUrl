@@ -10,8 +10,9 @@ import emby from "../emby.js";
 
 async function systemInfoHandler(r) {
   events.njsOnExit(`systemInfoHandler: ${r.uri}`);
-
-  r.variables.request_uri = r.variables.request_uri.replace(r.args.api_key, config.embyApiKey);
+  
+  // /emby/System/Info?api_key=xxx is important,access token(api_key) is invalid,clients redirects itself to the login page
+  // r.variables.request_uri = r.variables.request_uri.replace(r.args.api_key, config.embyApiKey);
   const subR = await r.subrequest(urlUtil.proxyUri(r.uri), {
     method: r.method,
   });
