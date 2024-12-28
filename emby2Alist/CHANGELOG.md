@@ -13,6 +13,8 @@
 
 5.fix(emby2Alist): 修复日志打印
 
+6.fix(emby2Alist): 修复 directHlsConfig 错误替换的异步循环
+
 #### 2024-12-08
 
 1.fix(emby2Alist&plex2Alist): 回退部分 encodeURI

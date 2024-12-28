@@ -316,20 +316,25 @@ function playbackInfoHandler(r, upstreamBody) {
 }
 
 async function vMediaSourcesHandler(r, upstreamBody) {
-  const body = upstreamBody;
-  let extMediaSources = [];
-  body.MediaSources.map(async source => {
-    const isStrm = util.checkIsStrmByMediaSource(source);
-    const notLocal = source.IsRemote || isStrm;
-    // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
-    if (config.directHlsConfig && config.directHlsConfig.enable) {
-      const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
-      if (vMediaSources && vMediaSources.length > 0) {
-        extMediaSources = extMediaSources.concat(vMediaSources);
+  try {
+    const body = upstreamBody;
+    let extMediaSources = [];
+    for (const key in body.MediaSources) {
+      const source = body.MediaSources[key];
+      const isStrm = util.checkIsStrmByMediaSource(source);
+      const notLocal = source.IsRemote || isStrm;
+      // virtualMediaSources, fast placeholder, all PlaybackInfo too slow, switch prosess on play start
+      if (config.directHlsConfig && config.directHlsConfig.enable) {
+        const vMediaSources = await embyVMedia.getVMediaSourcesByHls(r, source, notLocal, body.PlaySessionId);
+        if (vMediaSources && vMediaSources.length > 0) {
+          extMediaSources = extMediaSources.concat(vMediaSources);
+        }
       }
     }
-  });
-  return extMediaSources;
+    return extMediaSources;
+  } catch (error) {
+    ngx.log(ngx.ERR, `vMediaSourcesHandler: ${error}`);
+  }
 }
 
 function modifyDirectPlayInfo(r, upstreamBody) {
