@@ -7,6 +7,8 @@
 
 2.fix(emby2Alist&plex2Alist): 修改内网IP的识别通过header中的X-Real-IP、Proxy-Client-IP等实现
 
+3.fix(emby2Alist): 去除错误的 api_key 替换导致的登录过期转圈
+
 #### 2024-12-08
 
 1.fix(emby2Alist&plex2Alist): 回退部分 encodeURI
