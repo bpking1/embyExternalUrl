@@ -7,6 +7,8 @@
 
 2.fix(emby2Alist&plex2Alist): 修改内网IP的识别通过header中的X-Real-IP、Proxy-Client-IP等实现
 
+3.fix(emby2Alist&plex2Alist): 修复错误的 routeRule 分组规则
+
 #### 2024-12-08
 
 1.fix(emby2Alist&plex2Alist): 回退部分 encodeURI
