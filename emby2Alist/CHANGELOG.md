@@ -9,6 +9,8 @@
 
 3.fix(emby2Alist): 去除错误的 api_key 替换导致的登录过期转圈
 
+4.fix(emby2Alist): 修复日志打印
+
 #### 2024-12-08
 
 1.fix(emby2Alist&plex2Alist): 回退部分 encodeURI

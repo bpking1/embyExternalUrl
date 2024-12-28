@@ -71,7 +71,7 @@ async function itemsFilter(r) {
     }
     const logLevel = itemHiddenCount > 0 ? ngx.WARN : ngx.INFO;
     ngx.log(logLevel, `itemsFilter before: ${beforeLength}`);
-    ngx.log(logLevel, `itemsFilter after: ${body.length}`);
+    ngx.log(logLevel, `itemsFilter after: ${body.Items.length}`);
     if (body.TotalRecordCount) {
       body.TotalRecordCount -= itemHiddenCount;
       ngx.log(logLevel, `itemsFilter TotalRecordCount: ${body.TotalRecordCount}`);

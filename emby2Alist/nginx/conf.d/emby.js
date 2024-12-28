@@ -382,7 +382,7 @@ function modifyDirectPlayInfo(r, upstreamBody) {
         if (!source.TranscodingUrl) {
           // can force modify TranscodingUrl, but following upstream is better
           // because upstream self have a WebUI settings
-          ngx.log(ngx.WARN, "upstream MediaSource.TranscodingUrl is empty,judgment to DirectPlay");
+          ngx.log(ngx.WARN, "upstream MediaSource.TranscodingUrl is empty,judgment to DirectPlay(redirect)");
           source.XRouteMode = util.ROUTE_ENUM.redirect; // for debug
         } else {
           r.warn(`routeMode modify playback supports`);
