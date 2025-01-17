@@ -69,6 +69,9 @@ Emby Web, iconOnly: true
 
 ### CHANGELOG
 
+#### 1.1.18
+1. feat(embyLaunchPotplayer): 添加多开Potplayer开关
+
 #### 1.1.17
 1. 优化图标/文字模式,隐藏其他平台播放器,两个开关的数据隔离
 
