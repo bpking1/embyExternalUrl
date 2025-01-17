@@ -36,6 +36,49 @@ const mediaPathMapping = [
 ];
 ```
 
+#### 1.2 mediaPathMapping 路径映射如何使用?
+
+1.其实关键只在两点,**emby 入库的媒体路径**来源端和**目标端**路径,目标端有多种替换字符串的实现方式,比较常见的,一是 alist 的**直链**地址(客户端直连网盘商),二是 cd2 的非直链地址(会经过 cd2 进行流量中转),更多的可以映射任意目标端
+
+2.假如想用目标二的方式,注意 1 中已经提及局限性,这种方式客户端的加载速度上限受限于 cd2 所在带宽的上传速度限制
+
+3.1 然后根据 emby 入库地址,`/media/CloudNAS/媒体库/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`和目标端二(cd2 的路径),假设`/media/CloudNAS/115/媒体库/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`取差异,判断出仅多出`115`这级路径,
+然后来填写配置文件,`emby2Alist\nginx\conf.d\constant.js`,建议将`mediaMountPath `置空为空数组
+```js
+// 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
+// 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理
+// 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
+const mediaMountPath = [""];
+```
+使用`emby2Alist\nginx\conf.d\config\constant-pro.js`的`mediaPathMapping`,
+```js
+// 路径映射,会在 mediaMountPath 之后从上到下依次全部替换一遍,不要有重叠,注意 /mnt 会先被移除掉了
+// 参数?.1: 生效规则三维数组,有时下列参数序号加一,优先级在参数2之后,需同时满足,多个组是或关系(任一匹配)
+// 参数1: 0: 默认做字符串替换 replace 一次, 1: 前插, 2: 尾插, 3: replaceAll 替换全部
+// 参数2: 0: 默认只处理本地路径且不为 strm, 1: 只处理 strm 内部为/开头的相对路径, 2: 只处理 strm 内部为远程链接的, 3: 全部处理
+// 参数3: 来源, 参数4: 目标
+const mediaPathMapping = [
+  [0, 3, "/media/CloudNAS", "/media/CloudNAS/115"],
+  [1, 3, "http://mydomain:19798/static/http/mydomain:19798/False/"],
+];
+```
+最终替换得到了,`http://mydomain:19798/static/http/mydomain:19798/False//media/CloudNAS/115/媒体库/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`这个 cd2 访问链接响应给客户端播放
+
+3.2 假设目标端二(cd2 的路径),`/media/CloudNAS/115/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`取差异,判断出多出`115`这级路径和缺失了`媒体库`这级
+```js
+const mediaPathMapping = [
+  [0, 3, "/media/CloudNAS/媒体库", ""],
+  [1, 3, "/media/CloudNAS/115"],
+  [1, 3, "http://mydomain:19798/static/http/mydomain:19798/False/"],
+];
+```
+最终替换得到了,`http://mydomain:19798/static/http/mydomain:19798/False//media/CloudNAS/115/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`这个 cd2 访问链接响应给客户端播放
+
+> emby 读取 strm 文件用于刮削,此时在 emby 中显示的媒体路径为
+`/media/CloudNAS/媒体库/电视剧/国产剧/白夜追凶 (2017)/Season 1/白夜追凶 - S01E03 - 第 3 集.mp4`
+
+4.这里有个重点需要注意下,随便找个媒体播放后,确认下媒体详情页下方有没有出现详细的媒体编码信息和可播放时长,假如 emby server 自身无法访问该路径,将会导致没有进度记录,播放后直接就是播放完成状态
+
 #### 2.兼容 jellyfin 吗?
 API 共有的功能兼容,这里的兼容指的是脚本支持的功能可以同时工作在 emby/jellfin 上,
 并不是指可以互通跨客户端使用,且如 emby 的同步下载和 jellfin 的共同观看等服务端各自特有功能也不能跨服务使用
@@ -731,7 +774,7 @@ plex 更加不支持,多版本字段和接口逻辑完全不同
 
 ![image](https://github.com/user-attachments/assets/a68369a2-8403-425e-93bd-76cd30c2a832)
 
-2.上面`strm`中只有`alist`的直链，没有填写`sign`参数,因为脚本中可以动态获取补充这个,
+2.上面`strm`中只有`alist`的直链,没有填写`sign`参数,因为脚本中可以动态获取补充这个,
 虽然客户端可以播放成功,但是 emby 服务端会在客户端播放的瞬间,
 同时也会去读取原始链接的媒体信息获取可播放时长和其他一些媒体编码信息补充入库,
 此时 emby 服务端没有`sign`被`alist`拦截了
@@ -764,6 +807,13 @@ plex 更加不支持,多版本字段和接口逻辑完全不同
 
 5.更正: 目前即使`Infuse-Direct/8.0.3`还是存在黑屏问题,但概率较小,之前没问题是因为 mp4 可以随意拖动,
 然而此次测试 mkv hevc 编码视频,小概率会出现黑屏/报错退出播放,当前仅剩 Infuse 存在此问题
+
+#### 37.Emby for Android 在 TV 设备上大量提示没有兼容的流?
+
+1.原版`Emby for Android`原生支持的媒体格式太少,可开启脚本的允许转码设置
+
+2.第三方增强版的`Emby for Android`可在客户端设置中勾选,使用 MPV 而不是内置的 EXO 播放器,
+可部分缓解格式问题,但是假如 TV 设备性能太差也会很卡,最终还是需要开启脚本的允许转码设置
 
 # embyAddExternalUrl
 

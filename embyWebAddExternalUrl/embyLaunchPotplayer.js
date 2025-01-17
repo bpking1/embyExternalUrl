@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.17
+// @version      1.1.18
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -37,6 +37,7 @@
     const lsKeys = {
         iconOnly: `${mark}-iconOnly`,
         hideByOS: `${mark}-hideByOS`,
+        notCurrentPot: `${mark}-notCurrentPot`,
     };
     const OS = {
         isAndroid: () => /android/i.test(navigator.userAgent),
@@ -79,6 +80,7 @@
         { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", onClick: embyCopyUrl, },
         { id: "hideByOS", title: "异构播放器", iconId: "", onClick: hideByOSHandler, },
         { id: "iconOnly", title: "显示模式", iconId: "", onClick: iconOnlyHandler, },
+        { id: "notCurrentPot", title: "多开Potplayer", iconId: "", onClick: notCurrentPotHandler , },
     ];
 
     function init() {
@@ -172,6 +174,7 @@
         });
         hideByOSHandler();
         iconOnlyHandler();
+        notCurrentPotHandler();
     }
 
     // copy from ./iconsExt,如果更改了以下内容,请同步更改 ./iconsExt.js
@@ -346,11 +349,12 @@
     async function embyPot() {
         const mediaInfo = await getEmbyMediaInfo();
         const intent = mediaInfo.intent;
-        let potUrl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} /current /seek=${getSeek(intent.position)} /title="${intent.title}"`;
+        const notCurrentPotArg = localStorage.getItem(lsKeys.notCurrentPot) === "1" ? "" : "/current";
+        let potUrl = `potplayer://${encodeURI(mediaInfo.streamUrl)} /sub=${encodeURI(mediaInfo.subUrl)} ${notCurrentPotArg} /seek=${getSeek(intent.position)} /title="${intent.title}"`;
         await writeClipboard(potUrl);
         console.log("成功写入剪切板真实深度链接: ", potUrl);
         // 测试出无空格也行,potplayer 对于 DeepLink 会自动转换为命令行参数,全量参数: PotPlayer 关于 => 命令行选项
-        potUrl = `potplayer:///current/clipboard`;
+        potUrl = `potplayer://${notCurrentPotArg}/clipboard`;
         window.open(potUrl, "_self");
     }
 
@@ -528,12 +532,17 @@
         window.open(url, "_self");
     }
 
-    function hideByOSHandler(event) {
-        let flag = localStorage.getItem(lsKeys.hideByOS) === "1";
+    function lsCheckSetBoolean(event, lsKeyName) {
+        let flag = localStorage.getItem(lsKeyName) === "1";
         if (event) {
             flag = !flag;
-            localStorage.setItem(lsKeys.hideByOS, flag ? "1" : "0");
+            localStorage.setItem(lsKeyName, flag ? "1" : "0");
         }
+        return flag;
+    }
+
+    function hideByOSHandler(event) {
+        const flag = lsCheckSetBoolean(event, lsKeys.hideByOS);
         const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
         const buttonEleArr = playBtnsWrapper.querySelectorAll("button");
         buttonEleArr.forEach(btnEle => {
@@ -547,11 +556,7 @@
     }
 
     function iconOnlyHandler(event) {
-        let flag = localStorage.getItem(lsKeys.iconOnly) === "1";
-        if (event) {
-            flag = !flag;
-            localStorage.setItem(lsKeys.iconOnly, flag ? "1" : "0");
-        }
+        const flag = lsCheckSetBoolean(event, lsKeys.iconOnly);
         const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
         const spans = playBtnsWrapper.querySelectorAll("span");
         spans.forEach(span => {
@@ -562,6 +567,12 @@
             iEle.classList.toggle("button-icon-left", !flag);
         });
         const btn = document.getElementById("iconOnly");
+        btn.classList.toggle("button-submit", flag);
+    }
+
+    function notCurrentPotHandler(event) {
+        const flag = lsCheckSetBoolean(event, lsKeys.notCurrentPot);
+        const btn = document.getElementById("notCurrentPot");
         btn.classList.toggle("button-submit", flag);
     }
 
