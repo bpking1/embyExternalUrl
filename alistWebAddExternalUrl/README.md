@@ -8,8 +8,6 @@ greasyfork 地址: https://greasyfork.org/zh-CN/scripts/494829
 1.代码内部变量
 
 ```js
-// 隐藏异构平台的播放器图标
-const hideByOS = true;
 // 是否替换原始外部播放器
 const replaceOriginLinks = true;
 // 是否使用内置的 Base64 图标
@@ -49,6 +47,9 @@ AList V2
 greasyfork 地址: https://greasyfork.org/en/scripts/459297-embylaunchpotplayer
 
 ### CHANGELOG
+
+#### 1.1.2
+1. feat(alistWebLaunchExternalPlayer): 隐藏其他平台播放器开关数据隔离,添加多开Potplayer开关
 
 #### 1.1.1
 1. 添加几个播放器支持
