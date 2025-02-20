@@ -12,6 +12,8 @@ greasyfork 地址: https://greasyfork.org/zh-CN/scripts/494829
 const replaceOriginLinks = true;
 // 是否使用内置的 Base64 图标
 const useInnerIcons = true;
+// 移除最后几个冗余的自定义开关
+const removeCustomBtns = false;
 ```
 
 效果:
@@ -47,6 +49,9 @@ AList V2
 greasyfork 地址: https://greasyfork.org/en/scripts/459297-embylaunchpotplayer
 
 ### CHANGELOG
+
+#### 1.1.3
+1. fix(alistWebLaunchExternalPlayer): 提供内部变量移除最后几个冗余的自定义开关
 
 #### 1.1.2
 1. feat(alistWebLaunchExternalPlayer): 隐藏其他平台播放器开关数据隔离,添加多开Potplayer开关
