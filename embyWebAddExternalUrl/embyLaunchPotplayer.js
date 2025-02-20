@@ -40,6 +40,7 @@
         iconOnly: `${mark}-iconOnly`,
         hideByOS: `${mark}-hideByOS`,
         notCurrentPot: `${mark}-notCurrentPot`,
+        strmDirect: `${mark}-strmDirect`,
     };
     const OS = {
         isAndroid: () => /android/i.test(navigator.userAgent),
@@ -84,11 +85,15 @@
     const customBtns = [
         { id: "hideByOS", title: "异构播放器", iconName: "more", onClick: hideByOSHandler, },
         { id: "iconOnly", title: "显示模式", iconName: "open_in_full", onClick: iconOnlyHandler, },
-        { id: "notCurrentPot", title: "多开Potplayer", iconName: "select_window", onClick: notCurrentPotHandler , },
+        { id: "notCurrentPot", title: "多开Potplayer", iconName: "select_window", onClick: notCurrentPotHandler, },
+        { id: "strmDirect", title: "STRM直通", desc: "AList注意关sign,否则不要开启此选项,任然由服务端处理sign"
+            , iconName: "media_link", onClick: strmDirectHandler,
+        },
     ];
     if (!iconConfig.removeCustomBtns) {
         playBtns.push(...customBtns);
     }
+    const fileNameReg = /.*[\\/]|(\?.*)?$/g;
 
     function init() {
         let playBtnsWrapper = document.getElementById(playBtnsWrapperId);
@@ -96,13 +101,13 @@
             playBtnsWrapper.remove();
         }
         let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        function generateButtonHTML({ id, title, iconId, iconName }) {
+        function generateButtonHTML({ id, title, desc, iconId, iconName }) {
             return `
                 <button
                     id="${id}"
                     type="button"
                     class="detailButton emby-button emby-button-backdropfilter raised-backdropfilter detailButton-primary"
-                    title="${title}"
+                    title="${desc ? desc : title}"
                 >
                     <div class="detailButton-content">
                         <i class="md-icon detailButton-icon button-icon button-icon-left" id="${iconId}">
@@ -185,6 +190,7 @@
             hideByOSHandler();
             iconOnlyHandler();
             notCurrentPotHandler();
+            strmDirectHandler();
         }
     }
 
@@ -291,27 +297,32 @@
             mediaSourceId = selectSource.value;
         }
         // let selectAudio = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectAudio:not([disabled])");
+        const accessToken = ApiClient.accessToken();
         let mediaSource = itemInfo.MediaSources.find(m => m.Id == mediaSourceId);
         let uri = isEmby ? "/emby/videos" : "/Items";
-        let domain = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
+        let baseUrl = `${ApiClient._serverAddress}${uri}/${itemInfo.Id}`;
         let subPath = getSubPath(mediaSource);
-        let subUrl = subPath.length > 0 ? `${domain}${subPath}?api_key=${ApiClient.accessToken()}` : '';
-        let streamUrl = `${domain}/`;
-        let fileName = mediaSource.IsInfiniteStream ? `master.m3u8` : mediaSource.Path.replace(/.*[\\/]/, "");
-        if (isEmby) {
-            if (mediaSource.IsInfiniteStream) {
-                streamUrl += useRealFileName && mediaSource.Name ? `${mediaSource.Name}.m3u8` : fileName;
-            } else {
-                // origin link: /emby/videos/401929/stream.xxx?xxx
-                // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
-                // this is not important, hit "/emby/videos/401929/" path level still worked
-                streamUrl += useRealFileName ? `stream/${fileName}` : `stream.${mediaSource.Container}`;
-            }
+        let subUrl = subPath.length > 0 ? `${baseUrl}${subPath}?api_key=${accessToken}` : "";
+        let streamUrl = `${baseUrl}/`;
+        if (mediaSource.Path.startsWith("http") && localStorage.getItem(lsKeys.strmDirect) === "1") {
+            streamUrl = decodeURIComponent(mediaSource.Path);
         } else {
-            streamUrl += `Download`;
-            streamUrl += useRealFileName ? `/${fileName}` : "";
+            let fileName = mediaSource.IsInfiniteStream ? `master.m3u8` : decodeURIComponent(mediaSource.Path.replace(fileNameReg, ""));
+            if (isEmby) {
+                if (mediaSource.IsInfiniteStream) {
+                    streamUrl += useRealFileName && mediaSource.Name ? `${mediaSource.Name}.m3u8` : fileName;
+                } else {
+                    // origin link: /emby/videos/401929/stream.xxx?xxx
+                    // modify link: /emby/videos/401929/stream/xxx.xxx?xxx
+                    // this is not important, hit "/emby/videos/401929/" path level still worked
+                    streamUrl += useRealFileName ? `stream/${fileName}` : `stream.${mediaSource.Container}`;
+                }
+            } else {
+                streamUrl += `Download`;
+                streamUrl += useRealFileName ? `/${fileName}` : "";
+            }
+            streamUrl += `?api_key=${accessToken}&Static=true&MediaSourceId=${mediaSourceId}&DeviceId=${ApiClient._deviceId}`;
         }
-        streamUrl += `?api_key=${ApiClient.accessToken()}&Static=true&MediaSourceId=${mediaSourceId}&DeviceId=${ApiClient._deviceId}`;
         let position = parseInt(itemInfo.UserData.PlaybackPositionTicks / 10000);
         let intent = await getIntent(mediaSource, position);
         console.log(streamUrl, subUrl, intent);
@@ -324,11 +335,11 @@
 
     async function getIntent(mediaSource, position) {
         // 直播节目查询items接口没有path
-        let title = mediaSource.IsInfiniteStream 
-            ? mediaSource.Name 
-            : mediaSource.Path.split('/').pop();
+        let title = mediaSource.IsInfiniteStream
+            ? mediaSource.Name
+            : decodeURIComponent(mediaSource.Path.replace(fileNameReg, ""));
         let externalSubs = mediaSource.MediaStreams.filter(m => m.IsExternal == true);
-        let subs = ''; //要求是android.net.uri[] ?
+        let subs = ''; // 要求是android.net.uri[] ?
         let subs_name = '';
         let subs_filename = '';
         let subs_enable = '';
@@ -346,7 +357,7 @@
         };
     }
 
-    // URL with "intent" scheme 只支持
+    // URL with "intent" scheme only support
     // String => 'S'
     // Boolean =>'B'
     // Byte => 'b'
@@ -368,17 +379,6 @@
         potUrl = `potplayer://${notCurrentPotArg}/clipboard`;
         window.open(potUrl, "_self");
     }
-
-    /**
-     * 这是一个临时解决方案,所以此段判断仅在 Google Chrome 浏览器下使用,区别 {brand: 'Microsoft Edge', version: '130'}
-     * 非 Chrome 内核无 userAgentData 对象, Chrome 内核套壳的没添加 brands 品牌元素
-     */
-    // function geGoogleChrome130() {
-    //     if (!navigator.userAgentData) { return false; }
-    //     const googleBrand = navigator.userAgentData.brands.find(b => b.brand === "Google Chrome");
-    //     if (!googleBrand) { return false; }
-    //     return parseInt(googleBrand.version) >= 130;
-    // }
 
     // async function embyPot() {
     //     let mediaInfo = await getEmbyMediaInfo();
@@ -598,11 +598,20 @@
         btn.classList.toggle("button-submit", flag);
     }
 
+    function strmDirectHandler(event) {
+        const btn = document.getElementById("strmDirect");
+        if (!btn) {
+            return;
+        }
+        const flag = lsCheckSetBoolean(event, lsKeys.strmDirect);
+        btn.classList.toggle("button-submit", flag);
+    }
+
     async function embyCopyUrl() {
         const mediaInfo = await getEmbyMediaInfo();
         const streamUrl = encodeURI(mediaInfo.streamUrl);
         if (await writeClipboard(streamUrl)) {
-            console.log(`decodeURI for show copyUrl = ${mediaInfo.streamUrl}`);
+            console.log(`copyUrl = ${streamUrl}`);
             this.innerText = '复制成功';
         }
     }

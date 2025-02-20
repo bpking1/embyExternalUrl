@@ -73,9 +73,10 @@ Emby Web, iconOnly: true
 
 #### 1.1.19
 1. fix(embyLaunchPotplayer): 提供内部变量移除最后几个冗余的自定义开关并添加图标
+2. feat(embyLaunchPotplayer): 提供 strm 播放链接直通开关
 
 #### 1.1.18
-1. feat(embyLaunchPotplayer): 添加多开Potplayer开关
+1. feat(embyLaunchPotplayer): 添加多开 Potplayer 开关
 
 #### 1.1.17
 1. 优化图标/文字模式,隐藏其他平台播放器,两个开关的数据隔离
