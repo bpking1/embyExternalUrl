@@ -4,7 +4,7 @@
 // @name:zh      alistWebLaunchExternalPlayer
 // @name:zh-CN   alistWebLaunchExternalPlayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.1.3
 // @description  alist Web Launc hExternal Player
 // @description:zh-cn alistWeb 调用外部播放器, 注意自行更改 UI 中的包括/排除,或下面的 @match
 // @description:en  alist Web Launch External Player
@@ -20,6 +20,8 @@
     const replaceOriginLinks = true;
     // 是否使用内置的 Base64 图标
     const useInnerIcons = true;
+    // 移除最后几个冗余的自定义开关
+    const removeCustomBtns = false;
     // 以下为内部使用变量,请勿更改
     const mark = "alistWebLaunchExternalPlayer";
     const lsKeys = {
@@ -54,8 +56,6 @@
                 , getSrc: getSenPlayerUrl, osCheck: [OS.isIOS], },
             { id: "icon-Copy", title: "复制串流地址", imgSrc: `${iconBaseUrl}/icon-Copy.webp`
                 , getSrc: (mediaInfo) => encodeURI(mediaInfo.streamUrl), },
-            { id: "hideByOS", title: "异构播放器", imgSrc: '',  onClick: hideByOSHandler, },
-            { id: "notCurrentPot", title: "多开Potplayer", imgSrc: '',  onClick: notCurrentPotHandler, },
         ];
         const sameLinks = [
             { id: "icon-IINA", title: "IINA", imgSrc: `${iconBaseUrl}/icon-IINA.webp`
@@ -77,6 +77,13 @@
             { id: "icon-FigPlayer", title: "FigPlayer", imgSrc: `${iconBaseUrl}/icon-FigPlayer.webp`
                 , getSrc: getFigPlayerUrl, osCheck: [OS.isMacOS], },
         ];
+        const customBtns = [
+            { id: "hideByOS", title: "异构播放器", imgSrc: '',  onClick: hideByOSHandler, },
+            { id: "notCurrentPot", title: "多开Potplayer", imgSrc: '',  onClick: notCurrentPotHandler, },
+        ];
+        if (!removeCustomBtns) {
+            diffLinks.push(...customBtns);
+        }
         links = replaceOriginLinks ? [...sameLinks, ...diffLinks] : [...diffLinks];
         if (useInnerIcons) {
             // add icons from Base64, script inner, this script size 13.5KB to 64KB
@@ -178,8 +185,10 @@
                 }
             }
         });
-        hideByOSHandler();
-        notCurrentPotHandler();
+        if (!removeCustomBtns) {
+            hideByOSHandler();
+            notCurrentPotHandler();
+        }
     }
 
     // copy from /embyWebAddExternalUrl/iconsExt.js, 如果更改了以下内容,请同步更改 ./iconsExt
@@ -410,6 +419,10 @@
     }
 
     function hideByOSHandler(event) {
+        const link = document.getElementById("hideByOS");
+        if (!link) {
+            return;
+        }
         const flag = lsCheckSetBoolean(event, lsKeys.hideByOS);
         const playLinksWrapperEle = getShowEle();
         const linksEle = playLinksWrapperEle.getElementsByTagName("a");
@@ -419,13 +432,15 @@
             console.log(`${link.id} Should Hide: ${shouldHide}`);
             linkEle.style.display = shouldHide ? 'none' : 'block';
         });
-        const link = document.getElementById("hideByOS");
         link.style.backgroundColor = flag ? "rgb(0, 145, 255)" : "";
     }
 
     function notCurrentPotHandler(event) {
-        const flag = lsCheckSetBoolean(event, lsKeys.notCurrentPot);
         const link = document.getElementById("notCurrentPot");
+        if (!link) {
+            return;
+        }
+        const flag = lsCheckSetBoolean(event, lsKeys.notCurrentPot);
         link.style.backgroundColor = flag ? "rgb(0, 145, 255)" : "";
     }
 
