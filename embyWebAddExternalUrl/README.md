@@ -53,6 +53,8 @@ const iconConfig = {
     // baseUrl: "icons",
     // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
     // 自行复制 ./iconsExt.js 内容到此脚本的 getIconsExt 中
+    // 移除最后几个冗余的自定义开关
+    removeCustomBtns: false,
 };
 // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
 // 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
@@ -68,6 +70,9 @@ Emby Web, iconOnly: true
 ![image](https://emby-external-url.7o7o.cc/embyWebAddExternalUrl/preview/preview02.png)
 
 ### CHANGELOG
+
+#### 1.1.19
+1. fix(embyLaunchPotplayer): 提供内部变量移除最后几个冗余的自定义开关并添加图标
 
 #### 1.1.18
 1. feat(embyLaunchPotplayer): 添加多开Potplayer开关

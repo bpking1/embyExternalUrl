@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.18
+// @version      1.1.19
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -26,6 +26,8 @@
         // baseUrl: "icons",
         // 3.add icons from Base64, script inner, this script size 22.5KB to 74KB,
         // 自行复制 ./iconsExt.js 内容到此脚本的 getIconsExt 中
+        // 移除最后几个冗余的自定义开关
+        removeCustomBtns: false,
     };
     // 启用后将修改直接串流链接为真实文件名,方便第三方播放器友好显示和匹配,
     // 默认不启用,强依赖 nginx-emby2Alist location two rewrite,如发现原始链接播放失败,请关闭此选项
@@ -78,10 +80,15 @@
         { id: "embySenPlayer", title: "SenPlayer", iconId: "icon-SenPlayer"
             , onClick: embySenPlayer, osCheck: [OS.isIOS], },
         { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", onClick: embyCopyUrl, },
-        { id: "hideByOS", title: "异构播放器", iconId: "", onClick: hideByOSHandler, },
-        { id: "iconOnly", title: "显示模式", iconId: "", onClick: iconOnlyHandler, },
-        { id: "notCurrentPot", title: "多开Potplayer", iconId: "", onClick: notCurrentPotHandler , },
     ];
+    const customBtns = [
+        { id: "hideByOS", title: "异构播放器", iconName: "more", onClick: hideByOSHandler, },
+        { id: "iconOnly", title: "显示模式", iconName: "open_in_full", onClick: iconOnlyHandler, },
+        { id: "notCurrentPot", title: "多开Potplayer", iconName: "select_window", onClick: notCurrentPotHandler , },
+    ];
+    if (!iconConfig.removeCustomBtns) {
+        playBtns.push(...customBtns);
+    }
 
     function init() {
         let playBtnsWrapper = document.getElementById(playBtnsWrapperId);
@@ -89,7 +96,7 @@
             playBtnsWrapper.remove();
         }
         let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
-        function generateButtonHTML({ id, title, iconId }) {
+        function generateButtonHTML({ id, title, iconId, iconName }) {
             return `
                 <button
                     id="${id}"
@@ -98,7 +105,9 @@
                     title="${title}"
                 >
                     <div class="detailButton-content">
-                        <i class="md-icon detailButton-icon button-icon button-icon-left" id="${iconId}">　</i>
+                        <i class="md-icon detailButton-icon button-icon button-icon-left" id="${iconId}">
+                        ${iconName ? iconName : '　'}
+                        </i>
                         <span class="button-text">${title}</span>
                     </div>
                 </button>
@@ -172,9 +181,11 @@
                 `;
             }
         });
-        hideByOSHandler();
-        iconOnlyHandler();
-        notCurrentPotHandler();
+        if (!iconConfig.removeCustomBtns) {
+            hideByOSHandler();
+            iconOnlyHandler();
+            notCurrentPotHandler();
+        }
     }
 
     // copy from ./iconsExt,如果更改了以下内容,请同步更改 ./iconsExt.js
@@ -385,7 +396,9 @@
         // android subtitles:  https://code.videolan.org/videolan/vlc-android/-/issues/1903
         let vlcUrl = `intent:${encodeURI(mediaInfo.streamUrl)}#Intent;package=org.videolan.vlc;type=video/*;S.subtitles_location=${encodeURI(mediaInfo.subUrl)};S.title=${encodeURI(intent.title)};i.position=${intent.position};end`;
         if (OS.isWindows()) {
-            // 桌面端需要额外设置,参考这个项目: https://github.com/stefansundin/vlc-protocol 
+            // 桌面端需要额外设置,参考这个项目:
+            // new: https://github.com/northsea4/vlc-protocol
+            // old: https://github.com/stefansundin/vlc-protocol
             vlcUrl = `vlc://${encodeURI(mediaInfo.streamUrl)}`;
         }
         if (OS.isIOS()) {
@@ -542,6 +555,10 @@
     }
 
     function hideByOSHandler(event) {
+        const btn = document.getElementById("hideByOS");
+        if (!btn) {
+            return;
+        }
         const flag = lsCheckSetBoolean(event, lsKeys.hideByOS);
         const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
         const buttonEleArr = playBtnsWrapper.querySelectorAll("button");
@@ -551,11 +568,14 @@
             console.log(`${btn.id} Should Hide: ${shouldHide}`);
             btnEle.style.display = shouldHide ? 'none' : 'block';
         });
-        const btn = document.getElementById("hideByOS");
         btn.classList.toggle("button-submit", flag);
     }
 
     function iconOnlyHandler(event) {
+        const btn = document.getElementById("iconOnly");
+        if (!btn) {
+            return;
+        }
         const flag = lsCheckSetBoolean(event, lsKeys.iconOnly);
         const playBtnsWrapper = document.getElementById(playBtnsWrapperId);
         const spans = playBtnsWrapper.querySelectorAll("span");
@@ -566,13 +586,15 @@
         iArr.forEach(iEle => {
             iEle.classList.toggle("button-icon-left", !flag);
         });
-        const btn = document.getElementById("iconOnly");
         btn.classList.toggle("button-submit", flag);
     }
 
     function notCurrentPotHandler(event) {
-        const flag = lsCheckSetBoolean(event, lsKeys.notCurrentPot);
         const btn = document.getElementById("notCurrentPot");
+        if (!btn) {
+            return;
+        }
+        const flag = lsCheckSetBoolean(event, lsKeys.notCurrentPot);
         btn.classList.toggle("button-submit", flag);
     }
 
