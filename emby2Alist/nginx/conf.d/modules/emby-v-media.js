@@ -59,7 +59,9 @@ async function fetchHls(alistFilePath, ua, alistAddr, alistToken) {
     throw new Error("cannot access alist link, " + alistLinkRes);
   }
   const directUrl = alistLinkRes.data.url;
-  if (directUrl.includes(config.strHead["115"])) {
+  const domainArr115 = config.strHead["115"];
+  const is115 = Array.isArray(domainArr115) ? domainArr115.some(d => directUrl.includes(d)) : directUrl.includes(domainArr115);
+  if (is115) {
     let customCookie = '';
     if (config.webCookie115.length > 0) {
       customCookie = config.webCookie115;

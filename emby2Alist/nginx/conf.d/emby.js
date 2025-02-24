@@ -715,7 +715,9 @@ async function redirectAfter(r, url, cachedRouteDictKey) {
       const ua = r.headersIn["User-Agent"];
       // webClient download only have itemId on pathParam
       let cacheKey = util.parseExpression(r, routeCacheConfig.keyExpression) ?? r.uri;
-      cacheKey = url.includes(config.strHead["115"]) ? `${cacheKey}:${ua}` : cacheKey;
+      const domainArr115 = config.strHead["115"];
+      const uaIsolation = Array.isArray(domainArr115) ? domainArr115.some(d => url.includes(d)) : url.includes(domainArr115);
+      cacheKey = uaIsolation ? `${cacheKey}:${ua}` : cacheKey;
       r.log(`redirectAfter cacheKey: ${cacheKey}`);
       // cachePreload added args in url
       const cacheLevle = r.args[util.ARGS.cacheLevleKey] ?? util.CHCHE_LEVEL_ENUM.L1;

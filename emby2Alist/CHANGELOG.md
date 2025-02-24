@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2025-02-24
+
+1.fix(emby2Alist&plex2Alist): 修复直链缓存
+
 #### 2024-12-28
 
 1.fix(emby2Alist&plex2Alist): 修复 getClientSelfAlistLink 编码
