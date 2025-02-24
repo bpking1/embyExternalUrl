@@ -52,8 +52,8 @@ const strHead = {
     },
     // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
   },
-  "115": "115.com",
-  ali: "aliyundrive.net",
+  "115": ["115.com", "115cdn.net"],
+  ali: ["aliyundrive.net"],
   userIds: {
     mediaPathMappingGroup01: ["ac0d220d548f43bbb73cf9b44b2ddf0e"],
     allowInteractiveSearch: [],
@@ -207,8 +207,9 @@ const alistRawUrlMapping = [
 ];
 
 // 指定是否转发由 njs 获取 strm/远程链接 重定向后直链地址的规则,例如 strm/远程链接 内部为局域网 ip 或链接需要验证
-// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
-// 参数2: 匹配类型或来源(字符串参数类型),默认为 "filePath": mediaPathMapping 映射后的 strm/远程链接 内部链接
+// 匹配来源为入库媒体的文件路径
+// 参数?.1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
+// 参数?.2: 匹配类型或来源(字符串参数类型),默认为 "filePath": mediaPathMapping 映射后的 strm/远程链接 内部链接
 // ,有分组时不可省略填写,可为表达式
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)
@@ -228,8 +229,8 @@ const redirectStrmLastLinkRule = [
 
 // 指定客户端自己请求并获取 alist 直链的规则,代码优先级在 redirectStrmLastLinkRule 之后
 // 特殊情况使用,则此处必须使用域名且公网畅通,用不着请保持默认
-// 参数1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
-// 参数2: 匹配类型或来源(字符串参数类型),优先级高"filePath": 文件路径(Item.Path),默认为"alistRes": alist 返回的链接 raw_url
+// 参数?.1: 分组名,组内为与关系(全部匹配),多个组和没有分组的规则是或关系(任一匹配),然后下面参数序号-1
+// 参数?.2: 匹配类型或来源(字符串参数类型),优先级高"filePath": 文件路径(Item.Path),默认为"alistRes": alist 返回的链接 raw_url
 // ,有分组时不可省略填写,可为表达式,然后下面参数序号-1
 // 参数3: 0: startsWith(str), 1: endsWith(str), 2: includes(str), 3: match(/ain/g)
 // 参数4: 匹配目标,为数组的多个参数时,数组内为或关系(任一匹配)

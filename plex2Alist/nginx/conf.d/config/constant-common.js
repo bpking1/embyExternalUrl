@@ -19,8 +19,8 @@ const strHead = {
     },
     // 安卓与 TV 客户端不太好区分,浏览器 UA 关键字也有交叉重叠,请使用 xEmbyClients 参数或使用正则
   },
-  "115": "115.com",
-  ali: "aliyundrive.net",
+  "115": ["115.com", "115cdn.net"],
+  ali: ["aliyundrive.net"],
   userIds: {
     mediaPathMappingGroup01: ["ac0d220d548f43bbb73cf9b44b2ddf0e"],
     allowInteractiveSearch: [],
