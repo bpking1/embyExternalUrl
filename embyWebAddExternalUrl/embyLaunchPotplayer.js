@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.19
+// @version      1.1.20
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -94,13 +94,29 @@
         playBtns.push(...customBtns);
     }
     const fileNameReg = /.*[\\/]|(\?.*)?$/g;
+    const selectors = {
+        // 详情页评分,上映日期信息栏
+        embyMediaInfoDiv: "div[is='emby-scroller']:not(.hide) .mediaInfo:not(.hide)",
+        jellfinMediaInfoDiv: ".itemMiscInfo-primary:not(.hide)",
+        // 电视直播详情页创建录制按钮
+        embyBtnManualRecording: "div[is='emby-scroller']:not(.hide) .btnManualRecording:not(.hide)",
+        // 电视直播详情页停止录制按钮
+        jellfinBtnCancelTimer: ".btnCancelTimer:not(.hide)",
+        // 详情页播放收藏那排按钮
+        embyMainDetailButtons: "div[is='emby-scroller']:not(.hide) .mainDetailButtons",
+        jellfinMainDetailButtons: "div.itemDetailPage:not(.hide) div.detailPagePrimaryContainer",
+        // 详情页字幕选择下拉框
+        selectSubtitles: "div[is='emby-scroller']:not(.hide) select.selectSubtitles",
+        // 详情页多版本选择下拉框
+        selectSource: "div[is='emby-scroller']:not(.hide) select.selectSource:not([disabled])",
+    };
 
     function init() {
         let playBtnsWrapper = document.getElementById(playBtnsWrapperId);
         if (playBtnsWrapper) {
             playBtnsWrapper.remove();
         }
-        let mainDetailButtons = document.querySelector("div[is='emby-scroller']:not(.hide) .mainDetailButtons");
+        let mainDetailButtons = document.querySelector(selectors.embyMainDetailButtons);
         function generateButtonHTML({ id, title, desc, iconId, iconName }) {
             return `
                 <button
@@ -118,7 +134,7 @@
                 </button>
             `;
         }
-        let buttonHtml = `<div id="${playBtnsWrapperId}" class="detailButtons flex align-items-flex-start flex-wrap-wrap">`;
+        let buttonHtml = `<div id="${playBtnsWrapperId}" class="detailButtons flex align-items-flex-start flex-wrap-wrap detail-lineItem">`;
         playBtns.forEach(btn => {
             buttonHtml += generateButtonHTML(btn);
         });
@@ -126,7 +142,7 @@
 
         if (!isEmby) {
             // jellfin
-            mainDetailButtons = document.querySelector("div.itemDetailPage:not(.hide) div.detailPagePrimaryContainer");
+            mainDetailButtons = document.querySelector(selectors.jellfinMainDetailButtons);
         }
 
         mainDetailButtons.insertAdjacentHTML("afterend", buttonHtml);
@@ -202,17 +218,13 @@
     }
 
     function showFlag() {
-        // itemMiscInfo-primary
-        // 评分,上映日期信息栏
-        let mediaInfoPrimary = document.querySelector("div[is='emby-scroller']:not(.hide) .mediaInfoPrimary:not(.hide)");
-        // 创建录制按钮
-        let btnManualRecording = document.querySelector("div[is='emby-scroller']:not(.hide) .btnManualRecording:not(.hide)");
+        let mediaInfoDiv = document.querySelector(selectors.embyMediaInfoDiv);
+        let btnManualRecording = document.querySelector(selectors.embyBtnManualRecording);
         if (!isEmby) {
-            mediaInfoPrimary = document.querySelector(".itemMiscInfo-primary:not(.hide)");
-            // 停止录制按钮
-            btnManualRecording = document.querySelector(".btnCancelTimer:not(.hide)");
+            mediaInfoDiv = document.querySelector(selectors.jellfinBtnManualRecording);
+            btnManualRecording = document.querySelector(selectors.jellfinBtnCancelTimer);
         }
-        return !!mediaInfoPrimary || !!btnManualRecording;
+        return !!mediaInfoDiv || !!btnManualRecording;
     }
 
     async function getItemInfo() {
@@ -260,7 +272,7 @@
     }
 
     function getSubPath(mediaSource) {
-        let selectSubtitles = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectSubtitles");
+        let selectSubtitles = document.querySelector(selectors.selectSubtitles);
         let subTitlePath = '';
         //返回选中的外挂字幕
         if (selectSubtitles && selectSubtitles.value > 0) {
@@ -292,7 +304,7 @@
     async function getEmbyMediaInfo() {
         let itemInfo = await getItemInfo();
         let mediaSourceId = itemInfo.MediaSources[0].Id;
-        let selectSource = document.querySelector("div[is='emby-scroller']:not(.hide) select.selectSource:not([disabled])");
+        let selectSource = document.querySelector(selectors.selectSource);
         if (selectSource && selectSource.value.length > 0) {
             mediaSourceId = selectSource.value;
         }
