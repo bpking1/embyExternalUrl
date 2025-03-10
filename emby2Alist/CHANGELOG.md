@@ -1,6 +1,10 @@
 
 ### 文章更新记录
 
+#### 2025-03-10
+
+1.fix(emby2Alist&plex2Alist): 修复 include 错误
+
 #### 2025-02-24
 
 1.fix(emby2Alist&plex2Alist): 修复直链缓存
