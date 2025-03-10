@@ -71,6 +71,10 @@ Emby Web, iconOnly: true
 
 ### CHANGELOG
 
+#### 1.1.20
+1. fix(embyLaunchPotplayer): 适配 4.9.0.40
+2. refactor(embyLaunchPotplayer): 抽取 selectors
+
 #### 1.1.19
 1. fix(embyLaunchPotplayer): 提供内部变量移除最后几个冗余的自定义开关并添加图标
 2. feat(embyLaunchPotplayer): 提供 strm 播放链接直通开关
