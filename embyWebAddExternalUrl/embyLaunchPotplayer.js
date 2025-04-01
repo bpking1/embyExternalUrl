@@ -4,7 +4,7 @@
 // @name:zh      embyLaunchPotplayer
 // @name:zh-CN   embyLaunchPotplayer
 // @namespace    http://tampermonkey.net/
-// @version      1.1.20
+// @version      1.1.21
 // @description  emby/jellfin launch extetnal player
 // @description:zh-cn emby/jellfin 调用外部播放器
 // @description:en  emby/jellfin to external player
@@ -82,12 +82,14 @@
             , onClick: embySenPlayer, osCheck: [OS.isIOS], },
         { id: "embyCopyUrl", title: "复制串流地址", iconId: "icon-Copy", onClick: embyCopyUrl, },
     ];
+    // Jellyfin Icons: https://marella.github.io/material-icons/demo
+    // Emby Icons: https://fonts.google.com/icons
     const customBtns = [
         { id: "hideByOS", title: "异构播放器", iconName: "more", onClick: hideByOSHandler, },
         { id: "iconOnly", title: "显示模式", iconName: "open_in_full", onClick: iconOnlyHandler, },
-        { id: "notCurrentPot", title: "多开Potplayer", iconName: "select_window", onClick: notCurrentPotHandler, },
+        { id: "notCurrentPot", title: "多开Potplayer", iconName: "window", onClick: notCurrentPotHandler, },
         { id: "strmDirect", title: "STRM直通", desc: "AList注意关sign,否则不要开启此选项,任然由服务端处理sign"
-            , iconName: "media_link", onClick: strmDirectHandler,
+            , iconName: "link", onClick: strmDirectHandler,
         },
     ];
     if (!iconConfig.removeCustomBtns) {
@@ -118,6 +120,7 @@
         }
         let mainDetailButtons = document.querySelector(selectors.embyMainDetailButtons);
         function generateButtonHTML({ id, title, desc, iconId, iconName }) {
+            // jellyfin icon class: material-icons
             return `
                 <button
                     id="${id}"
@@ -126,7 +129,7 @@
                     title="${desc ? desc : title}"
                 >
                     <div class="detailButton-content">
-                        <i class="md-icon detailButton-icon button-icon button-icon-left" id="${iconId}">
+                        <i class="md-icon detailButton-icon button-icon button-icon-left material-icons" id="${iconId}">
                         ${iconName ? iconName : '　'}
                         </i>
                         <span class="button-text">${title}</span>
@@ -221,7 +224,7 @@
         let mediaInfoDiv = document.querySelector(selectors.embyMediaInfoDiv);
         let btnManualRecording = document.querySelector(selectors.embyBtnManualRecording);
         if (!isEmby) {
-            mediaInfoDiv = document.querySelector(selectors.jellfinBtnManualRecording);
+            mediaInfoDiv = document.querySelector(selectors.jellfinMediaInfoDiv);
             btnManualRecording = document.querySelector(selectors.jellfinBtnCancelTimer);
         }
         return !!mediaInfoDiv || !!btnManualRecording;
