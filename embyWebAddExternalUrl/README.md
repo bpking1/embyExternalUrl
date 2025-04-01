@@ -71,6 +71,9 @@ Emby Web, iconOnly: true
 
 ### CHANGELOG
 
+#### 1.1.21
+1. fix(embyLaunchPotplayer): 修复上个版本引入的 jellyfin 下的误改,并修复图标
+
 #### 1.1.20
 1. fix(embyLaunchPotplayer): 适配 4.9.0.40
 2. refactor(embyLaunchPotplayer): 抽取 selectors
