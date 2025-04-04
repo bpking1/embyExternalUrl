@@ -17,6 +17,9 @@ const embyHost = "http://172.17.0.1:8096";
 // emby/jellyfin api key, 在 emby/jellyfin 后台设置
 const embyApiKey = "f839390f50a648fd92108bc11ca6730a";
 
+// 用于无法获取到用户的情况下,默认使用的用户 id
+const embyDefaultUserId = "xxxxxxxx";
+
 // 挂载工具 rclone/CD2 多出来的挂载目录, 例如将 od,gd 挂载到 /mnt 目录下: /mnt/onedrive /mnt/gd ,那么这里就填写 /mnt
 // 通常配置一个远程挂载根路径就够了,默认非此路径开头文件将转给原始 emby 处理
 // 如果没有挂载,全部使用 strm 文件,此项填[""],必须要是数组
@@ -43,6 +46,7 @@ function getUsersItemsLatestFilterEnable(r) {
 export default {
   embyHost,
   embyApiKey,
+  embyDefaultUserId,
   mediaMountPath,
   strHead: commonConfig.strHead,
 
