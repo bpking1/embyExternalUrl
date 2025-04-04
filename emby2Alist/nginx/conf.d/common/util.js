@@ -98,11 +98,11 @@ function copyHeaders(sourceHeaders, targetHeaders, skipKeys) {
     skipKeys = ["Content-Length"];
   }
   for (const key in sourceHeaders) {
-	  if (skipKeys.includes(key)) {
-	    continue;
-	  }
-	  targetHeaders[key] = sourceHeaders[key];
-	}
+    if (skipKeys.includes(key)) {
+      continue;
+    }
+    targetHeaders[key] = sourceHeaders[key];
+  }
 }
 
 /**
@@ -193,7 +193,7 @@ function getRouteMode(r, filePath, isAlistRes, notLocal) {
 //       return true;
 //     }
 //   }
-  
+
 //   // old proxy, sigle rule length is 3 or 4(group)
 //   const oldRules = disableRedirectRule.filter(rule => rule.length <= 3);
 //   if (oldRules.length > 0) {
@@ -264,7 +264,7 @@ function getMatchedRule(r, ruleArr3D, filePath) {
       return flag;
     }
     const matcher = rule[2];
-    if (Array.isArray(matcher) 
+    if (Array.isArray(matcher)
       && matcher.some(m => strMatches(rule[1], sourceStr, m))) {
       flag = true;
     } else {
@@ -299,7 +299,7 @@ function parseExpression(rootObj, expression, propertySplit, groupSplit) {
   if (typeof rootObj !== "object" || rootObj === null) {
     throw new Error("rootObj must be a non-null object");
   }
-  
+
   if (typeof expression !== "string" || expression.trim() === "") {
     return undefined;
   }
@@ -409,7 +409,7 @@ function checkIsStrmByPath(filePath) {
 }
 
 function isAbsolutePath(filePath) {
-  return filePath && typeof filePath === "string" 
+  return filePath && typeof filePath === "string"
     ? filePath.startsWith("/") || filePath.startsWith("\\") : false;
 }
 
@@ -437,7 +437,7 @@ function simpleRuleFilter(r, ruleArr3D, filePath, firstSourceStr, mark) {
     mark = "simpleRule";
   }
   // group current rules, old is true, new is false
-  const onGroupRulesObjArr = groupBy(ruleArr3D, 
+  const onGroupRulesObjArr = groupBy(ruleArr3D,
     rule => Number.isInteger(rule[0]) || Object.values(MATCHER_ENUM).includes(rule[0])
   );
   ngx.log(ngx.INFO, `onGroupRulesObjArr: ${JSON.stringify(onGroupRulesObjArr)}`);
@@ -521,9 +521,13 @@ function getItemInfo(r) {
     : r.args.mediaSourceId;
   const Etag = r.args.Tag;
   const api_key = urlUtil.getDefaultApiKey(r.args);
+  const userId = r.args["UserId"] || r.headersIn["X-Emby-UserId"];
+  if (!userId) {
+    r.warn("⚠️ Warning: No userId found! Requests might fail.");
+  }
   let itemInfoUri = "";
   if (r.uri.includes("JobItems")) {
-	  itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
+    itemInfoUri = `${embyHost}/Sync/JobItems?api_key=${api_key}`;
   } else {
     if (mediaSourceId) {
       // before is GUID like "3c25399d9cbb41368a5abdb71cfe3dc9", V4.9.0.25 is "mediasource_447039" fomrmat
@@ -532,12 +536,12 @@ function getItemInfo(r) {
       if (mediaSourceId.startsWith("mediasource_")) {
         newMediaSourceId = mediaSourceId.replace("mediasource_", "");
       }
-      itemInfoUri = `${embyHost}/Items?Ids=${newMediaSourceId ?? mediaSourceId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
+      itemInfoUri = `${embyHost}/Users/${userId}/Items/${newMediaSourceId ?? mediaSourceId}?&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     } else {
-      itemInfoUri = `${embyHost}/Items?Ids=${itemId}&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
+      itemInfoUri = `${embyHost}/Users/${userId}/Items/${itemId}?&Fields=Path,MediaSources&Limit=1&api_key=${api_key}`;
     }
   }
-  return { itemInfoUri, itemId , Etag, mediaSourceId, api_key };
+  return { itemInfoUri, itemId, Etag, mediaSourceId, api_key };
 }
 
 /**
@@ -559,7 +563,7 @@ function dictAdd(dictName, key, value, timeout, isSet) {
     const preValue = dict.get(key);
     if (preValue === value) return 0;
   }
-  
+
   const msgBase = `${dictName} ${methodName}: [${key}] : [${value}]`;
   // simple version string compare use Unicode, better use njs.version_number
   if (njs.version >= "0.8.5" && timeout && timeout > 0) {
@@ -623,8 +627,8 @@ function calculateHMAC(data, key) {
   hmac.update(data);
   // 计算摘要并以 GoLang 中 URLEncoding 方式返回
   return hmac.digest('base64')
-      .replaceAll("+", "-")
-      .replaceAll("/", "_");
+    .replaceAll("+", "-")
+    .replaceAll("/", "_");
 }
 
 function addAlistSign(url, alistToken, alistSignExpireTime) {
@@ -644,7 +648,7 @@ function addAlistSign(url, alistToken, alistSignExpireTime) {
     if (expiredHour !== 0) {
       time = Math.floor(Date.now() / 1000 + expiredHour * 3600)
     }
-    path = decodeURIComponent(path.substring(startIndex + 2).replaceAll('//','/'))
+    path = decodeURIComponent(path.substring(startIndex + 2).replaceAll('//', '/'))
     const signData = `${path}:${time}`
     ngx.log(ngx.WARN, `sign data: ${signData}`)
     const signPrefix = calculateHMAC(signData, alistToken)
