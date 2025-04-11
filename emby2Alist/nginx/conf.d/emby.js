@@ -603,7 +603,7 @@ async function fetchEmbyFilePath(itemInfoUri, itemId, Etag, mediaSourceId) {
           return rvt;
         }
       } else {
-        const item = result.Items[0];
+        const item = result
         if (!item) {
           rvt.message = `error: emby_api /Items response is null`;
           return rvt;
