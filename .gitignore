@@ -1,0 +1,13 @@
+# macOS desktop metadata
+.DS_Store
+
+# SwiftPM and Xcode generated state
+manager/.build/
+manager/.swiftpm/xcode/
+plex2Alist-manager/.build/
+plex2Alist-manager/.swiftpm/xcode/
+plex2Alist-manager/RustCore/target/
+
+# Local release artifacts
+manager/dist/
+plex2Alist-manager/dist/
