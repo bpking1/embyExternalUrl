@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  nginx-proxy:
+    image: nginx:1.27.1
+    container_name: {{CONTAINER_NAME}}
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - {{NGINX_CONF}}/nginx.conf:/etc/nginx/nginx.conf:ro
+      - {{NGINX_CONF}}/conf.d:/etc/nginx/conf.d
+      - {{DEPLOY_DIR}}/logs:/var/log/nginx
+      - {{DEPLOY_DIR}}/cache:/var/cache/nginx
+    environment:
+      - TZ=Asia/Shanghai
